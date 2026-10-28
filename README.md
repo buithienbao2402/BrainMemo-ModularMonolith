@@ -1,3 +1,3 @@
-# BrainMemo-ModularMonolith
-Nền tảng hỗ trợ học tập thông minh và quản lý khóa học phân cấp tích hợp AI (BrainMemo) là hệ thống backend cung cấp giải pháp xây dựng khóa học đa tầng (Course → Chapter → Page → Block), lưu trữ tài nguyên an toàn và tự động hóa việc trích xuất kiến thức, sinh câu hỏi trắc nghiệm (Quiz), thẻ ghi nhớ (Flashcard) bằng AI. 
-Hệ thống được phát triển theo kiến trúc Modular Monolith trên nền tảng .NET 8, tích hợp Docker Compose và lưu trữ đám mây chuẩn S3.
+# BrainMemo — Next-Gen AUN-QA Block-based LMS (Modular Monolith)
+
+Hệ thống Quản trị Khóa học Chuẩn Khối & Đánh giá Kết quả Học tập theo Chuẩn Đầu ra (**BrainMemo**) là giải pháp LMS thế hệ mới phát triển theo kiến trúc **Modular Monolith** trên nền tảng **ASP.NET Core (LTS)**. Hệ thống tối ưu hóa trải nghiệm học tập qua mô hình Chuẩn Khối phân cấp (Course → Chapter → Page → Blocks), tự động hóa đo lường và kết xuất báo cáo kiểm định chất lượng **AUN-QA (CLO)**, đồng thời tích hợp **Trợ lý AI Sư phạm (Gemini API)** vận hành Động cơ Học tập Thích ứng (chẩn đoán bẫy tư duy, thử thách cứu viện CLO và sinh Flashcard 3 mặt). Toàn bộ hệ thống được đóng gói đa container bằng **Docker Compose**, phân tách **4 Schemas CSDL MySQL độc lập** giao tiếp qua **MediatR In-memory Event Bus**, và tối ưu hóa tải media trực tiếp qua **MinIO S3** bằng cơ chế Presigned URL.
