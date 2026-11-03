@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Modules\Identity\BrainMemo.Identity.Infrastructure\BrainMemo.Identity.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Curriculum\BrainMemo.Curriculum.Infrastructure\BrainMemo.Curriculum.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Storage\BrainMemo.Storage.Infrastructure\BrainMemo.Storage.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Assessment\BrainMemo.Assessment.Infrastructure\BrainMemo.Assessment.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+  </ItemGroup>
+
+</Project>
