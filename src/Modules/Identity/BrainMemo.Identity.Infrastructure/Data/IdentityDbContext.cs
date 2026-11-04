@@ -1,9 +1,10 @@
+using BrainMemo.Identity.Application.Interfaces;
 using BrainMemo.Identity.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace BrainMemo.Identity.Infrastructure.Data;
 
-public class IdentityDbContext : DbContext
+public class IdentityDbContext : DbContext, IIdentityDbContext
 {
     public IdentityDbContext(DbContextOptions<IdentityDbContext> options) : base(options) { }
 
