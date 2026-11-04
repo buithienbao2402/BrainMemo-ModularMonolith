@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\BrainMemo.Storage.Application\BrainMemo.Storage.Application.csproj" />
+    <ProjectReference Include="..\BrainMemo.Storage.Domain\BrainMemo.Storage.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

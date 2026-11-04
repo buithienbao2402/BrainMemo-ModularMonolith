@@ -21,6 +21,7 @@
   </Folder>
   <Folder Name="/src/Modules/Storage/">
     <Project Path="src/Modules/Storage/BrainMemo.Storage.Application/BrainMemo.Storage.Application.csproj" />
+    <Project Path="src/Modules/Storage/BrainMemo.Storage.Domain/BrainMemo.Storage.Domain.csproj" />
     <Project Path="src/Modules/Storage/BrainMemo.Storage.Infrastructure/BrainMemo.Storage.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/src/Shared/">

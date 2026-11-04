@@ -39,6 +39,8 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Bắt buộc phải có để map các Controller của module vào pipeline
 app.MapControllers();
 
 app.Run();
