@@ -1,3 +1,25 @@
-BrainMemo — Next-Gen AUN-QA Block-based LMS (Modular Monolith)
+# BrainMemo - Nền tảng học tập trực tuyến
 
-Hệ thống Quản trị Khóa học Chuẩn Khối & Đánh giá Kết quả Học tập theo Chuẩn Đầu ra (BrainMemo) là giải pháp LMS thế hệ mới phát triển theo kiến trúc Modular Monolith trên nền tảng ASP.NET Core (LTS). Hệ thống tối ưu hóa trải nghiệm học tập qua mô hình Chuẩn Khối phân cấp (Course → Chapter → Page → Blocks), tự động hóa đo lường và kết xuất báo cáo kiểm định chất lượng AUN-QA (CLO) tích hợp Thang đo Bloom theo Thang năng lực 5 mức (Rubric 0 – 4), đồng thời tích hợp Trợ lý AI Sư phạm (Gemini API) hỗ trợ tự động sinh học liệu (Quiz & Flashcard 3 mặt) và chẩn đoán bẫy tư duy theo thời gian thực (nút bấm "Hỏi AI về câu hỏi này"). Toàn bộ hệ thống được đóng gói đa container bằng Docker Compose, phân tách 4 Schemas CSDL MySQL độc lập giao tiếp qua MediatR In-memory Event Bus, và tối ưu hóa tải media trực tiếp qua MinIO S3 bằng cơ chế Presigned URL.
+## Giới thiệu
+
+BrainMemo là nền tảng LMS cho phép người dùng tự do đăng tải, chia sẻ và sử dụng các bộ học liệu do chính người dùng tạo ra. Hệ thống hỗ trợ các chức năng tương tự Moodle, đồng thời cung cấp bài kiểm tra và học bằng flashcard.
+
+## Điểm vượt trội so với các LMS khác
+
+- **Đánh giá năng lực linh hoạt:** đánh giá học viên theo chuẩn đầu ra có thể tùy biến.
+- **Kiểm duyệt nội dung tự động:** ứng dụng mô hình PhoBERT để quét và phát hiện nội dung vi phạm.
+- **Tự động sinh nội dung học tập:** tích hợp API LLM để sinh câu hỏi và flashcard, giảm công sức soạn thủ công.
+
+## Kiến trúc hệ thống
+
+**Modular Monolith + Layered Architecture**
+
+## Công nghệ sử dụng
+
+| Thành phần | Công nghệ |
+|---|---|
+| Backend | C# .NET |
+| Frontend | React + TypeScript |
+| Database | MySQL |
+| Storage | Cloudflare R2 / MinIO |
+| DevOps | Docker Compose, Nginx, Cloudflare DNS & SSL, Jenkins CI/CD |
