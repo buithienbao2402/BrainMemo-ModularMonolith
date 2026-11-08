@@ -6,7 +6,7 @@ BrainMemo là nền tảng LMS cho phép người dùng tự do đăng tải, ch
 
 ## Điểm vượt trội so với các LMS khác
 
-- **Đánh giá năng lực linh hoạt:** đánh giá học viên theo chuẩn đầu ra có thể tùy biến.
+- **Đánh giá năng lực linh hoạt:** đánh giá học viên theo chuẩn đầu ra AUN QA.
 - **Kiểm duyệt nội dung tự động:** ứng dụng mô hình PhoBERT để quét và phát hiện nội dung vi phạm.
 - **Tự động sinh nội dung học tập:** tích hợp API LLM để sinh câu hỏi và flashcard, giảm công sức soạn thủ công.
 
