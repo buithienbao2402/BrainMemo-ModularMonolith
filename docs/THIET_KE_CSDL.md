@@ -27,11 +27,11 @@
 
 ## 1.1. Mục đích
 
-Tài liệu này là bản thiết kế cơ sở dữ liệu cuối cùng, gộp từ các đợt thiết kế ERD của hệ thống **BrainMemo LMS** (hệ thống quản lý học tập tích hợp AI). Mục tiêu:
+Tài liệu này là bản thiết kế cơ sở dữ liệu của hệ thống **BrainMemo LMS** (hệ thống quản lý học tập tích hợp AI). Mục tiêu:
 
 - Là **một nguồn duy nhất** để nhóm đọc, review, chốt các điểm còn `[CẦN XÁC NHẬN]` và làm đầu vào cho giai đoạn viết DDL/migration và code.
-- Phản ánh đầy đủ 10 module và 56 bảng, giữ nguyên cấu trúc của các đợt thiết kế trước (không thêm, bớt, đổi tên bảng/cột/kiểu/quan hệ).
-- Truy vết được từng bảng về FR/NFR của đặc tả và tới các quyết định D01–D22 của Decision Log v3.
+- Phản ánh đầy đủ 10 module và 56 bảng..
+- Truy vết được từng bảng về FR/NFR của đặc tả.
 
 ## 1.2. Kiến trúc: Modular Monolith, một MySQL database `[ASSUMPTION-D01]`
 
@@ -104,7 +104,7 @@ Ký hiệu trong Data Dictionary: **NN** = NOT NULL; **UK** = UNIQUE; **FK** = k
 Chú giải:
 - **Mũi tên liền** = Contract đồng bộ (chiều từ bên gọi sang bên cung cấp, nhãn là tên Contract chính).
 - **Mũi tên đứt** = Domain Event bất đồng bộ (chiều từ bên phát sang bên nhận).
-- Mỗi hộp module liệt kê các **Aggregate Root** chính.
+- **Aggregate Root (AR):** Thực thể gốc đứng đầu mỗi cụm dữ liệu. Các module bên ngoài chỉ tương tác qua AR, không can thiệp trực tiếp vào các thực thể/bảng con bên trong
 - Sơ đồ chỉ nêu các luồng chính; danh sách đầy đủ ở Phần 4.
 
 ```mermaid
