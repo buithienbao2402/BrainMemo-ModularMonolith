@@ -3,27 +3,23 @@
 > **Trạng thái tài liệu:** Bản thiết kế cơ sở dữ liệu hoàn chỉnh (10 module, 56 bảng).
 > **Kiến trúc:** Modular Monolith, một cơ sở dữ liệu MySQL, tích hợp Object Storage (Cloudflare R2 / MinIO).
 
-- Nguồn: `DAC_TA_YEU_CAU_HE_THONG.md` (cao nhất), `DECISION_LOG_THIET_KE_CSDL_v3.md`, `CSDL_Identity_Profile_Moderation_Notification.md`, `CSDL_Course.md`, `CSDL_Content.md`, `CSDL_Learning_Assessment_Discovery_AI.md`, `Kien_truc_va_Giao_tiep_Lien_Module.md`.
-- Chưa có SQL/DDL. Tên bảng là tên logic. **Chưa có quyết định nào được nhóm xác nhận**; mọi lựa chọn ghi nhãn `[ĐỀ XUẤT]`/`[ASSUMPTION-*]` là đề xuất thiết kế.
-- Tổng quy mô: **10 module, 56 bảng.**
-
 ## Mục lục
 
-1. Phần 1 – Tổng quan thiết kế CSDL
-2. Phần 2 – Kiến trúc dữ liệu và Giao tiếp liên module
-3. Phần 3 – Thiết kế chi tiết 10 module
-   - 3.1 Identity (`idn_`) – 5 bảng
-   - 3.2 Profile (`prf_`) – 1 bảng
-   - 3.3 Moderation (`mod_`) – 4 bảng
-   - 3.4 Notification (`ntf_`) – 3 bảng
-   - 3.5 Course (`crs_`) – 8 bảng
-   - 3.6 Content (`cnt_`) – 15 bảng
-   - 3.7 Learning (`lrn_`) – 7 bảng
-   - 3.8 Assessment (`ast_`) – 7 bảng 
-   - 3.9 Discovery (`dsc_`) – 3 bảng 
-   - 3.10 AI (`ai_`) – 3 bảng 
-4. Phần 4 – Object Storage và giao tiếp liên module 
-5. Phần 5 – Tổng hợp và kiểm tra 
+1. [Phần 1 – Tổng quan thiết kế CSDL](#phần-1-tổng-quan-thiết-kế-cơ-sở-dữ-liệu)
+2. [Phần 2 – Kiến trúc dữ liệu và Giao tiếp liên module](#phần-2-kiến-trúc-dữ-liệu-và-giao-tiếp-liên-module)
+3. [Phần 3 – Thiết kế chi tiết 10 module](#phần-3-thiết-kế-chi-tiết-10-module)
+   - [3.1 Identity (`idn_`) – 5 bảng](#31-module-identity-idn_--5-bảng)
+   - [3.2 Profile (`prf_`) – 1 bảng](#32-module-profile-prf_--1-bảng)
+   - [3.3 Moderation (`mod_`) – 4 bảng](#33-module-moderation-mod_--4-bảng)
+   - [3.4 Notification (`ntf_`) – 3 bảng](#34-module-notification-ntf_--3-bảng)
+   - [3.5 Course (`crs_`) – 8 bảng](#35-module-course-crs_--8-bảng)
+   - [3.6 Content (`cnt_`) – 15 bảng](#36-module-content-cnt_--15-bảng)
+   - [3.7 Learning (`lrn_`) – 7 bảng](#37-module-learning-lrn_--7-bảng)
+   - [3.8 Assessment (`ast_`) – 7 bảng](#38-module-assessment-ast_--7-bảng)
+   - [3.9 Discovery (`dsc_`) – 3 bảng](#39-module-discovery-dsc_--3-bảng)
+   - [3.10 AI (`ai_`) – 3 bảng](#310-module-ai-ai_--3-bảng)
+4. [Phần 4 – Object Storage và giao tiếp liên module](#phần-4-thiết-kế-lưu-trữ-object-storage-và-giao-tiếp-liên-module)
+5. [Phần 5 – Tổng hợp và kiểm tra](#phần-5-tổng-hợp-và-kiểm-tra)
 
 ---
 
