@@ -3,7 +3,7 @@
 - **Task:** `T-S0-BE-02` – Host `BrainMemo.WebApi`: JWT bearer, ProblemDetails tiếng Việt (ánh xạ mã lỗi §3), RateLimiter (login 5/phút/IP), CORS, `/health`, Swagger, đăng ký module động
 - **Vai trò:** BE
 - **Nhánh:** `feat/T-S0-BE-02-webapi-host`
-- **Trạng thái:** REVIEW
+- **Trạng thái:** DONE
 
 ## Đã thực hiện
 
