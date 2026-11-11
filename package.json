@@ -1,0 +1,12 @@
+{
+  "name": "brainmemo-monorepo",
+  "private": true,
+  "packageManager": "pnpm@12.18.0",
+  "scripts": {
+    "openapi:bundle": "pnpm --filter tools openapi:bundle",
+    "openapi:lint": "pnpm --filter tools openapi:lint",
+    "openapi:check": "pnpm --filter tools openapi:check",
+    "test": "pnpm --filter tools test"
+  }
+}
+

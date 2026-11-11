@@ -1,0 +1,18 @@
+{
+  "name": "tools",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "openapi:bundle": "node ./merge-openapi/index.mjs",
+    "openapi:check": "node ./merge-openapi/index.mjs --check",
+    "openapi:lint": "redocly lint --config=../openapi/redocly.yaml ../openapi/openapi.yaml",
+    "test": "node --test ./merge-openapi/*.test.mjs"
+  },
+  "dependencies": {
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@redocly/cli": "^2.77.0"
+  }
+}

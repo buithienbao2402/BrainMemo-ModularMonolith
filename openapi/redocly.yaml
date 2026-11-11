@@ -1,0 +1,21 @@
+extends:
+  - recommended
+
+rules:
+  struct: error
+  no-unresolved-refs: error
+  operation-operationId-unique: error
+  no-identical-paths: error
+  no-ambiguous-paths: error
+  no-path-trailing-slash: error
+  path-params-defined: error
+  path-declaration-must-exist: error
+  operation-parameters-unique: error
+  # Compact module specs rely on shared RFC 9457 ProblemDetails conventions in
+  # openapi.root.yaml rather than repeating 4xx responses on every endpoint.
+  operation-4xx-response: off
+  # openapi.root.yaml exposes reusable components (e.g. components.responses.Problem).
+  no-unused-components: off
+  # Internal API contract omits public licensing metadata and redundant tag descriptions.
+  info-license: off
+  tag-description: off
