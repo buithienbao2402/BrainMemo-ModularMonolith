@@ -10,7 +10,7 @@
 | T-S0-DB-01 | DONE | Antigravity (DB) | feat/T-S0-DB-01-baseline-schema-seed | Baseline db/schema.sql (59 bảng, DEC-01, DEC-12) + seed Admin & hướng dẫn |
 | T-S0-BE-01 | DONE | Antigravity (BE) | feat/T-S0-BE-01-solution-buildingblocks | Solution BrainMemo.sln + BuildingBlocks (SharedKernel, Abstractions, Infrastructure) + 32 unit tests |
 | T-S0-BE-02 | DONE | Antigravity (BE) | feat/T-S0-BE-02-webapi-host | Host BrainMemo.WebApi (JWT, ProblemDetails §3, RateLimiter login 5/p/IP, CORS, /health, Swagger, ModuleRegistry) + 43 tests |
-| T-S0-BE-03 | TODO | – | – | – |
+| T-S0-BE-03 | REVIEW | Antigravity (BE) | feat/T-S0-BE-03-shared-outbox | Outbox chung bảng-agnostic (`OutboxWriter` + `OutboxDispatcher` HostedService + `EfOutboxStore`) + 5 outbox tests |
 | T-S0-BE-04 | TODO | – | – | – |
 | T-S0-BE-05 | TODO | – | – | – |
 | T-S0-OPS-03 | TODO | – | – | – |
