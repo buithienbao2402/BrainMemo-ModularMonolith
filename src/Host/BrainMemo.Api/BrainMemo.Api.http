@@ -1,6 +1,0 @@
-@BrainMemo.Api_HostAddress = http://localhost:5005
-
-GET {{BrainMemo.Api_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
