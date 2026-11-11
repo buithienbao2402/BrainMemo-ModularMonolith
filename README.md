@@ -23,3 +23,8 @@ BrainMemo là nền tảng LMS cho phép người dùng tự do đăng tải, ch
 | Database | MySQL |
 | Storage | Cloudflare R2 / MinIO |
 | DevOps | Docker Compose, Nginx, Cloudflare DNS & SSL, Jenkins CI/CD |
+
+
+## Thiết kế giao diện
+
+Link Figma: https://www.figma.com/design/JrZ2EN5MfRmx8JoHzaVz0L/UI-BrainMemo-LMS?node-id=0-1&t=7byuXLiQQSm0VyuI-1
