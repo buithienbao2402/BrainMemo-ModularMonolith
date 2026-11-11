@@ -90,7 +90,7 @@ Ký hiệu trong Data Dictionary: **NN** = NOT NULL; **UK** = UNIQUE; **FK** = k
 3. **Không JOIN xuyên module.** Dữ liệu module khác lấy qua Contract (đồng bộ) hoặc event (bất đồng bộ).
 4. **Contract đồng bộ:** dùng khi cần kết quả ngay để quyết định nghiệp vụ (kiểm quyền, kiểm tra trạng thái, lệnh chế tài). Người gọi không phụ thuộc cấu trúc bảng của bên cung cấp.
 5. **Domain Event bất đồng bộ:** dùng cho thông báo và read model. Bên nhận phải **idempotent** theo `eventId`.
-6. **Outbox chọn lọc `[ADR-02]`:** không mặc định cho cả 10 module. Ba module có Outbox: **Course** (`crs_outbox_event`: ai thấy khóa, ghi danh, đề cử), **Learning** (`lrn_outbox_event`: nộp bài kiểm tra/bài tập) và **Assessment** (`ast_outbox_event`: điểm đã ghi, đánh giá khóa học). Lý do chung: mất event làm sai điểm, tiến độ hoặc dữ liệu hiển thị (NFR-09). Các module còn lại không Outbox; phương án B được ghi ở từng module.
+6. **Outbox chọn lọc `[ADR-02]`:** không mặc định cho cả 10 module. Ba module có Outbox: **Course** (`crs_outbox_event`: ai thấy khóa, ghi danh, đề cử), **Learning** (`lrn_outbox_event`: nộp bài kiểm tra/bài tập) và **Assessment** (`ast_outbox_event`: điểm đã ghi, đánh giá khóa học). Áp dụng Transactional Outbox Pattern cho cả ba module để bảo đảm toàn vẹn nộp bài và chấm điểm theo NFR-09: mất event làm sai điểm, tiến độ hoặc dữ liệu hiển thị. Các module còn lại không Outbox; phương án B được ghi ở từng module.
 7. **Không lưu token plaintext trong Outbox/event/log.**
 8. **Read model có thể dựng lại:** Discovery và các bảng chỉ mục (`cnt_published_block`) phải dựng lại được từ nguồn.
 9. **Lỗi thông báo không rollback nghiệp vụ chính** (FR-NTF-01).
@@ -162,6 +162,7 @@ flowchart LR
     LRN -. "CourseCompleted" .-> CRS
     AST -. "CourseReviewCreated, CourseReviewUpdated via Outbox" .-> DSC
     AST -. "GradeRecorded, CourseReviewReplied via Outbox" .-> NTF
+    AST -. "GradeRecorded via Outbox" .-> LRN
     AI -. "AIGenerationCompleted" .-> NTF
 ```
 
@@ -638,7 +639,7 @@ erDiagram
 | Câu hỏi | Quyết định | Lý do |
 |:--|:--|:--|
 | Có cần `ModerationCase` (gom nhiều báo cáo cùng đối tượng)? | **Không** `[ĐỀ XUẤT]` | Đặc tả không có khái niệm case; FR-MOD-04 quyết định trên từng báo cáo. Phương án B (có case) chỉ cần nếu nhóm muốn xử lý gộp (N18) |
-| `Report` và `AIFlag` | Một bảng `mod_report` với `source` USER/AI | FR-MOD-03: "gom vào **một** hàng đợi"; v3 4.9: dùng trạng thái trên Report, không tạo bảng hàng đợi riêng. Nhãn/độ tin cậy của AI nằm ở module AI (tham chiếu `ai_finding_id`) |
+| `Report` và `AIFlag` | Một bảng `mod_report` với `source` USER/AI | FR-MOD-03: "gom vào **một** hàng đợi", dùng trạng thái trên Report, không tạo bảng hàng đợi riêng. Nhãn/độ tin cậy của AI nằm ở module AI (tham chiếu `ai_finding_id`) |
 | `Sanction` có tách khỏi `Report`? | **Có** | Một báo cáo có thể kèm 0..N chế tài; chế tài có vòng đời riêng (gỡ, hết hạn) mà báo cáo (cuối cùng) không có |
 | `AuditLog` có trùng `Sanction`/`Report`? | **Có tách** | `Sanction`/`Report` là trạng thái; `AuditLog` là nhật ký bất biến, giữ nguyên cả khi khóa bị xóa vĩnh viễn (FR-MOD-09, NFR-12) |
 
@@ -1380,7 +1381,7 @@ Một DB, nhưng mỗi module chỉ được xóa dữ liệu của mình. Luồ
 |:--|:--|:--|
 | `ChapterDeleted` | Content | Xóa `crs_chapter_access` và `crs_chapter_unlock` của chương; idempotent; nếu mất event chỉ để lại dòng mồ côi vô hại |
 
-#### 3.5.9.5. Người nhận thông báo ghi danh (N43, trả lời N23)
+#### 3.5.9.5. Người nhận thông báo ghi danh
 
 | `action` | Người nhận | Loại thông báo (Notification) / `payload.subtype` |
 |:--|:--|:--|
@@ -1804,7 +1805,7 @@ Phương án B: một cột JSON `answer_data` trên `cnt_question`: ít bảng 
 | `close_at` | DATETIME(3) | NULL, mặc định NULL | Đóng bài |
 | `time_limit_minutes` | SMALLINT UNSIGNED | NULL, mặc định NULL | Thời gian làm bài mỗi lượt |
 | `max_attempts` | SMALLINT UNSIGNED | NULL, mặc định 1 | Số lần được làm; NULL = không giới hạn |
-| `pass_score` | DECIMAL(6,2) | NULL, mặc định NULL | "Điểm ngưỡng đạt" FR-CNT-11, **đơn vị phần trăm 0–100** của tổng điểm bài. Dùng cho nhãn Đạt/Chưa đạt của bài kiểm tra; **không** dùng tính CLO, điểm tổng kết hay đạt khóa (các mục đó dùng `pass_threshold` ở Assessment). Learning chụp giá trị này vào `question_snapshot` lúc bắt đầu lượt `[ADR-05]` |
+| `pass_score` | DECIMAL(6,2) | NULL, mặc định NULL | "Điểm ngưỡng đạt" FR-CNT-11, **đơn vị phần trăm 0–100** của tổng điểm bài. Dùng để xác định kết quả Đạt/Chưa đạt cho từng lượt làm bài; **không** dùng tính CLO, điểm tổng kết hay đạt khóa (các mục đó dùng `pass_threshold` ở Assessment). Giá trị này được đóng băng vào `question_snapshot` lúc bắt đầu làm bài (Learning chụp), nên việc Chủ khóa sửa cấu hình sau đó không làm đổi kết quả của lượt đã bắt đầu `[ADR-05]` |
 | `result_display` | ENUM('AFTER_EACH_ANSWER','AFTER_SUBMIT','AFTER_CLOSE','AFTER_GRADING') | NN, mặc định 'AFTER_SUBMIT' | 4 thời điểm FR-CNT-13 |
 | `shuffle_questions` | BOOLEAN | NN, mặc định FALSE | Đảo thứ tự câu hỏi mỗi bài làm (FR-CNT-09) |
 | `shuffle_options` | BOOLEAN | NN, mặc định FALSE | Đảo thứ tự đáp án mỗi bài làm |
@@ -2366,7 +2367,7 @@ Quy tắc chuyển dịch trạng thái nghiệp vụ được định nghĩa d�
 | Bắt đầu lượt: bốc đề lúc bắt đầu mỗi lượt (D10), đảo theo cờ, lưu snapshot (kèm `passScorePercent`); hết `NOT_ENOUGH_QUESTIONS` thì không tạo lượt | UK(`user_id`,`quiz_block_id`,`attempt_no`) | `DrawQuizQuestions`, `VerifyQuizPassword`, `GetQuizExceptions`, `GetPublishedQuizDefinition` |
 | `deadline_at` tính một lần và không đổi; đồng hồ theo giờ server (NFR-10) | – | Không có API sửa |
 | Autosave ≤ 30 giây; tải lại thì khôi phục từ `question_snapshot` và các dòng answer (NFR-10) | UK(`attempt_id`,`question_id`) | Cập nhật `answer_payload`, `answered_at` |
-| Assessment chấm **đồng bộ** qua `GradeQuizAttempt` bằng `IGradingStrategy`, đọc `question_snapshot` qua `GetQuizAttemptForGrading`; Learning chỉ ghi lại `is_correct`, `points_earned`, `total_score` từ kết quả trả về |
+| Chấm tự động do Assessment Module thực hiện (**đồng bộ** qua `GradeQuizAttempt`, dùng `IGradingStrategy`, đọc đề chụp qua `GetQuizAttemptForGrading`); Learning chỉ nhận và lưu kết quả trả về (`is_correct`, `points_earned`, `total_score`), không tự chấm | CHECK `status`='GRADED' | `GradeQuizAttempt`, `GetQuizAttemptForGrading` |
 | Nộp bài: tx1 ghi `SUBMITTED` + outbox; gọi `GradeQuizAttempt` **ngoài** tx1; tx2 ghi điểm. Assessment lỗi/timeout thì giữ `SUBMITTED`, giao diện hiện "Đã nộp, đang chấm"; event `QuizAttemptSubmitted` kích hoạt chấm lại (idempotent) `[ADR-04]` | UK `uk_ast_grade_raw` ở Assessment | Không giữ transaction mở qua lời gọi sang Assessment |
 | Bài tập: một bản nộp mỗi user mỗi bài (N66); số tệp và định dạng do ứng dụng quy định (N67); `is_late` tính lúc nộp | UK, CHECK | `GetAssignmentDefinition` (`due_at`, `max_file_size_bytes`) |
 | Question Block không tính điểm; hoàn thành Block ghi vào `lrn_block_completion` (D16) | – | Không tạo bảng kết quả Question Block |
@@ -2383,13 +2384,13 @@ Quy tắc chuyển dịch trạng thái nghiệp vụ được định nghĩa d�
 | `GetCourseProgress` | (`userId`, `courseId`) → {completedBlockIds[], totalPublishedBlocks, percent, lastActivityAt} | Profile (FR-PRF-05), Course (FR-CRS-14) | Đề xuất |
 | `IsBlockCompleted` | (`userId`, `blockId`) → bool | Content, Assessment | Đề xuất |
 | `GetQuizAttemptSummary` | (`attemptId`) → {userId, quizBlockId, status, totalScore, maxScore, gradedAt, answers[{questionId, position, pointsEarned, maxPoints, isCorrect}]} | Assessment (tính điểm thành phần, thống kê FR-AST-16) | Đề xuất |
-| `GetQuizAttemptForGrading` | (`attemptId`) → {userId, courseId, quizBlockId, status, maxScore, `passScorePercent?`, questions[{questionId, type, points, answerKey, answer, `manualPoints?`}]}. **Chỉ server-to-server**, không bao giờ trả cho client | Assessment | Đề xuất |
+| `GetQuizAttemptForGrading` | (`attemptId`) → { `questionSnapshot`, `answers[]` }. `questionSnapshot` là `question_snapshot` bất biến của lượt (câu hỏi, loại, điểm, đáp án đúng, `passScorePercent?`) kèm định danh lượt (`userId`, `courseId`, `quizBlockId`, `maxScore`); `answers[]` là các câu trả lời của lượt (`questionId`, `answer_payload`, điểm chấm tay nếu có). **Chỉ server-to-server**, không bao giờ trả cho client | Assessment | Đề xuất `[ADR-04]` |
 | `ListInProgressCourses` | (`userId`, `afterId`, `limit`≤50) → `courseId` mà học viên Đang học và chưa đạt 100% chương đã đăng tải (FR-DSC-03); Discovery gọi rồi lấy hiển thị qua Course `GetCourseSummaries` | Discovery | Đề xuất |
-| `GetAssignmentSubmission` | (`submissionId`) → {userId, assignmentBlockId, status, submittedAt, files, isLate} | Assessment | Đề xuất |
+| `GetAssignmentSubmission` | (`submissionId`) → {userId, courseId, assignmentBlockId, status, submittedAt, textContent, files, isLate} | Assessment | Đề xuất |
 | `ResolveReportTarget` (bình luận) | (`commentId`, `reporterUserId`) → {tồn tại, có quyền truy cập, courseId, authorUserId, snapshot nội dung} | Moderation (FR-MOD-01) | Đề xuất (chốt ở Moderation) |
 | `SoftDeleteComment`, `RestoreComment` | (`commentId`, `actorAdminId`) → OK hoặc NOT_FOUND | Moderation (FR-MOD-06) | Đề xuất |
 | `ListActiveLearnerIds` | (kế thừa từ Course 3.5.9.1) → ID học viên ACTIVE | Notification | Đã có ở Course |
-| `MarkAssignmentGraded` | (`submissionId`, `gradedAt`) → OK | Assessment | Đề xuất |
+| `MarkAssignmentGraded` | (`submissionId`, `gradedAt`) → OK. Idempotent (đã GRADED thì giữ nguyên); nếu lời gọi lỗi, event `GradeRecorded` (3.7.6.4) cập nhật lại | Assessment | Đề xuất |
 | `GetCourseLearningStats` | (`courseId`) → { completedLearnerCount, commentCount } | Course | Đề xuất |
 
 > **Ghi chú:** `GetCourseLearningStats` đếm số học viên hoàn thành từ index của `lrn_course_completion` và số bình luận chưa xóa từ `lrn_comment` để phục vụ thống kê `FR-CRS-14` mà không cần bảng cache.
@@ -2403,7 +2404,7 @@ Quy tắc chuyển dịch trạng thái nghiệp vụ được định nghĩa d�
 | `ListPublishedBlocks`, `GetChapterInfo`, `GetPublishedChapterContent` | Content | Đếm Block đã đăng tải cho công thức tiến độ; lấy nội dung chương |
 | `DrawQuizQuestions`, `VerifyQuizPassword`, `GetQuizExceptions`, `GetPublishedQuizDefinition` | Content | Bắt đầu lượt: bốc đề, xác thực mật khẩu, đọc ngoại lệ, đọc cấu hình |
 | `GetAssignmentDefinition` | Content | Kiểm bài nộp theo `due_at`, `max_file_size_bytes` |
-| `GradeQuizAttempt` | Assessment | Chấm đồng bộ lúc nộp bài, nhận điểm và nhãn Đạt trả về |
+| `GradeQuizAttempt` | Assessment | Chấm đồng bộ lúc nộp bài, nhận tổng điểm, trạng thái chấm và kết quả từng câu trả về |
 
 #### 3.7.6.3. Domain Event do Learning phát (`QuizAttemptSubmitted`, `AssignmentSubmitted` qua Outbox; còn lại không)
 
@@ -2424,10 +2425,10 @@ Quy tắc chuyển dịch trạng thái nghiệp vụ được định nghĩa d�
 |:--|:--|:--|
 | `AccountLocked` | Identity | Chặn ghi tiến độ/nộp bài, kiểm ở ứng dụng qua `GetAccountStatus`; không sửa dữ liệu lịch sử |
 | `CoursePermanentlyDeleted` | Course | Dọn dữ liệu `lrn_*` của khóa, idempotent (N72) |
-
+| `GradeRecorded` | Assessment (Outbox) | Cập nhật điểm (total_score), thời điểm chấm (graded_at), trạng thái GRADED cho `lrn_quiz_attempt` và điểm từng câu `lrn_quiz_attempt_answer`; xử lý idempotent. Với `recordType`=`ASSIGNMENT_SUBMISSION` (theo `sourceSubmissionId`): chuyển `lrn_assignment_submission.status` sang `GRADED` nếu chưa GRADED. Đây là cơ chế phục hồi cho Contract `MarkAssignmentGraded` (đường đồng bộ); cả hai đều idempotent |
 ### 3.7.7. Quyết định Outbox
 
-**Learning: CÓ Outbox (`lrn_outbox_event`) `[ADR-02]`, chỉ cho `QuizAttemptSubmitted` và `AssignmentSubmitted`.**
+**Có Outbox ở Learning (`lrn_outbox_event`) `[ADR-02]`**, chỉ cho `QuizAttemptSubmitted` và `AssignmentSubmitted`, để đảm bảo không mất bài nộp khi lỗi mạng hoặc sập tiến trình.
 - Lý do: mất event nộp bài làm Quiz Block không được tính hoàn thành, và nếu lệnh chấm đồng bộ lỗi thì không còn gì kích hoạt chấm lại (điểm không xuất hiện).
 - Ghi outbox **cùng transaction** với chuyển trạng thái `SUBMITTED` / bài nộp; bộ phát (`LearningOutboxProcessor`) phát sau commit; bên nhận idempotent theo `eventId`.
 - **Chấm đồng bộ `[ADR-04]`:** sau tx1, Learning gọi Assessment `GradeQuizAttempt`; Assessment chấm trong transaction riêng của mình; Learning ghi điểm ở tx2. Lời gọi lỗi thì attempt giữ `SUBMITTED` và event outbox chấm lại.
@@ -2755,7 +2756,7 @@ Assessment không có cột trạng thái dạng ENUM; vòng đời nằm ở `a
 | `GetQuestionUsageStats` | (`questionIds[]`) → [{questionId, quizCount, attemptCount, correctRate}] | Content (FR-CNT-08) | Đề xuất |
 | `GetStudentGradebook` | (`userId`, `courseId`) → {components[], totalGrade, classification, cloAchievements[], ploAchievements[]} | Profile, Course (FR-PRF-05) | Đề xuất |
 | `GetCloAttainmentStats` | (`courseId`) → [{cloId, passRate, distribution}] | Course (FR-CRS-14 mở rộng) | Đề xuất |
-| `GradeQuizAttempt` | (`attemptId`) → {`totalScore`, `maxScore`, `pendingManual`, `passScorePercent?`, `isPassed?`, `questions[{questionId, pointsEarned, isCorrect?}]`}. Idempotent: gọi lại chỉ cập nhật, không tạo dòng trùng (UK `uk_ast_grade_raw`); câu tự luận đã có điểm tay thì dùng điểm đó | Learning | Đề xuất `[ADR-04]` |
+| `GradeQuizAttempt` | (`attemptId`) → { `totalScore`, `isGraded`, `isPassed?`, `answersResult[]` }. `isGraded`=FALSE khi còn câu chờ chấm tay; `answersResult[]` gồm {`questionId`, `pointsEarned`, `isCorrect?`}. Assessment đọc đề chụp và câu trả lời qua Learning `GetQuizAttemptForGrading`, chấm bằng `IGradingStrategy`, tự tính nhãn Đạt/Chưa đạt từ `passScorePercent` trong snapshot và ghi vào `ast_grade_record` / event `GradeRecorded`. Idempotent: gọi lại chỉ cập nhật, không tạo dòng trùng (UK `uk_ast_grade_raw`); câu tự luận đã có điểm tay thì dùng điểm đó | Learning | Đề xuất `[ADR-04]` |
 
 #### 3.8.6.2. Contract Assessment gọi ra
 
@@ -2766,12 +2767,13 @@ Assessment không có cột trạng thái dạng ENUM; vòng đời nằm ở `a
 | `GetQuizAttemptForGrading`, `GetQuizAttemptSummary`, `GetAssignmentSubmission` | Learning | Lấy đề chụp + đáp án + câu trả lời để chấm; điểm từng câu/lượt và bài nộp để thống kê |
 | `GetUserSummary` | Identity | Thông tin người đánh giá |
 | `GetCourseAccess` | Course | Kiểm tra học viên Đang học khi đánh giá |
+| `MarkAssignmentGraded` | Learning | Gọi sang Learning cập nhật trạng thái bài nộp thành GRADED sau khi chấm điểm bài tập |
 
 #### 3.8.6.3. Domain Event do Assessment phát (`GradeRecorded`, `CourseReview*` qua Outbox)
 
 | Event | Payload chính | Người nhận | Ghi chú |
 |:--|:--|:--|:--|
-| `GradeRecorded` | `{eventId, gradeRecordId, userId, courseId, componentId, recordType, sourceAttemptId?, score, maxScore, passScorePercent?, isPassed?, gradedAt}` | Discovery (cập nhật có điều kiện nếu cần), Notification (điểm và nhận xét) | **Qua `ast_outbox_event`**. Phát khi hoàn tất chấm (N70). `isPassed` NULL với bài tập hoặc bài không đặt `pass_score` |
+| `GradeRecorded` | `{eventId, gradeRecordId, userId, courseId, componentId, recordType, sourceAttemptId?, sourceSubmissionId?, score, maxScore, passScorePercent?, isPassed?, answersResult[], gradedAt}` | Discovery (cập nhật có điều kiện nếu cần), Notification (điểm và nhận xét), Learning | **Qua `ast_outbox_event`**. Phát khi hoàn tất chấm (N70). `isPassed` NULL với bài tập hoặc bài không đặt `pass_score` |
 | `ComponentFinalRecorded` | `{eventId, userId, courseId, componentId, finalScore, selectionRule}` | Notification | Khi chọn xong điểm thành phần |
 | `CloAttainmentUpdated` | `{eventId, userId, courseId, cloId, attainmentPct, level, achieved}` | Profile, Notification | Khi tính lại (thường theo event nộp bài) |
 | `CourseGradeComputed` | `{eventId, userId, courseId, totalGrade, classification, allCloAchieved}` | Discovery (đếm "đã đạt chuẩn" nếu mở rộng), Profile | – |
@@ -2794,7 +2796,7 @@ Người nhận Notification của các event trên chưa có trong bảng 3.4.6
 
 ### 3.8.7. Quyết định Outbox
 
-**Assessment: CÓ Outbox (`ast_outbox_event`) `[ADR-02]`** cho `GradeRecorded`, `CourseReviewCreated`, `CourseReviewUpdated`, `CourseReviewReplied`.
+**Có Outbox ở Assessment (`ast_outbox_event`) `[ADR-02]`** cho `GradeRecorded`, `CourseReviewCreated`, `CourseReviewUpdated`, `CourseReviewReplied`, để bảo đảm kết quả điểm số luôn được chuyển giao sang Notification và Discovery/Profile.
 - Lý do: mất `GradeRecorded` thì học viên không nhận thông báo điểm; mất `CourseReviewCreated/Updated` thì Discovery lệch số lượt và sao trung bình (không có Contract dựng lại fact đánh giá).
 - Ghi outbox **cùng transaction** với `ast_grade_record` / `ast_course_review`; bộ phát (`AssessmentOutboxProcessor`) phát sau commit; bên nhận idempotent theo `eventId`.
 - `ast_grade_record` vẫn là nguồn sự thật điểm; đối chiếu lại qua `GetQuizAttemptSummary` nếu cần.
@@ -3345,6 +3347,8 @@ Trạng thái: **Đã có** = kế thừa/đã chốt ở đợt trước; **Đ�
 | Learning | `GetQuizAttemptForGrading`, `GetQuizAttemptSummary`, `GetAssignmentSubmission` | Assessment | Đề xuất |
 | Learning | `ListInProgressCourses` | Discovery | Đề xuất |
 | Learning | `ResolveReportTarget` (bình luận), `SoftDeleteComment`, `RestoreComment` | Moderation | Đề xuất |
+| Learning | `MarkAssignmentGraded` | Assessment | Đề xuất |   
+| Learning | `GetCourseLearningStats` | Course | Đề xuất | 
 | Assessment | `GetQuestionUsageStats` | Content | Đề xuất |
 | Assessment | `GetStudentGradebook`, `GetCloAttainmentStats` | Profile, Course | Đề xuất |
 | Assessment | `GradeQuizAttempt` | Learning | Đề xuất |
@@ -3375,7 +3379,7 @@ Lưu ý: Notification không cung cấp Contract liên module (chỉ API ngườ
 | `QuizAttemptSubmitted`, `AssignmentSubmitted` | Learning | Assessment, Learning (`QuizAttemptSubmitted`) | **Có** |
 | `CommentCreated` | Learning | AI, Notification, Discovery | Không |
 | `CommentDeleted` | Learning | Moderation, Discovery, Notification | Không |
-| `GradeRecorded` | Assessment | Notification, Discovery | **Có** |
+| `GradeRecorded` | Assessment | Notification, Discovery, Learning | **Có** |
 | `ComponentFinalRecorded`, `CloAttainmentUpdated`, `CourseGradeComputed` | Assessment | (chưa triển khai, xem 3.8.6.3) | Không |
 | `CourseReviewCreated`, `CourseReviewUpdated` | Assessment | Discovery, Notification (Chủ khóa) | **Có** |
 | `CourseReviewReplied` | Assessment | Notification | **Có** |
@@ -3386,7 +3390,7 @@ Quy tắc chung: bên nhận **idempotent theo `eventId`**; Notification không 
 
 ## 4.9. Quyết định Outbox toàn hệ thống `[ADR-02]`
 
-**Toàn hệ thống có ba Outbox: `crs_outbox_event` (Course), `lrn_outbox_event` (Learning), `ast_outbox_event` (Assessment).** Bảy module còn lại **không** có Outbox.
+**Toàn hệ thống áp dụng Transactional Outbox Pattern cho ba module: `crs_outbox_event` (Course), `lrn_outbox_event` (Learning), `ast_outbox_event` (Assessment)** để bảo đảm toàn vẹn nộp bài và chấm điểm theo NFR-09. Bảy module còn lại **không** có Outbox.
 
 | Module | Outbox | Lý do ngắn |
 |:--|:-:|:--|
@@ -3503,7 +3507,7 @@ Vai trò: **AR** = Aggregate Root; **Con** = entity con; **LS** = lịch sử/b�
 | **FR-LRN-09** Làm/nộp bài tập | `lrn_assignment_submission` | UK(`user_id`,`assignment_block_id`) (N66); CHECK DRAFT ⇔ `submitted_at` NULL |
 | **FR-LRN-10..14** Bình luận, trả lời, sửa/xóa, ghim, báo cáo | `lrn_comment` | FK nội bộ `parent_comment_id`; `deleted_at`; CHECK `is_pinned` ⇔ `pinned_at`; event `CommentCreated/Deleted`; Contract `ResolveReportTarget` |
 | **FR-AST-01, 02, 05, 06** Kết quả, điểm cao/gần/TB, bảng điểm | `ast_grade_record` | UK 5 cột chống trùng raw; UK(`user_id`,`component_id`,`final_marker`); CHECK theo `record_type`; IX(`course_id`,`user_id`,`record_type`) |
-| **FR-AST-03, 04** Chấm tay, nhận xét | `lrn_quiz_attempt_answer`, `lrn_assignment_submission`, `ast_grade_record` | Cột `graded_by_user_id`, `graded_at`; event `GradeRecorded` sau khi chấm xong (N70) |
+| **FR-AST-03, 04** Chấm tay, nhận xét | `lrn_quiz_attempt_answer`, `lrn_assignment_submission`, `ast_grade_record` | `lrn_quiz_attempt_answer` có `graded_by_user_id`, `graded_at` (chấm tay từng câu); `ast_grade_record` có `graded_at`, `feedback` (không có người chấm); `lrn_assignment_submission` không có cột người chấm/thời điểm chấm; event `GradeRecorded` sau khi chấm xong (N70) |
 | **FR-AST-07..09** Quy tắc điểm, ngưỡng đạt, xếp loại | `ast_assessment_config`, `ast_assessment_component` | UK(`course_id`); CHECK `pass_threshold` 0..100; UK(`course_id`,`source_block_id`); CHECK `max_score` > 0 |
 | **FR-AST-10..15** CLO/PLO, Bloom, liên kết, mức đạt | `ast_clo`, `ast_plo`, `ast_component_outcome_weight`, `ast_assessment_config` | UK(`course_id`,`code`); UK(`component_id`,`clo_id`); CHECK `weight` > 0; JSON `linked_plo_ids` (N62); `bloom_level_code` chuỗi (N74); `GetAssessableBlocks` |
 | **FR-AST-16, 20** Thống kê, xuất báo cáo | `ast_grade_record`, `lrn_quiz_attempt_answer` | IX(`component_id`,`record_type`,`score`); IX(`question_id`,`is_correct`); xuất ở ứng dụng, không bảng |
@@ -3532,13 +3536,13 @@ Vai trò: **AR** = Aggregate Root; **Con** = entity con; **LS** = lịch sử/b�
 | **NFR-09** Toàn vẹn | `crs_outbox_event`, `lrn_outbox_event`, `ast_outbox_event` + UK idempotent | Outbox ở Course, Learning, Assessment [ADR-02]; transaction cục bộ; UK `source_event_id`; idempotent theo `eventId`; chấm đồng bộ + chấm lại qua event [ADR-04] |
 | **NFR-10** Bài làm không mất | `lrn_quiz_attempt`, `lrn_quiz_attempt_answer` | Snapshot đề bất biến; `answered_at`; `deadline_at` theo server; `DrawQuizQuestions` |
 | **NFR-11** Xóa mềm | `crs_course`, `cnt_chapter`, `cnt_resource`, `lrn_comment`, `ntf_notification` | `deleted_at`; xóa vĩnh viễn chỉ qua `mod_sanction` + `mod_audit_log` |
-| **NFR-12** Truy vết | `mod_audit_log`, `mod_sanction`, `idn_admin_grant`, `idn_user.lock_*`, `ast_grade_record` | Cột người thực hiện/thời gian/lý do; audit INSERT-only |
+| **NFR-12** Truy vết | `mod_audit_log`, `mod_sanction`, `idn_admin_grant`, `idn_user.lock_*`, `ast_grade_record` | mod_audit_log, mod_sanction, idn_admin_grant, idn_user.lock_* (người thực hiện/thời gian/lý do cho thao tác quản trị); lrn_quiz_attempt_answer (người chấm từng câu). Truy vết lịch sử sửa điểm quy hoạch bảng ast_grade_change_log ở giai đoạn 2 (mục 5.3.4). **NFR-12 chưa được đáp ứng đầy đủ ở giai đoạn hiện tại** (chưa có lịch sử thay đổi điểm gồm người thực hiện, thời gian, lý do) |
 | **NFR-13** Chất lượng AI | `cnt_question`, `cnt_block`, `mod_report`, `ai_moderation_scan_log` | Câu hỏi AI luôn DRAFT; `ai_review_status` chặn đăng tải khi PENDING; AI chỉ gắn cờ; không quét Only Me |
 | **NFR-14** Sẵn sàng | Không đảm nhiệm ở CSDL | Thuộc hạ tầng (container, `/health`) |
 | **NFR-15** Sao lưu/phục hồi | Toàn bộ 58 bảng | Một MySQL database ; đối tượng tệp backup riêng (Phần 4) |
 | **NFR-16** Bảo trì (10 module) | Toàn bộ 58 bảng | Prefix theo module; không FK/JOIN xuyên module; ID logic `BINARY(16)`; Registry 4.6 |
 | **NFR-17** Kiểm thử | Không đảm nhiệm ở CSDL | UK/CHECK/idempotency làm điểm kiểm thử tích hợp |
-| **NFR-18** Mở rộng | Toàn bộ bảng + `crs_outbox_event` | Giao tiếp chỉ qua Contract/event công bố (Phần 4); phương án Outbox/saga khi tách DB |
+| **NFR-18** Mở rộng | Toàn bộ bảng + `crs_outbox_event`, `lrn_outbox_event`, `ast_outbox_event` | Giao tiếp chỉ qua Contract/event công bố (Phần 4); phương án Outbox/saga khi tách DB |
 | **NFR-19, 20, 21** Tương thích, khả dụng, triển khai | Không đảm nhiệm ở CSDL | Thuộc giao diện/hạ tầng; secret không lưu trong DB |
 | **NFR-22** Dịch vụ ngoài | `ai_generation_job`, `ai_moderation_scan_log`, `ntf_email_delivery` | Cột `status`/lỗi; timeout ở ứng dụng; lỗi dịch vụ ngoài không rollback nghiệp vụ chính |
 
@@ -3547,7 +3551,7 @@ Vai trò: **AR** = Aggregate Root; **Con** = entity con; **LS** = lịch sử/b�
 ## 5.3. Lưu ý kỹ thuật khi triển khai thực tế
 
 1. **Ranh giới cập nhật bài nộp (`lrn_assignment_submission`):**
-   - Trạng thái bài tập do Learning Module trực tiếp quản lý. Khi Chủ khóa hoàn tất chấm điểm tại Assessment Module, hệ thống sẽ phát sinh sự kiện hoặc gọi qua API nội bộ để Learning Module cập nhật trạng thái `GRADED`.
+   - Trạng thái bài tập do Learning Module trực tiếp quản lý. Khi Chủ khóa chấm điểm xong tại Assessment Module, Assessment gọi Contract MarkAssignmentGraded để Learning Module cập nhật trạng thái `GRADED`.
    
 2. **Cơ chế luyện tập đối với Question Block:**
    - Các khối câu hỏi trắc nghiệm đơn lẻ dạng luyện tập (Question Block) chỉ ghi nhận hoàn thành học liệu (`lrn_block_completion`), không tạo bản ghi điểm số hay tính vào chuẩn đầu ra CLO.
@@ -3556,5 +3560,5 @@ Vai trò: **AR** = Aggregate Root; **Con** = entity con; **LS** = lịch sử/b�
    - Áp dụng Transactional Outbox Pattern cho Course (`crs_outbox_event`), Learning (`lrn_outbox_event`) và Assessment (`ast_outbox_event`) để bảo đảm trạng thái khóa/ghi danh, nộp bài và điểm không bị mất event. Các module khác dùng giao dịch nội bộ và cơ chế đối soát định kỳ.
 
 4. **Truy vết thay đổi điểm số (`NFR-12`):**
-   - Cơ sở dữ liệu giai đoạn hiện tại lưu vết thời điểm và người chấm gần nhất trên bảng `ast_grade_record`. Khi mở rộng tính năng phúc khảo/khiếu nại điểm, hệ thống sẽ bổ sung bảng lưu vết lịch sử thay đổi (`ast_grade_change_log`).
+   - Hiện trạng: `lrn_quiz_attempt_answer` lưu người chấm và thời điểm chấm tay từng câu (`graded_by_user_id`, `graded_at`); `ast_grade_record` chỉ lưu thời điểm chấm (`graded_at`) và nhận xét (`feedback`), **không** lưu người chấm; `lrn_assignment_submission` không có cột người chấm hay thời điểm chấm. Chưa có lịch sử thay đổi điểm (người thực hiện, thời gian, lý do), nên **NFR-12 chưa được đáp ứng đầy đủ ở giai đoạn hiện tại**. Khi mở rộng tính năng phúc khảo/khiếu nại điểm, hệ thống sẽ bổ sung bảng lưu vết lịch sử thay đổi (`ast_grade_change_log`, ngoài 58 bảng hiện tại).
 ---
