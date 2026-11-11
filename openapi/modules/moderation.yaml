@@ -10,7 +10,7 @@ paths:
        parameters: [{name: status, in: query, schema: {type: string, enum: [PENDING, ACCEPTED, REJECTED]}}, {name: source, in: query, schema: {type: string, enum: [USER, AI]}}, {name: targetType, in: query, schema: {type: string, enum: [COURSE, COMMENT]}}, {$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}],
        responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {items: {type: array, items: {$ref: '#/components/schemas/ReportDto'}}, meta: {$ref: '#/components/schemas/PageMeta'}}}}}}}}
   /admin/reports/{id}:
-    get: {tags: [Admin], operationId: adminGetReport, summary: Chi tiết (kèm bằng chứng, URL ảnh Presigned), parameters: [{$ref: '#/components/parameters/Id'}], responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/ReportDto'}}}}}}
+    get: {tags: [Admin], operationId: adminGetReport, summary: 'Chi tiết (kèm bằng chứng, URL ảnh Presigned)', parameters: [{$ref: '#/components/parameters/Id'}], responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/ReportDto'}}}}}}
   /admin/reports/{id}/target-content:
     get:
       {tags: [Admin], operationId: adminGetReportTargetContent, summary: 'Xem nội dung đối tượng bị báo cáo, CHỈ ĐỌC (DEC-02). Khóa Only Me → 404. chapterId tùy chọn',

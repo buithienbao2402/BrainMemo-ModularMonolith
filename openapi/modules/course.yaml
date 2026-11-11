@@ -13,7 +13,7 @@ paths:
        responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/CourseDto'}}}}}}
     delete: {tags: [Course], operationId: deleteCourse, summary: Xóa mềm (FR-CRS-04), responses: {'204': {description: OK}}}
   /courses/{courseId}/stats:
-    get: {tags: [Course], operationId: getCourseStats, summary: Thống kê cơ bản (FR-CRS-14, Chủ khóa), parameters: [{$ref: '#/components/parameters/CourseId'}], responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/CourseStats'}}}}}}
+    get: {tags: [Course], operationId: getCourseStats, summary: 'Thống kê cơ bản (FR-CRS-14, Chủ khóa)', parameters: [{$ref: '#/components/parameters/CourseId'}], responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/CourseStats'}}}}}}
   /me/courses:
     get:
       {tags: [Course], operationId: listMyCourses, summary: Khóa của tôi (FR-PRF-05),

@@ -57,7 +57,7 @@ paths:
        requestBody: {required: true, content: {application/json: {schema: {type: object, properties: {status: {type: string, enum: [DRAFT, READY, ARCHIVED]}}}}}},
        responses: {'204': {description: OK}}}
   /courses/{courseId}/questions/{questionId}/usage:
-    get: {tags: [Content], operationId: getQuestionUsage, summary: Câu nằm trong bài nào, số lượt, tỷ lệ đúng (FR-CNT-08), parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/QuestionId'}], responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {quizzes: {type: array, items: {type: object, properties: {blockId: {type: string}, title: {type: string}}}}, attemptCount: {type: integer}, correctRate: {type: number, nullable: true}}}}}}}}
+    get: {tags: [Content], operationId: getQuestionUsage, summary: 'Câu nằm trong bài nào, số lượt, tỷ lệ đúng (FR-CNT-08)', parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/QuestionId'}], responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {quizzes: {type: array, items: {type: object, properties: {blockId: {type: string}, title: {type: string}}}}, attemptCount: {type: integer}, correctRate: {type: number, nullable: true}}}}}}}}
   /courses/{courseId}/questions/import:
     post:
       {tags: [Content], operationId: importQuestions, summary: 'Nhập Excel/CSV (FR-CNT-05). multipart/form-data; trả báo cáo từng dòng',
