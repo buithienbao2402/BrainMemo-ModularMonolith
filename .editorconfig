@@ -1,0 +1,64 @@
+# EditorConfig is awesome: https://EditorConfig.org
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+# C# / .NET
+[*.{cs,csx}]
+indent_size = 4
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = false
+
+# C# style preferences
+csharp_style_namespace_declarations = file_scoped:suggestion
+csharp_style_var_for_built_in_types = false:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = false:suggestion
+csharp_style_expression_bodied_methods = when_on_single_line:silent
+csharp_style_expression_bodied_properties = true:silent
+csharp_style_prefer_braces = true:suggestion
+csharp_prefer_simple_using_statement = true:suggestion
+
+# C# formatting
+csharp_new_line_before_open_brace = all
+csharp_new_line_before_else = true
+csharp_new_line_before_catch = true
+csharp_new_line_before_finally = true
+csharp_indent_case_contents = true
+csharp_indent_switch_labels = true
+csharp_space_after_cast = false
+csharp_space_after_keywords_in_control_flow_statements = true
+csharp_space_between_method_declaration_parameter_list_parentheses = false
+csharp_space_between_method_call_parameter_list_parentheses = false
+
+[*.{csproj,props,targets,sln,slnx,xml,config}]
+indent_size = 2
+
+# Frontend (TypeScript, JavaScript, React, Tailwind, OpenAPI, Configs)
+[*.{ts,tsx,js,jsx,mjs,cjs,mts,cts,json,jsonc,yaml,yml,css,scss,html}]
+indent_size = 2
+
+# Python (ai-service)
+[*.py]
+indent_size = 4
+max_line_length = 100
+
+# SQL & Shell scripts
+[*.{sql,sh,bash}]
+indent_size = 2
+
+[*.{ps1,psm1}]
+indent_size = 2
+
+[Makefile]
+indent_style = tab

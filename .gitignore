@@ -5,6 +5,9 @@
 
 # dotenv files
 .env
+.env.*
+!.env.example
+!infra/env/.env.example
 
 # User-specific files
 *.rsuser
@@ -480,3 +483,41 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# --- Monorepo: Node / pnpm / Frontend / Playwright ---
+.pnpm-store/
+pnpm-debug.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dist/
+dist-ssr/
+.vite/
+*.local
+.eslintcache
+coverage/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# --- Monorepo: Python / AI Service ---
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+ai-service/.venv/
+ai-service/venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+ai-service/models/*.onnx
+ai-service/models/*.onnx.data
+ai-service/models/*.bin
+ai-service/models/*.safetensors
+
+# --- Monorepo: Docker / Local Infra Data ---
+infra/**/data/
+mysql-data/
+minio-data/
+*.pid
