@@ -3,7 +3,7 @@
 - **Task:** `T-S0-OPS-04` – `Jenkinsfile` + Dockerfiles (`backend`, `frontend`, `ai-service`) + `infra/nginx/nginx.conf` + `infra/docker-compose.yml`
 - **Vai trò:** OPS
 - **Nhánh:** `feat/T-S0-OPS-04-ci-dockerfiles-nginx`
-- **Trạng thái:** REVIEW
+- **Trạng thái:** DONE
 
 ## Đã thực hiện
 
