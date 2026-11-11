@@ -3,7 +3,7 @@
 - **Task:** `T-S0-FE-01` – Vite + TS + Tailwind + shadcn + Router + TanStack Query + `shared/api` + `gen:api` + `MSW` + `SCR-COM-01/02`
 - **Vai trò:** FE
 - **Nhánh:** `feat/T-S0-FE-01-frontend-shell`
-- **Trạng thái:** REVIEW
+- **Trạng thái:** DONE
 
 ## Đã thực hiện
 
