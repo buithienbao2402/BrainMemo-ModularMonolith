@@ -3,7 +3,7 @@
 - **Task:** `T-S0-DB-01` – Đưa `schema.sql` vào `db/`, áp dụng `DEC-01` & `DEC-12` (59 bảng), seed Admin đầu tiên + hướng dẫn
 - **Vai trò:** DB
 - **Nhánh:** `feat/T-S0-DB-01-baseline-schema-seed`
-- **Trạng thái:** REVIEW
+- **Trạng thái:** DONE
 
 ## Đã thực hiện
 
