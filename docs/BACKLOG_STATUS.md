@@ -8,7 +8,7 @@
 | T-S0-OPS-01 | DONE | Antigravity (OPS) | feat/T-S0-OPS-01-init-monorepo | Khởi tạo monorepo theo `REPO_STRUCTURE.md`, `.gitignore`, `.editorconfig`, `README.md`, `docs/spec/`, handoff note |
 | T-S0-OPS-02 | DONE | Antigravity (OPS) | feat/T-S0-OPS-02-docker-compose-dev | `infra/docker-compose.dev.yml` (MySQL 8, S3/MinIO `pgsty/silo` + lifecycle `tmp/` 24h, Mailpit, `ai-service` stub), `infra/env/.env.example` |
 | T-S0-DB-01 | DONE | Antigravity (DB) | feat/T-S0-DB-01-baseline-schema-seed | Baseline db/schema.sql (59 bảng, DEC-01, DEC-12) + seed Admin & hướng dẫn |
-| T-S0-BE-01 | REVIEW | Antigravity (BE) | feat/T-S0-BE-01-solution-buildingblocks | Solution BrainMemo.sln + BuildingBlocks (SharedKernel, Abstractions, Infrastructure) + 32 unit tests |
+| T-S0-BE-01 | DONE | Antigravity (BE) | feat/T-S0-BE-01-solution-buildingblocks | Solution BrainMemo.sln + BuildingBlocks (SharedKernel, Abstractions, Infrastructure) + 32 unit tests |
 | T-S0-BE-02 | TODO | – | – | – |
 | T-S0-BE-03 | TODO | – | – | – |
 | T-S0-BE-04 | TODO | – | – | – |

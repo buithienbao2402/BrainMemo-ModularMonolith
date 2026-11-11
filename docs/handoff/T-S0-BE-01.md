@@ -3,7 +3,7 @@
 - **Task:** `T-S0-BE-01` – Solution `BrainMemo.sln` + dự án BuildingBlocks (`SharedKernel`, `Abstractions`, `Infrastructure`) + unit test `Result`/`Paging`
 - **Vai trò:** BE
 - **Nhánh:** `feat/T-S0-BE-01-solution-buildingblocks`
-- **Trạng thái:** REVIEW
+- **Trạng thái:** DONE
 
 ## Đã thực hiện
 
