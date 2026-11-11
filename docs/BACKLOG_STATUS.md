@@ -11,7 +11,7 @@
 | T-S0-BE-01 | DONE | Antigravity (BE) | feat/T-S0-BE-01-solution-buildingblocks | Solution BrainMemo.sln + BuildingBlocks (SharedKernel, Abstractions, Infrastructure) + 32 unit tests |
 | T-S0-BE-02 | DONE | Antigravity (BE) | feat/T-S0-BE-02-webapi-host | Host BrainMemo.WebApi (JWT, ProblemDetails §3, RateLimiter login 5/p/IP, CORS, /health, Swagger, ModuleRegistry) + 43 tests |
 | T-S0-BE-03 | DONE | Antigravity (BE) | feat/T-S0-BE-03-shared-outbox | Outbox chung bảng-agnostic (`OutboxWriter` + `OutboxDispatcher` HostedService + `EfOutboxStore`) + 5 outbox tests |
-| T-S0-BE-04 | REVIEW | Antigravity (BE) | feat/T-S0-BE-04-architecture-tests | `Architecture.Tests` (NetArchTest + Cecil + Roslyn): kiểm đủ 9 luật REPO_STRUCTURE §2 + test âm tính |
+| T-S0-BE-04 | DONE | Antigravity (BE) | feat/T-S0-BE-04-architecture-tests | `Architecture.Tests` (NetArchTest + Cecil + Roslyn): kiểm đủ 9 luật REPO_STRUCTURE §2 + test âm tính |
 | T-S0-BE-05 | TODO | – | – | – |
 | T-S0-OPS-03 | TODO | – | – | – |
 | T-S0-FE-01 | TODO | – | – | – |

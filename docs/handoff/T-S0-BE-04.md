@@ -3,7 +3,7 @@
 - **Task:** `T-S0-BE-04` – `Architecture.Tests` (NetArchTest) bảo đảm luật `REPO_STRUCTURE` §2
 - **Vai trò:** BE
 - **Nhánh:** `feat/T-S0-BE-04-architecture-tests`
-- **Trạng thái:** REVIEW
+- **Trạng thái:** DONE
 
 ## Đã thực hiện
 
