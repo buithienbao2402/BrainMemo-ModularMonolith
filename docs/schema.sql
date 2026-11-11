@@ -1,6 +1,6 @@
 -- =====================================================================
 -- BRAINMEMO LMS - SCHEMA MYSQL 8.0
--- Kien truc: Modular Monolith, mot database, 10 module, 56 bang
+-- Kien truc: Modular Monolith, mot database, 10 module, 58 bang
 -- Quy uoc:
 --   * PK UUIDv7 BINARY(16) do ung dung sinh
 --   * Khong co FK vat ly xuyen module; chi FK giua cac bang cung module
@@ -577,7 +577,7 @@ CREATE TABLE cnt_quiz_config (
   close_at          DATETIME(3)       NULL DEFAULT NULL,
   time_limit_minutes SMALLINT UNSIGNED NULL DEFAULT NULL,
   max_attempts      SMALLINT UNSIGNED NULL DEFAULT 1 COMMENT 'NULL = khong gioi han',
-  pass_score        DECIMAL(6,2)      NULL DEFAULT NULL COMMENT 'chi hien thi',
+  pass_score        DECIMAL(6,2)      NULL DEFAULT NULL COMMENT 'phan tram 0-100; nhan Dat cua bai, khong dung cho CLO',
   result_display    ENUM('AFTER_EACH_ANSWER','AFTER_SUBMIT','AFTER_CLOSE','AFTER_GRADING') NOT NULL DEFAULT 'AFTER_SUBMIT',
   shuffle_questions BOOLEAN           NOT NULL DEFAULT FALSE,
   shuffle_options   BOOLEAN           NOT NULL DEFAULT FALSE,
@@ -590,7 +590,8 @@ CREATE TABLE cnt_quiz_config (
   CONSTRAINT ck_cnt_quiz_config_time_limit CHECK (open_at IS NOT NULL OR time_limit_minutes IS NOT NULL),
   CONSTRAINT ck_cnt_quiz_config_attempts CHECK (max_attempts IS NULL OR max_attempts > 0),
   CONSTRAINT ck_cnt_quiz_config_minutes CHECK (time_limit_minutes IS NULL OR time_limit_minutes > 0),
-  CONSTRAINT ck_cnt_quiz_config_after_close CHECK (result_display <> 'AFTER_CLOSE' OR close_at IS NOT NULL)
+  CONSTRAINT ck_cnt_quiz_config_after_close CHECK (result_display <> 'AFTER_CLOSE' OR close_at IS NOT NULL),
+  CONSTRAINT ck_cnt_quiz_config_pass_score CHECK (pass_score IS NULL OR pass_score BETWEEN 0 AND 100)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE cnt_quiz_question (
@@ -659,7 +660,7 @@ CREATE TABLE cnt_assignment_config (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- =======================================
--- MODULE 7: LEARNING (lrn_) - 7 bang
+-- MODULE 7: LEARNING (lrn_) - 8 bang
 -- =======================================
 
 CREATE TABLE lrn_block_completion (
@@ -783,8 +784,21 @@ CREATE TABLE lrn_assignment_submission (
   CONSTRAINT ck_lrn_submission_late CHECK (status = 'DRAFT' OR is_late IS NOT NULL)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE lrn_outbox_event (
+  id            BINARY(16)        NOT NULL COMMENT 'eventId',
+  event_type    VARCHAR(60)       NOT NULL COMMENT 'QuizAttemptSubmitted, AssignmentSubmitted',
+  aggregate_id  BINARY(16)        NOT NULL COMMENT 'attemptId hoac submissionId, khong FK',
+  payload       JSON              NOT NULL,
+  created_at    DATETIME(3)       NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  published_at  DATETIME(3)       NULL DEFAULT NULL,
+  attempt_count SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+  last_error    VARCHAR(500)      NULL DEFAULT NULL,
+  PRIMARY KEY (id),
+  KEY ix_lrn_outbox_publish (published_at, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 -- =======================================
--- MODULE 8: ASSESSMENT (ast_) - 7 bang
+-- MODULE 8: ASSESSMENT (ast_) - 8 bang
 -- =======================================
 
 CREATE TABLE ast_assessment_config (
@@ -905,6 +919,19 @@ CREATE TABLE ast_course_review (
   KEY ix_ast_review_course_rating (course_id, rating),
   CONSTRAINT ck_ast_review_rating CHECK (rating BETWEEN 1 AND 5),
   CONSTRAINT ck_ast_review_reply CHECK ((reply_text IS NULL) = (replied_at IS NULL AND replied_by_user_id IS NULL))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE ast_outbox_event (
+  id            BINARY(16)        NOT NULL COMMENT 'eventId',
+  event_type    VARCHAR(60)       NOT NULL COMMENT 'GradeRecorded, CourseReviewCreated, CourseReviewUpdated, CourseReviewReplied',
+  aggregate_id  BINARY(16)        NOT NULL COMMENT 'gradeRecordId hoac reviewId, khong FK',
+  payload       JSON              NOT NULL,
+  created_at    DATETIME(3)       NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  published_at  DATETIME(3)       NULL DEFAULT NULL,
+  attempt_count SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+  last_error    VARCHAR(500)      NULL DEFAULT NULL,
+  PRIMARY KEY (id),
+  KEY ix_ast_outbox_publish (published_at, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- =======================================
@@ -1029,5 +1056,5 @@ CREATE TABLE ai_user_daily_quota (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- =======================================
--- KET THUC: 56 bang / 10 module
+-- KET THUC: 58 bang / 10 module
 -- =======================================
