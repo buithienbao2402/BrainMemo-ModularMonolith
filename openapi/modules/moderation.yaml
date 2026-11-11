@@ -1,0 +1,51 @@
+paths:
+  /reports:
+    post:
+      {tags: [Moderation], operationId: createReport, summary: 'Gửi báo cáo (FR-MOD-01). DUPLICATE_REPORT 409; Only Me → 404',
+       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [targetType, targetId, reasonCode], properties: {targetType: {type: string, enum: [COURSE, COMMENT]}, targetId: {type: string, format: uuid}, reasonCode: {type: string}, description: {type: string}, evidence: {type: array, items: {type: object, properties: {kind: {type: string, enum: [IMAGE, LINK]}, uploadKey: {type: string}, url: {type: string}}}}}}}}},
+       responses: {'201': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/IdBody'}}}}}}
+  /admin/reports:
+    get:
+      {tags: [Admin], operationId: adminListReports, summary: Hàng đợi (FR-MOD-03),
+       parameters: [{name: status, in: query, schema: {type: string, enum: [PENDING, ACCEPTED, REJECTED]}}, {name: source, in: query, schema: {type: string, enum: [USER, AI]}}, {name: targetType, in: query, schema: {type: string, enum: [COURSE, COMMENT]}}, {$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}],
+       responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {items: {type: array, items: {$ref: '#/components/schemas/ReportDto'}}, meta: {$ref: '#/components/schemas/PageMeta'}}}}}}}}
+  /admin/reports/{id}:
+    get: {tags: [Admin], operationId: adminGetReport, summary: Chi tiết (kèm bằng chứng, URL ảnh Presigned), parameters: [{$ref: '#/components/parameters/Id'}], responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/ReportDto'}}}}}}
+  /admin/reports/{id}/target-content:
+    get:
+      {tags: [Admin], operationId: adminGetReportTargetContent, summary: 'Xem nội dung đối tượng bị báo cáo, CHỈ ĐỌC (DEC-02). Khóa Only Me → 404. chapterId tùy chọn',
+       parameters: [{$ref: '#/components/parameters/Id'}, {name: chapterId, in: query, schema: {type: string, format: uuid}}],
+       responses: {'200': {description: OK, content: {application/json: {schema: {type: object, additionalProperties: true}}}}}}
+  /admin/reports/{id}/resolve:
+    post:
+      {tags: [Admin], operationId: adminResolveReport, summary: 'Chấp nhận/Từ chối (FR-MOD-04); một transaction (ADR-03); 409 nếu không còn PENDING; lỗi LAST_ADMIN/ALREADY_LOCKED/ONLY_ME_NOT_ALLOWED → rollback',
+       parameters: [{$ref: '#/components/parameters/Id'}],
+       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ResolveRequest'}}}},
+       responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/ReportDto'}}}}}}
+  /admin/sanctions:
+    post:
+      {tags: [Admin], operationId: adminApplySanction, summary: 'Chế tài trực tiếp không qua báo cáo (reportId=null)',
+       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/SanctionRequest'}}}},
+       responses: {'201': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/IdBody'}}}}}}
+    get:
+      {tags: [Admin], operationId: adminListSanctions, summary: Chế tài đang hiệu lực/lịch sử,
+       parameters: [{name: active, in: query, schema: {type: boolean}}, {name: type, in: query, schema: {type: string}}, {$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}],
+       responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {items: {type: array, items: {type: object, additionalProperties: true}}, meta: {$ref: '#/components/schemas/PageMeta'}}}}}}}}
+  /admin/sanctions/{id}/lift:
+    post:
+      {tags: [Admin], operationId: adminLiftSanction, summary: 'Gỡ chế tài (FR-MOD-08,12): mở khóa TK / khôi phục khóa / khôi phục bình luận; COURSE_PERMANENT_DELETE không gỡ được',
+       parameters: [{$ref: '#/components/parameters/Id'}],
+       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [reason], properties: {reason: {type: string}}}}}},
+       responses: {'204': {description: OK}}}
+  /admin/audit-logs:
+    get:
+      {tags: [Admin], operationId: adminListAuditLogs, summary: Audit log (FR-MOD-14),
+       parameters: [{name: action, in: query, schema: {type: string}}, {name: objectType, in: query, schema: {type: string}}, {name: actorUserId, in: query, schema: {type: string, format: uuid}}, {name: from, in: query, schema: {type: string, format: date-time}}, {name: to, in: query, schema: {type: string, format: date-time}}, {$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}],
+       responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {items: {type: array, items: {type: object, additionalProperties: true}}, meta: {$ref: '#/components/schemas/PageMeta'}}}}}}}}
+  /admin/dashboard:
+    get: {tags: [Admin], operationId: adminGetDashboard, summary: Dashboard (FR-MOD-15), responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {pendingReports: {type: integer}, pendingAiFlags: {type: integer}, lockedUsers: {type: array, items: {type: object}}, hiddenCourses: {type: array, items: {type: object}}}}}}}}}
+components:
+  schemas:
+    ReportDto: {type: object, properties: {id: {type: string, format: uuid}, source: {type: string, enum: [USER, AI]}, reporter: {$ref: '#/components/schemas/UserRef'}, targetType: {type: string}, targetId: {type: string}, targetCourseId: {type: string}, targetOwner: {$ref: '#/components/schemas/UserRef'}, reasonCode: {type: string}, description: {type: string, nullable: true}, targetSnapshot: {type: string, nullable: true}, status: {type: string, enum: [PENDING, ACCEPTED, REJECTED]}, resolutionReason: {type: string, nullable: true}, resolvedAt: {type: string, format: date-time, nullable: true}, createdAt: {type: string, format: date-time}, evidence: {type: array, items: {type: object}}, aiScore: {type: number, nullable: true}}}
+    ResolveRequest: {type: object, required: [decision, reason], properties: {decision: {type: string, enum: [ACCEPTED, REJECTED]}, reason: {type: string, maxLength: 1000}, sanctions: {type: array, items: {$ref: '#/components/schemas/SanctionRequest'}}, confirmPermanentDelete: {type: boolean}}}
+    SanctionRequest: {type: object, required: [sanctionType, targetId, reason], properties: {sanctionType: {type: string, enum: [COMMENT_DELETE, COURSE_HIDE, ACCOUNT_LOCK_TEMPORARY, ACCOUNT_LOCK_PERMANENT, COURSE_PERMANENT_DELETE]}, targetId: {type: string, format: uuid}, reason: {type: string}, expiresAt: {type: string, format: date-time, nullable: true}, confirm: {type: boolean}}}

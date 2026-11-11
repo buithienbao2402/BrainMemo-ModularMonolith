@@ -1,0 +1,11 @@
+# ===== openapi/modules/files.yaml =====
+paths:
+  /files/upload-urls:
+    post:
+      {tags: [Files], operationId: createUploadUrl, summary: 'Xin Presigned PUT vào tmp/. FE PUT thẳng lên R2, rồi gửi uploadKey vào endpoint nghiệp vụ (server HEAD + kiểm dung lượng/đuôi + copy). Lỗi FILE_TOO_LARGE, FILE_TYPE_NOT_ALLOWED',
+       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [purpose, fileName, sizeBytes, contentType], properties: {purpose: {type: string, enum: [AVATAR, COURSE_COVER, COURSE_RESOURCE, ASSIGNMENT_FILE, REPORT_EVIDENCE]}, fileName: {type: string}, sizeBytes: {type: integer}, contentType: {type: string}, courseId: {type: string, format: uuid}}}}}},
+       responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/UploadUrlDto'}}}}}}
+components:
+  schemas:
+    UploadUrlDto: {type: object, properties: {uploadKey: {type: string}, uploadUrl: {type: string}, method: {type: string, enum: [PUT]}, headers: {type: object, additionalProperties: {type: string}}, expiresAt: {type: string, format: date-time}}}
+    FileRef: {type: object, properties: {name: {type: string}, sizeBytes: {type: integer}, contentType: {type: string}, url: {type: string, description: Presigned GET TTL 15 phút}}}

@@ -1,0 +1,18 @@
+# ===== openapi/modules/discovery.yaml =====
+paths:
+  /discovery/home:
+    get: {tags: [Discovery], operationId: getHome, security: [{}, {bearerAuth: []}], summary: 'Trang chủ: mới cập nhật, đề xuất NGẪU NHIÊN mỗi lần tải, đang học dở (nếu đăng nhập) (FR-DSC-01..03)', responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {recentlyUpdated: {type: array, items: {$ref: '#/components/schemas/CourseCard'}}, recommended: {type: array, items: {$ref: '#/components/schemas/CourseCard'}}, inProgress: {type: array, items: {$ref: '#/components/schemas/CourseCard'}}}}}}}}}
+  /discovery/courses:
+    get:
+      {tags: [Discovery], operationId: searchCourses, security: [{}, {bearerAuth: []}], summary: 'Tìm/lọc/sắp xếp (FR-DSC-04,06..09). Đăng nhập → ghi lịch sử',
+       parameters: [{name: q, in: query, schema: {type: string}}, {name: tag, in: query, schema: {type: string}}, {name: accessMode, in: query, schema: {type: string, enum: [PUBLIC, PRIVATE]}}, {name: status, in: query, schema: {$ref: '#/components/schemas/CourseStatus'}}, {name: sort, in: query, schema: {type: string, enum: [RECENTLY_UPDATED, NEWEST_LAUNCH, MOST_REVIEWED, MOST_NOMINATED, MOST_LEARNERS, MOST_COMMENTED]}}, {$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}],
+       responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {items: {type: array, items: {$ref: '#/components/schemas/CourseCard'}}, meta: {$ref: '#/components/schemas/PageMeta'}}}}}}}}
+  /discovery/top10:
+    get:
+      {tags: [Discovery], operationId: getTop10, security: [{}, {bearerAuth: []}], summary: Top 10 (FR-DSC-10),
+       parameters: [{name: metric, in: query, required: true, schema: {type: string, enum: [LEARNERS, REVIEWS, NOMINATIONS]}}, {name: window, in: query, required: true, schema: {type: string, enum: [WEEK, MONTH, ALL_TIME]}}],
+       responses: {'200': {description: OK, content: {application/json: {schema: {type: array, items: {type: object, properties: {rank: {type: integer}, count: {type: integer}, course: {$ref: '#/components/schemas/CourseCard'}}}}}}}}}
+  /discovery/search-history:
+    get: {tags: [Discovery], operationId: listSearchHistory, summary: Lịch sử tìm kiếm (FR-DSC-05), responses: {'200': {description: OK, content: {application/json: {schema: {type: array, items: {type: object, properties: {queryText: {type: string}, createdAt: {type: string, format: date-time}}}}}}}}}
+components:
+  schemas: {}

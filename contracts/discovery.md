@@ -1,0 +1,3 @@
+Không có Contract cho module khác (chỉ API công khai). Gọi ra: Course `ListCourseSnapshots/ListEnrollmentFacts/ListNominationFacts/GetCourseSummaries`; Learning `ListInProgressCourses`; Profile `GetDisplayInfo`.
+Tiêu thụ: `CourseUpserted` (eligible=false → xóa dòng; so `revision`), `CoursePermanentlyDeleted`, `ChapterPublished`, `EnrollmentChanged`, `NominationChanged`, `ProfileUpdated`, `CourseReviewCreated/Updated`, `CommentCreated/Deleted`. Không phát event. Top 10 tính trực tiếp từ `dsc_course_activity_fact` (không scheduler).
+Contract Version: 1

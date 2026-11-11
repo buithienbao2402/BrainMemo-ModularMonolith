@@ -1,0 +1,23 @@
+# ===== openapi/modules/notification.yaml =====
+paths:
+  /notifications:
+    get:
+      {tags: [Notification], operationId: listNotifications, summary: Danh sách (FR-NTF-04). FE polling 30s cho unread-count,
+       parameters: [{name: unreadOnly, in: query, schema: {type: boolean}}, {$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}],
+       responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {items: {type: array, items: {$ref: '#/components/schemas/NotificationDto'}}, meta: {$ref: '#/components/schemas/PageMeta'}}}}}}}}
+  /notifications/unread-count:
+    get: {tags: [Notification], operationId: getUnreadCount, summary: Số chưa đọc, responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {count: {type: integer}}}}}}}}
+  /notifications/{id}/read:
+    post: {tags: [Notification], operationId: markNotificationRead, summary: Đánh dấu đã đọc (FR-NTF-05), parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: OK}}}
+  /notifications/read-all:
+    post: {tags: [Notification], operationId: markAllNotificationsRead, summary: Đánh dấu tất cả, responses: {'204': {description: OK}}}
+  /notifications/{id}:
+    delete: {tags: [Notification], operationId: deleteNotification, summary: Xóa mềm (FR-NTF-06), parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: OK}}}
+  /admin/announcements:
+    post:
+      {tags: [Admin], operationId: createAnnouncement, summary: Broadcast (FR-NTF-07) → 202,
+       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [title, body], properties: {title: {type: string, maxLength: 200}, body: {type: string}}}}}},
+       responses: {'202': {description: Đã tiếp nhận, content: {application/json: {schema: {$ref: '#/components/schemas/IdBody'}}}}}}
+components:
+  schemas:
+    NotificationDto: {type: object, properties: {id: {type: string, format: uuid}, type: {type: string, enum: [ENROLLMENT_INVITE_JOIN, ENROLLMENT, COMMENT, GRADE_FEEDBACK, NEW_CHAPTER, REPORT_RESULT, SANCTION, SYSTEM_ANNOUNCEMENT]}, payload: {type: object, additionalProperties: true, description: 'Có payload.subtype; FE dựng câu chữ + link từ type/subtype'}, title: {type: string, nullable: true}, body: {type: string, nullable: true}, readAt: {type: string, format: date-time, nullable: true}, createdAt: {type: string, format: date-time}}}

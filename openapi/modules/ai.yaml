@@ -1,0 +1,28 @@
+paths:
+  /courses/{courseId}/ai/quiz-jobs:
+    post:
+      {tags: [AI], operationId: createQuizJob, summary: 'Sinh câu hỏi (FR-AI-01) → 202. AI_QUOTA_EXCEEDED 429; EMAIL_NOT_VERIFIED 403',
+       parameters: [{$ref: '#/components/parameters/CourseId'}],
+       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AiJobRequest'}}}},
+       responses: {'202': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/AiJobDto'}}}}}}
+  /courses/{courseId}/ai/flashcard-jobs:
+    post:
+      {tags: [AI], operationId: createFlashcardJob, summary: 'Sinh flashcard (FR-AI-02) → 202. Kết quả là Block FLASHCARD trong bản nháp chương (PENDING); cần sourceChapterId để biết chương đích',
+       parameters: [{$ref: '#/components/parameters/CourseId'}],
+       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AiJobRequest'}}}},
+       responses: {'202': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/AiJobDto'}}}}}}
+  /ai/jobs/{id}:
+    get: {tags: [AI], operationId: getAiJob, summary: 'Polling 2s. status PENDING|RUNNING|COMPLETED|FAILED', parameters: [{$ref: '#/components/parameters/Id'}], responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/AiJobDto'}}}}}}
+  /ai/quota:
+    get: {tags: [AI], operationId: getAiQuota, summary: Hạn mức hôm nay (UTC), responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {used: {type: integer}, limit: {type: integer}, remaining: {type: integer}}}}}}}}
+  /admin/settings:
+    get: {tags: [Admin], operationId: adminGetSettings, summary: Cấu hình hệ thống (sys_setting), responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/SystemSettingsDto'}}}}}}
+    put:
+      {tags: [Admin], operationId: adminUpdateSettings, summary: Cập nhật,
+       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/SystemSettingsDto'}}}},
+       responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/SystemSettingsDto'}}}}}}
+components:
+  schemas:
+    AiJobRequest: {type: object, required: [sourceKind], properties: {sourceKind: {type: string, enum: [PASTED_TEXT, CHAPTER]}, sourceText: {type: string}, sourceChapterId: {type: string, format: uuid}, count: {type: integer, minimum: 1, maximum: 30}, difficulty: {type: string}, typeFilter: {type: array, items: {$ref: '#/components/schemas/QuestionType'}}}}
+    AiJobDto: {type: object, properties: {id: {type: string, format: uuid}, jobType: {type: string, enum: [QUIZ, FLASHCARD]}, status: {type: string, enum: [PENDING, RUNNING, COMPLETED, FAILED]}, resultCount: {type: integer, nullable: true}, errorMessage: {type: string, nullable: true}, createdAt: {type: string, format: date-time}, completedAt: {type: string, format: date-time, nullable: true}}}
+    SystemSettingsDto: {type: object, properties: {aiFlagThreshold: {type: number, minimum: 0, maximum: 1}, aiDailyQuota: {type: integer, minimum: 0}, aiLlmProvider: {type: string, enum: [GEMINI, OPENAI, ANTHROPIC]}}}

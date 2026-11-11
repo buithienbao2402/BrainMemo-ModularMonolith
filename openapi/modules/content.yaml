@@ -1,0 +1,130 @@
+paths:
+  /courses/{courseId}/chapters:
+    parameters: [{$ref: '#/components/parameters/CourseId'}]
+    get: {tags: [Content], operationId: listChapters, security: [{}, {bearerAuth: []}], summary: 'Mục lục. Chủ khóa: kèm Nháp; người khác: chỉ đã đăng tải', responses: {'200': {description: OK, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/ChapterSummary'}}}}}}}
+    post:
+      {tags: [Content], operationId: createChapter, summary: Tạo chương (FR-CNT-01),
+       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [title], properties: {title: {type: string}, description: {type: string}}}}}},
+       responses: {'201': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/ChapterDetail'}}}}}}
+  /courses/{courseId}/chapters/order:
+    put:
+      {tags: [Content], operationId: reorderChapters, summary: Sắp xếp chương,
+       parameters: [{$ref: '#/components/parameters/CourseId'}],
+       requestBody: {required: true, content: {application/json: {schema: {type: object, properties: {chapterIds: {type: array, items: {type: string, format: uuid}}}}}}},
+       responses: {'204': {description: OK}}}
+  /courses/{courseId}/chapters/{chapterId}:
+    parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/ChapterId'}]
+    get: {tags: [Content], operationId: getChapterDraft, summary: 'Bản làm việc để soạn/xem trước (FR-CNT-03; Chủ khóa). Đọc bản đăng tải dùng Learning /learn/chapters', responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/ChapterDetail'}}}}}}
+    put:
+      {tags: [Content], operationId: saveChapter, summary: 'Lưu (FR-CNT-16): khóa lạc quan baseVersionNo; sai → 409 VERSION_CONFLICT. Block id do client giữ. Câu hỏi trong quiz phải READY',
+       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/SaveChapterRequest'}}}},
+       responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/ChapterDetail'}}}}}}
+    delete: {tags: [Content], operationId: deleteChapter, summary: Xóa mềm chương, responses: {'204': {description: OK}}}
+  /courses/{courseId}/chapters/{chapterId}/publish:
+    post: {tags: [Content], operationId: publishChapter, summary: 'Đăng tải (FR-CNT-16). Lỗi CHAPTER_PUBLISH_BLOCKED kèm errors[] (flashcard AI PENDING, thiếu tài nguyên, quiz thiếu câu...)', parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/ChapterId'}], responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/ChapterDetail'}}}}}}
+  /courses/{courseId}/chapters/{chapterId}/versions:
+    get: {tags: [Content], operationId: listChapterVersions, summary: Lịch sử (FR-CNT-17), parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/ChapterId'}, {$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}], responses: {'200': {description: OK, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/ChapterVersionDto'}}}}}}}
+  /courses/{courseId}/chapters/{chapterId}/versions/{versionNo}/restore:
+    post: {tags: [Content], operationId: restoreChapterVersion, summary: Khôi phục về bản nháp, parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/ChapterId'}, {name: versionNo, in: path, required: true, schema: {type: integer}}], responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/ChapterDetail'}}}}}}
+  /courses/{courseId}/question-bank:
+    parameters: [{$ref: '#/components/parameters/CourseId'}]
+    get: {tags: [Content], operationId: getQuestionBank, summary: Cấu hình ngân hàng, responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {difficultyScheme: {type: string, enum: [EASY_HARD, LEVEL_1_5, COGNITIVE_4], nullable: true}}}}}}}}
+    put:
+      {tags: [Content], operationId: setDifficultyScheme, summary: Chọn thang độ khó,
+       requestBody: {required: true, content: {application/json: {schema: {type: object, properties: {difficultyScheme: {type: string, nullable: true}}}}}},
+       responses: {'204': {description: OK}}}
+  /courses/{courseId}/questions:
+    parameters: [{$ref: '#/components/parameters/CourseId'}]
+    get:
+      {tags: [Content], operationId: listQuestions, summary: Lọc câu hỏi (FR-CNT-07),
+       parameters: [{name: tag, in: query, schema: {type: string}}, {name: difficultyCode, in: query, schema: {type: integer}}, {name: type, in: query, schema: {$ref: '#/components/schemas/QuestionType'}}, {name: status, in: query, schema: {type: string, enum: [DRAFT, READY, ARCHIVED]}}, {$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}],
+       responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {items: {type: array, items: {$ref: '#/components/schemas/QuestionDto'}}, meta: {$ref: '#/components/schemas/PageMeta'}}}}}}}}
+    post:
+      {tags: [Content], operationId: createQuestion, summary: Tạo câu hỏi (FR-CNT-04),
+       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/QuestionUpsert'}}}},
+       responses: {'201': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/QuestionDto'}}}}}}
+  /courses/{courseId}/questions/{questionId}:
+    parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/QuestionId'}]
+    get: {tags: [Content], operationId: getQuestion, summary: Chi tiết (kèm đáp án; Chủ khóa), responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/QuestionDto'}}}}}}
+    put:
+      {tags: [Content], operationId: updateQuestion, summary: Sửa,
+       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/QuestionUpsert'}}}},
+       responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/QuestionDto'}}}}}}
+  /courses/{courseId}/questions/{questionId}/status:
+    put:
+      {tags: [Content], operationId: setQuestionStatus, summary: 'DRAFT↔READY, →ARCHIVED, ARCHIVED→DRAFT. READY kiểm hợp lệ theo loại (INVALID_STATE)',
+       parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/QuestionId'}],
+       requestBody: {required: true, content: {application/json: {schema: {type: object, properties: {status: {type: string, enum: [DRAFT, READY, ARCHIVED]}}}}}},
+       responses: {'204': {description: OK}}}
+  /courses/{courseId}/questions/{questionId}/usage:
+    get: {tags: [Content], operationId: getQuestionUsage, summary: Câu nằm trong bài nào, số lượt, tỷ lệ đúng (FR-CNT-08), parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/QuestionId'}], responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {quizzes: {type: array, items: {type: object, properties: {blockId: {type: string}, title: {type: string}}}}, attemptCount: {type: integer}, correctRate: {type: number, nullable: true}}}}}}}}
+  /courses/{courseId}/questions/import:
+    post:
+      {tags: [Content], operationId: importQuestions, summary: 'Nhập Excel/CSV (FR-CNT-05). multipart/form-data; trả báo cáo từng dòng',
+       parameters: [{$ref: '#/components/parameters/CourseId'}],
+       requestBody: {required: true, content: {multipart/form-data: {schema: {type: object, properties: {file: {type: string, format: binary}}}}}},
+       responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {imported: {type: integer}, errors: {type: array, items: {type: object, properties: {row: {type: integer}, message: {type: string}}}}}}}}}}}
+  /courses/{courseId}/questions/export:
+    get: {tags: [Content], operationId: exportQuestions, summary: Xuất (FR-CNT-06), parameters: [{$ref: '#/components/parameters/CourseId'}, {name: format, in: query, schema: {type: string, enum: [csv, xlsx]}}], responses: {'200': {description: Tệp, content: {application/octet-stream: {schema: {type: string, format: binary}}}}}}
+  /courses/{courseId}/quizzes/{blockId}/exceptions:
+    get: {tags: [Content], operationId: listQuizExceptions, summary: Ngoại lệ học viên (FR-CNT-15), parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/BlockId'}], responses: {'200': {description: OK, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/QuizExceptionDto'}}}}}}}
+  /courses/{courseId}/quizzes/{blockId}/exceptions/{userId}:
+    put:
+      {tags: [Content], operationId: upsertQuizException, summary: 'Đặt ngoại lệ (≥1 trường). Chỉ bài đã đăng tải',
+       parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/BlockId'}, {$ref: '#/components/parameters/UserId'}],
+       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/QuizExceptionDto'}}}},
+       responses: {'204': {description: OK}}}
+    delete: {tags: [Content], operationId: deleteQuizException, summary: Xóa ngoại lệ, parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/BlockId'}, {$ref: '#/components/parameters/UserId'}], responses: {'204': {description: OK}}}
+  /courses/{courseId}/resources:
+    parameters: [{$ref: '#/components/parameters/CourseId'}]
+    get: {tags: [Content], operationId: listResources, summary: Tài nguyên (FR-CNT-18), responses: {'200': {description: OK, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/ResourceDto'}}}}}}}
+    post:
+      {tags: [Content], operationId: createResource, summary: 'Ghi nhận tài nguyên sau khi PUT lên R2 (commit uploadKey)',
+       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [uploadKey, originalFilename], properties: {uploadKey: {type: string}, originalFilename: {type: string}}}}}},
+       responses: {'201': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/ResourceDto'}}}}}}
+  /courses/{courseId}/resources/{id}:
+    delete: {tags: [Content], operationId: deleteResource, summary: 'Xóa mềm; RESOURCE_IN_USE (409) nếu còn Block dùng', parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/Id'}], responses: {'204': {description: OK}}}
+  /courses/{courseId}/resources/{id}/download-url:
+    get: {tags: [Content], operationId: getResourceDownloadUrl, security: [{}, {bearerAuth: []}], summary: 'Presigned GET sau AuthorizeResourceDownload', parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/Id'}], responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {url: {type: string}, expiresAt: {type: string, format: date-time}}}}}}}}
+components:
+  schemas:
+    ChapterSummary: {type: object, properties: {id: {type: string, format: uuid}, position: {type: integer}, title: {type: string}, description: {type: string, nullable: true}, status: {type: string, enum: [DRAFT, PUBLISHED]}, accessMode: {type: string, enum: [PUBLIC, PROTECTED]}, hasUnpublishedChanges: {type: boolean}}}
+    ChapterDetail: {type: object, properties: {id: {type: string, format: uuid}, courseId: {type: string, format: uuid}, position: {type: integer}, title: {type: string}, description: {type: string, nullable: true}, status: {type: string}, lastVersionNo: {type: integer}, publishedVersionNo: {type: integer, nullable: true}, blocks: {type: array, items: {$ref: '#/components/schemas/BlockDto'}}}}
+    SaveChapterRequest: {type: object, required: [baseVersionNo, title, blocks], properties: {baseVersionNo: {type: integer}, title: {type: string}, description: {type: string}, blocks: {type: array, items: {$ref: '#/components/schemas/BlockDto'}}}}
+    BlockDto:
+      type: object
+      required: [id, blockType, position]
+      properties:
+        id: {type: string, format: uuid, description: Ổn định qua các lần lưu}
+        blockType: {$ref: '#/components/schemas/BlockType'}
+        position: {type: integer}
+        title: {type: string, nullable: true}
+        body: {type: string, nullable: true, description: HTML đã làm sạch hoặc Markdown}
+        resourceId: {type: string, format: uuid, nullable: true}
+        questionId: {type: string, format: uuid, nullable: true}
+        flashcards: {type: array, items: {type: object, properties: {front: {type: string}, back: {type: string}}}}
+        aiReviewStatus: {type: string, enum: [NOT_APPLICABLE, PENDING, APPROVED]}
+        quizConfig: {$ref: '#/components/schemas/QuizConfig'}
+        assignmentConfig: {type: object, properties: {dueAt: {type: string, format: date-time, nullable: true}, maxPoints: {type: number, nullable: true}, maxFileSizeBytes: {type: integer}}}
+    QuizConfig:
+      type: object
+      properties:
+        openAt: {type: string, format: date-time, nullable: true}
+        closeAt: {type: string, format: date-time, nullable: true}
+        timeLimitMinutes: {type: integer, nullable: true}
+        maxAttempts: {type: integer, nullable: true}
+        passScore: {type: number, nullable: true, description: Phần trăm 0-100}
+        resultDisplay: {type: string, enum: [AFTER_EACH_ANSWER, AFTER_SUBMIT, AFTER_CLOSE, AFTER_GRADING]}
+        shuffleQuestions: {type: boolean}
+        shuffleOptions: {type: boolean}
+        password: {type: string, writeOnly: true, nullable: true}
+        hasPassword: {type: boolean, readOnly: true}
+        questions: {type: array, items: {type: object, properties: {questionId: {type: string, format: uuid}, position: {type: integer}, points: {type: number}}}}
+        randomRules: {type: array, items: {type: object, properties: {position: {type: integer}, pickCount: {type: integer}, pointsEach: {type: number}, filterTag: {type: string, nullable: true}, filterDifficultyCode: {type: integer, nullable: true}, filterQuestionType: {$ref: '#/components/schemas/QuestionType'}}}}
+        prerequisites: {type: array, items: {type: object, properties: {targetKind: {type: string, enum: [CHAPTER, BLOCK]}, targetId: {type: string, format: uuid}}}}
+    ChapterVersionDto: {type: object, properties: {versionNo: {type: integer}, createdAt: {type: string, format: date-time}, publishedAt: {type: string, format: date-time, nullable: true}, restoredFromVersionNo: {type: integer, nullable: true}}}
+    QuestionUpsert: {type: object, required: [questionType, stem], properties: {questionType: {$ref: '#/components/schemas/QuestionType'}, allowMultiple: {type: boolean}, stem: {type: string}, explanation: {type: string}, referenceAnswer: {type: string}, difficultyCode: {type: integer, nullable: true}, defaultPoints: {type: number}, tags: {type: array, items: {type: string}}, options: {type: array, items: {$ref: '#/components/schemas/QuestionOption'}}}}
+    QuestionOption: {type: object, properties: {id: {type: string, format: uuid}, position: {type: integer}, content: {type: string}, matchContent: {type: string, nullable: true}, blankNo: {type: integer, nullable: true}, isCorrect: {type: boolean}}}
+    QuestionDto: {allOf: [{$ref: '#/components/schemas/QuestionUpsert'}, {type: object, properties: {id: {type: string, format: uuid}, status: {type: string, enum: [DRAFT, READY, ARCHIVED]}, origin: {type: string, enum: [MANUAL, AI]}, updatedAt: {type: string, format: date-time}}}]}
+    QuizExceptionDto: {type: object, properties: {userId: {type: string, format: uuid}, extraMinutes: {type: integer, nullable: true}, extraAttempts: {type: integer, nullable: true}, extendedCloseAt: {type: string, format: date-time, nullable: true}}}
+    ResourceDto: {type: object, properties: {id: {type: string, format: uuid}, kind: {type: string, enum: [IMAGE, VIDEO, AUDIO, PDF, ARCHIVE, OTHER]}, originalFilename: {type: string}, contentType: {type: string}, sizeBytes: {type: integer}, createdAt: {type: string, format: date-time}}}

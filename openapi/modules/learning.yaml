@@ -1,0 +1,81 @@
+paths:
+  /courses/{courseId}/learn/chapters/{chapterId}:
+    get:
+      {tags: [Learning], operationId: readChapter, security: [{}, {bearerAuth: []}],
+       summary: 'Đọc bản đã đăng tải, KHÔNG kèm đáp án. 403 PASSCODE_REQUIRED/NOT_ENROLLED, 401 (Khách), 404 giấu. canSaveProgress=false với Khách/chưa ghi danh',
+       parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/ChapterId'}],
+       responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/LearnChapterDto'}}}}}}
+  /courses/{courseId}/blocks/{blockId}/complete:
+    post: {tags: [Learning], operationId: completeBlock, summary: 'Ghi hoàn thành Block nội dung (idempotent, FR-LRN-03)', parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/BlockId'}], responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/ProgressDto'}}}}}}
+  /courses/{courseId}/blocks/{blockId}/practice-answer:
+    post:
+      {tags: [Learning], operationId: answerPracticeQuestion, security: [{}, {bearerAuth: []}], summary: 'Làm Block QUESTION. Khách: không lưu; Đang học: ghi hoàn thành',
+       parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/BlockId'}],
+       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AnswerPayload'}}}},
+       responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {isCorrect: {type: boolean, nullable: true}, explanation: {type: string, nullable: true}}}}}}}}
+  /courses/{courseId}/progress:
+    get: {tags: [Learning], operationId: getCourseProgress, summary: Tiến độ khóa/chương (FR-LRN-03), parameters: [{$ref: '#/components/parameters/CourseId'}], responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/ProgressDto'}}}}}}
+  /courses/{courseId}/bookmark:
+    put:
+      {tags: [Learning], operationId: setBookmark, summary: Đặt bookmark (1/khóa, FR-LRN-02),
+       parameters: [{$ref: '#/components/parameters/CourseId'}],
+       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [chapterId], properties: {chapterId: {type: string, format: uuid}}}}}},
+       responses: {'204': {description: OK}}}
+    delete: {tags: [Learning], operationId: removeBookmark, summary: Xóa bookmark, parameters: [{$ref: '#/components/parameters/CourseId'}], responses: {'204': {description: OK}}}
+  /me/bookmarks:
+    get: {tags: [Learning], operationId: listMyBookmarks, summary: Bookmark cá nhân, responses: {'200': {description: OK, content: {application/json: {schema: {type: array, items: {type: object, properties: {courseId: {type: string}, courseName: {type: string}, chapterId: {type: string}, chapterTitle: {type: string}, updatedAt: {type: string, format: date-time}}}}}}}}}
+  /courses/{courseId}/quizzes/{blockId}/attempts:
+    parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/BlockId'}]
+    post:
+      {tags: [Learning], operationId: startQuizAttempt, summary: 'Bắt đầu lượt (FR-LRN-04). Lỗi QUIZ_NOT_OPEN, QUIZ_CLOSED, ATTEMPT_LIMIT_REACHED, QUIZ_PASSWORD_INVALID, PREREQUISITE_NOT_MET, NOT_ENOUGH_QUESTIONS. Nếu đã có lượt IN_PROGRESS → trả lượt đó',
+       requestBody: {content: {application/json: {schema: {type: object, properties: {password: {type: string}}}}}},
+       responses: {'201': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/QuizAttemptDto'}}}}}}
+    get: {tags: [Learning], operationId: listMyQuizAttempts, summary: Các lượt của tôi, responses: {'200': {description: OK, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/QuizAttemptDto'}}}}}}}
+  /quiz-attempts/{id}:
+    get: {tags: [Learning], operationId: getQuizAttempt, summary: 'Khôi phục lượt (NFR-10). Đáp án đúng chỉ trả khi theo resultDisplay cho phép', parameters: [{$ref: '#/components/parameters/Id'}], responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/QuizAttemptDto'}}}}}}
+  /quiz-attempts/{id}/answers/{questionId}:
+    put:
+      {tags: [Learning], operationId: saveQuizAnswer, summary: 'Autosave (≤30s). Quá deadline → DEADLINE_PASSED. Nếu resultDisplay=AFTER_EACH_ANSWER trả kết quả câu',
+       parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/QuestionId'}],
+       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AnswerPayload'}}}},
+       responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {savedAt: {type: string, format: date-time}, isCorrect: {type: boolean, nullable: true}}}}}}}}
+  /quiz-attempts/{id}/submit:
+    post: {tags: [Learning], operationId: submitQuizAttempt, summary: 'Nộp (FR-LRN-08), chấm đồng bộ (ADR-04). status SUBMITTED + gradingPending=true nếu Assessment lỗi/còn tự luận', parameters: [{$ref: '#/components/parameters/Id'}], responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/QuizResultDto'}}}}}}
+  /courses/{courseId}/assignments/{blockId}/submission:
+    parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/BlockId'}]
+    get: {tags: [Learning], operationId: getMySubmission, summary: Bài nộp của tôi, responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/SubmissionDto'}}}}}}
+    put:
+      {tags: [Learning], operationId: saveSubmissionDraft, summary: Tự lưu nháp (FR-LRN-09),
+       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/SubmissionUpsert'}}}},
+       responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/SubmissionDto'}}}}}}
+  /courses/{courseId}/assignments/{blockId}/submission/submit:
+    post: {tags: [Learning], operationId: submitAssignment, summary: 'Nộp (không nộp lại; ALREADY_SUBMITTED 409)', parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/BlockId'}], responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/SubmissionDto'}}}}}}
+  /courses/{courseId}/comments:
+    parameters: [{$ref: '#/components/parameters/CourseId'}]
+    get:
+      {tags: [Learning], operationId: listComments, summary: 'Bình luận gốc kèm trả lời (≤1 cấp); ghim lên đầu',
+       parameters: [{name: chapterId, in: query, schema: {type: string, format: uuid}}, {$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}],
+       responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {items: {type: array, items: {$ref: '#/components/schemas/CommentDto'}}, meta: {$ref: '#/components/schemas/PageMeta'}}}}}}}}
+    post:
+      {tags: [Learning], operationId: createComment, summary: Bình luận/trả lời (FR-LRN-10,11),
+       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [content], properties: {content: {type: string}, chapterId: {type: string, format: uuid}, parentCommentId: {type: string, format: uuid}}}}}},
+       responses: {'201': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/CommentDto'}}}}}}
+  /comments/{id}:
+    patch:
+      {tags: [Learning], operationId: editComment, summary: Sửa bình luận của mình (FR-LRN-12), parameters: [{$ref: '#/components/parameters/Id'}],
+       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [content], properties: {content: {type: string}}}}}},
+       responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/CommentDto'}}}}}}
+    delete: {tags: [Learning], operationId: deleteComment, summary: Xóa mềm của mình, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: OK}}}
+  /comments/{id}/pin:
+    put: {tags: [Learning], operationId: pinComment, summary: Ghim (Chủ khóa; FR-LRN-13), parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: OK}}}
+    delete: {tags: [Learning], operationId: unpinComment, summary: Bỏ ghim, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: OK}}}
+components:
+  schemas:
+    LearnChapterDto: {type: object, properties: {id: {type: string, format: uuid}, title: {type: string}, description: {type: string, nullable: true}, versionNo: {type: integer}, canSaveProgress: {type: boolean}, blocks: {type: array, items: {type: object, description: 'BlockDto (content) không có đáp án; QUESTION chỉ có stem+options không isCorrect; kèm completed:boolean', properties: {id: {type: string}, blockType: {$ref: '#/components/schemas/BlockType'}, position: {type: integer}, completed: {type: boolean}, title: {type: string}, body: {type: string}, resourceUrl: {type: string}, flashcards: {type: array, items: {type: object}}, question: {type: object}, quizSummary: {type: object}, assignmentSummary: {type: object}}}}}}
+    ProgressDto: {type: object, properties: {courseId: {type: string, format: uuid}, percent: {type: number}, completedChapterIds: {type: array, items: {type: string}}, chapters: {type: array, items: {type: object, properties: {chapterId: {type: string}, percent: {type: number}}}}, completedBlockIds: {type: array, items: {type: string}}, lastActivityAt: {type: string, format: date-time, nullable: true}, courseCompletedAt: {type: string, format: date-time, nullable: true}}}
+    AnswerPayload: {type: object, description: 'Đúng một trong: selectedOptionIds[] | bool | blanks[] | pairs[{leftId,rightId}] | text', properties: {selectedOptionIds: {type: array, items: {type: string}}, bool: {type: boolean}, blanks: {type: array, items: {type: string}}, pairs: {type: array, items: {type: object, properties: {leftId: {type: string}, rightId: {type: string}}}}, text: {type: string}}}
+    QuizAttemptDto: {type: object, properties: {id: {type: string, format: uuid}, quizBlockId: {type: string}, attemptNo: {type: integer}, status: {type: string, enum: [IN_PROGRESS, SUBMITTED, AUTO_SUBMITTED, GRADED]}, startedAt: {type: string, format: date-time}, deadlineAt: {type: string, format: date-time}, serverNow: {type: string, format: date-time}, totalScore: {type: number, nullable: true}, maxScore: {type: number}, questions: {type: array, items: {type: object, properties: {questionId: {type: string}, position: {type: integer}, questionType: {$ref: '#/components/schemas/QuestionType'}, stem: {type: string}, options: {type: array, items: {type: object}}, maxPoints: {type: number}, answer: {$ref: '#/components/schemas/AnswerPayload'}}}}}}
+    QuizResultDto: {type: object, properties: {attemptId: {type: string}, status: {type: string}, gradingPending: {type: boolean}, pendingManual: {type: boolean}, totalScore: {type: number, nullable: true}, maxScore: {type: number}, passScorePercent: {type: number, nullable: true}, isPassed: {type: boolean, nullable: true}, questions: {type: array, items: {type: object, description: 'Chỉ khi resultDisplay cho phép', properties: {questionId: {type: string}, isCorrect: {type: boolean, nullable: true}, pointsEarned: {type: number, nullable: true}, maxPoints: {type: number}, correctAnswer: {type: object}, explanation: {type: string}, graderFeedback: {type: string, nullable: true}}}}}}
+    SubmissionUpsert: {type: object, properties: {textContent: {type: string}, fileUploadKeys: {type: array, items: {type: string}}, removeFileKeys: {type: array, items: {type: string}}}}
+    SubmissionDto: {type: object, properties: {id: {type: string, format: uuid}, status: {type: string, enum: [DRAFT, SUBMITTED, GRADED]}, textContent: {type: string, nullable: true}, files: {type: array, items: {$ref: '#/components/schemas/FileRef'}}, isLate: {type: boolean, nullable: true}, submittedAt: {type: string, format: date-time, nullable: true}, score: {type: number, nullable: true}, feedback: {type: string, nullable: true}}}
+    CommentDto: {type: object, properties: {id: {type: string, format: uuid}, courseId: {type: string}, chapterId: {type: string, nullable: true}, author: {$ref: '#/components/schemas/UserRef'}, parentCommentId: {type: string, nullable: true}, content: {type: string}, isPinned: {type: boolean}, editedAt: {type: string, format: date-time, nullable: true}, createdAt: {type: string, format: date-time}, replies: {type: array, items: {type: object}}}}

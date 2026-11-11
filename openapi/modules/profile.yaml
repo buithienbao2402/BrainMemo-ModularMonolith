@@ -1,0 +1,19 @@
+# ===== openapi/modules/profile.yaml =====
+paths:
+  /profiles/me:
+    get: {tags: [Profile], operationId: getMyProfile, summary: Hồ sơ của tôi, responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/ProfileDto'}}}}}}
+    put:
+      {tags: [Profile], operationId: updateMyProfile, summary: 'Cập nhật hồ sơ (FR-PRF-01..04,07). avatarUploadKey lấy từ /files/upload-urls',
+       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/UpdateProfileRequest'}}}},
+       responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/ProfileDto'}}}}}}
+  /profiles/{userId}:
+    get: {tags: [Profile], operationId: getPublicProfile, security: [{}, {bearerAuth: []}], summary: Hồ sơ công khai (FR-PRF-06), parameters: [{$ref: '#/components/parameters/UserId'}], responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/ProfileDto'}}}}}}
+  /profiles/{userId}/courses:
+    get:
+      {tags: [Profile], operationId: listProfileCourses, security: [{}, {bearerAuth: []}], summary: 'Khóa trên hồ sơ (FR-PRF-05). relation=OWNED|ENROLLED|COMPLETED. Người khác xem: chỉ Public/Private, 404 nếu showCourseList=false',
+       parameters: [{$ref: '#/components/parameters/UserId'}, {name: relation, in: query, schema: {type: string, enum: [OWNED, ENROLLED, COMPLETED]}}, {$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}],
+       responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {items: {type: array, items: {$ref: '#/components/schemas/CourseCard'}}, meta: {$ref: '#/components/schemas/PageMeta'}}}}}}}}
+components:
+  schemas:
+    ProfileDto: {type: object, properties: {userId: {type: string, format: uuid}, displayName: {type: string}, avatarUrl: {type: string, nullable: true}, bio: {type: string, nullable: true}, showCourseList: {type: boolean}, uiTheme: {type: string, enum: [LIGHT, DARK]}, joinedAt: {type: string, format: date-time}}}
+    UpdateProfileRequest: {type: object, properties: {displayName: {type: string, maxLength: 100}, bio: {type: string, maxLength: 2000}, showCourseList: {type: boolean}, uiTheme: {type: string, enum: [LIGHT, DARK]}, avatarUploadKey: {type: string}, removeAvatar: {type: boolean}}}

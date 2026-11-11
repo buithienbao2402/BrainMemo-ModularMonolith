@@ -1,0 +1,65 @@
+paths:
+  /auth/register:
+    post:
+      {tags: [Identity], operationId: register, security: [], summary: Đăng ký (FR-IDN-01),
+       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CredentialsRequest'}}}},
+       responses: {'201': {description: Đã tạo; gửi email xác minh}, '409': {description: EMAIL_TAKEN, content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}}}
+  /auth/verify-email:
+    post:
+      {tags: [Identity], operationId: verifyEmail, security: [], summary: Xác minh email (FR-IDN-02),
+       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [token], properties: {token: {type: string}}}}}},
+       responses: {'204': {description: OK; lỗi TOKEN_INVALID_OR_EXPIRED}}}
+  /auth/login:
+    post:
+      {tags: [Identity], operationId: login, security: [], summary: 'Đăng nhập (FR-IDN-03). Set cookie refresh. Lỗi INVALID_CREDENTIALS, ACCOUNT_LOCKED (403, kèm lockedUntil/lockReason trong extensions)',
+       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CredentialsRequest'}}}},
+       responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/AuthTokens'}}}}}}
+  /auth/google:
+    post:
+      {tags: [Identity], operationId: loginWithGoogle, security: [], summary: Đăng nhập Google (FR-IDN-06),
+       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [idToken], properties: {idToken: {type: string}}}}}},
+       responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/AuthTokens'}}}}}}
+  /auth/refresh:
+    post:
+      {tags: [Identity], operationId: refreshToken, security: [], summary: 'Làm mới token. Đọc cookie refresh, xoay vòng cookie. Thua race → 401 (FE single-flight)',
+       responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/AuthTokens'}}}}}}
+  /auth/logout:
+    post: {tags: [Identity], operationId: logout, summary: Đăng xuất (FR-IDN-04), responses: {'204': {description: OK}}}
+  /auth/logout-all:
+    post: {tags: [Identity], operationId: logoutAll, summary: Đăng xuất mọi thiết bị (FR-IDN-10), responses: {'204': {description: OK}}}
+  /auth/forgot-password:
+    post:
+      {tags: [Identity], operationId: forgotPassword, security: [], summary: 'Quên mật khẩu (FR-IDN-07). Luôn 204 để không lộ email',
+       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [email], properties: {email: {type: string, format: email}}}}}},
+       responses: {'204': {description: OK}}}
+  /auth/reset-password:
+    post:
+      {tags: [Identity], operationId: resetPassword, security: [], summary: Đặt lại mật khẩu,
+       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [token, newPassword], properties: {token: {type: string}, newPassword: {type: string}}}}}},
+       responses: {'204': {description: OK}}}
+  /auth/change-password:
+    post:
+      {tags: [Identity], operationId: changePassword, summary: Đổi mật khẩu (FR-IDN-08),
+       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [currentPassword, newPassword], properties: {currentPassword: {type: string}, newPassword: {type: string}}}}}},
+       responses: {'204': {description: OK}}}
+  /auth/me:
+    get: {tags: [Identity], operationId: getMe, summary: Thông tin tài khoản hiện tại, responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/CurrentUser'}}}}}}
+  /auth/sessions:
+    get: {tags: [Identity], operationId: listSessions, summary: Danh sách phiên (FR-IDN-09), responses: {'200': {description: OK, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/SessionDto'}}}}}}}
+  /auth/sessions/{id}:
+    delete: {tags: [Identity], operationId: revokeSession, summary: Thu hồi một phiên, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: OK}}}
+  /admin/users:
+    get:
+      {tags: [Admin], operationId: adminListUsers, summary: Danh sách người dùng (FR-IDN-11),
+       parameters: [{$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}, {name: q, in: query, schema: {type: string}}, {name: status, in: query, schema: {type: string, enum: [ACTIVE, LOCKED_TEMPORARY, LOCKED_PERMANENT]}}],
+       responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {items: {type: array, items: {$ref: '#/components/schemas/AdminUserDto'}}, meta: {$ref: '#/components/schemas/PageMeta'}}}}}}}}
+  /admin/users/{userId}/admin-role:
+    put: {tags: [Admin], operationId: grantAdmin, summary: Cấp role Admin (idempotent), parameters: [{$ref: '#/components/parameters/UserId'}], responses: {'204': {description: OK}}}
+    delete: {tags: [Admin], operationId: revokeAdmin, summary: 'Thu hồi role Admin (LAST_ADMIN 409)', parameters: [{$ref: '#/components/parameters/UserId'}], responses: {'204': {description: OK}}}
+components:
+  schemas:
+    CredentialsRequest: {type: object, required: [email, password], properties: {email: {type: string, format: email}, password: {type: string, minLength: 8}}}
+    CurrentUser: {type: object, properties: {id: {type: string, format: uuid}, email: {type: string}, emailVerified: {type: boolean}, isAdmin: {type: boolean}, accountStatus: {type: string}}}
+    AuthTokens: {type: object, properties: {accessToken: {type: string}, expiresIn: {type: integer}, user: {$ref: '#/components/schemas/CurrentUser'}}}
+    SessionDto: {type: object, properties: {id: {type: string, format: uuid}, userAgent: {type: string}, ipAddress: {type: string}, createdAt: {type: string, format: date-time}, lastUsedAt: {type: string, format: date-time}, isCurrent: {type: boolean}}}
+    AdminUserDto: {type: object, properties: {id: {type: string, format: uuid}, email: {type: string}, accountStatus: {type: string}, lockedUntil: {type: string, format: date-time, nullable: true}, isAdmin: {type: boolean}, emailVerified: {type: boolean}, createdAt: {type: string, format: date-time}}}

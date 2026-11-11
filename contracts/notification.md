@@ -1,0 +1,2 @@
+Không có Contract liên module. Chỉ tiêu thụ event theo bảng 3.4.6.1 CSDL (chèn idempotent theo `(source_event_id, recipient)`). **Không** có thông báo AI hoàn thành (DEC-07). Gọi ra: Identity `GetUserSummary`, `ListActiveUserIds`, `IsAdmin`; Course `ListActiveLearnerIds`. Email chỉ 3 template; token thô chỉ trong bộ nhớ.
+Contract Version: 1

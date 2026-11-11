@@ -1,0 +1,94 @@
+paths:
+  /courses/{courseId}/assessment/config:
+    parameters: [{$ref: '#/components/parameters/CourseId'}]
+    get: {tags: [Assessment], operationId: getAssessmentConfig, summary: Cấu hình đánh giá (tạo mặc định nếu chưa có), responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/AssessmentConfigDto'}}}}}}
+    put:
+      {tags: [Assessment], operationId: updateAssessmentConfig, summary: 'FR-AST-07..09,11,12,14',
+       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AssessmentConfigDto'}}}},
+       responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/AssessmentConfigDto'}}}}}}
+  /courses/{courseId}/assessment/assessable-blocks:
+    get: {tags: [Assessment], operationId: listAssessableBlocks, summary: 'Quiz/Assignment đã đăng tải + trạng thái đã có component/CLO chưa (cho cả giao diện Content và Chuẩn đầu ra)', parameters: [{$ref: '#/components/parameters/CourseId'}], responses: {'200': {description: OK, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/ComponentDto'}}}}}}}
+  /courses/{courseId}/assessment/components/{blockId}:
+    parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/BlockId'}]
+    get: {tags: [Assessment], operationId: getComponent, summary: Thành phần + trọng số CLO, responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/ComponentDto'}}}}}}
+    put:
+      {tags: [Assessment], operationId: upsertComponent, summary: 'Upsert trọng số khóa + liên kết CLO (FR-AST-13, FR-CNT-12). Gọi từ cả màn Content lẫn màn Chuẩn đầu ra; cloWeights thay thế toàn bộ',
+       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/UpsertComponentRequest'}}}},
+       responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/ComponentDto'}}}}}}
+    delete: {tags: [Assessment], operationId: removeComponent, summary: 'Gỡ khỏi đánh giá (RESTRICT nếu đã có grade_record → 409)', responses: {'204': {description: OK}}}
+  /courses/{courseId}/assessment/clos:
+    parameters: [{$ref: '#/components/parameters/CourseId'}]
+    get: {tags: [Assessment], operationId: listClos, summary: Danh sách CLO, responses: {'200': {description: OK, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/CloDto'}}}}}}}
+    post:
+      {tags: [Assessment], operationId: createClo, summary: Tạo CLO (FR-AST-10),
+       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CloDto'}}}},
+       responses: {'201': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/CloDto'}}}}}}
+  /courses/{courseId}/assessment/clos/{id}:
+    put: {tags: [Assessment], operationId: updateClo, summary: Sửa CLO, parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/Id'}], requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CloDto'}}}}, responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/CloDto'}}}}}}
+    delete: {tags: [Assessment], operationId: deleteClo, summary: Xóa CLO (409 nếu đã có trọng số), parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/Id'}], responses: {'204': {description: OK}}}
+  /courses/{courseId}/assessment/plos:
+    parameters: [{$ref: '#/components/parameters/CourseId'}]
+    get: {tags: [Assessment], operationId: listPlos, summary: Danh sách PLO (FR-AST-12), responses: {'200': {description: OK, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/PloDto'}}}}}}}
+    post: {tags: [Assessment], operationId: createPlo, summary: Tạo PLO, requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/PloDto'}}}}, responses: {'201': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/PloDto'}}}}}}
+  /courses/{courseId}/assessment/plos/{id}:
+    put: {tags: [Assessment], operationId: updatePlo, summary: Sửa PLO, parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/Id'}], requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/PloDto'}}}}, responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/PloDto'}}}}}}
+    delete: {tags: [Assessment], operationId: deletePlo, summary: Xóa PLO, parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/Id'}], responses: {'204': {description: OK}}}
+  /courses/{courseId}/assessment/grading-queue:
+    get:
+      {tags: [Assessment], operationId: listGradingQueue, summary: 'Bài chờ chấm tay (FR-AST-03): lượt quiz có tự luận + bài tập đã nộp',
+       parameters: [{$ref: '#/components/parameters/CourseId'}, {name: kind, in: query, schema: {type: string, enum: [QUIZ_ATTEMPT, ASSIGNMENT]}}, {$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}],
+       responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {items: {type: array, items: {type: object, properties: {kind: {type: string}, sourceId: {type: string}, blockId: {type: string}, blockTitle: {type: string}, learner: {$ref: '#/components/schemas/UserRef'}, submittedAt: {type: string, format: date-time}}}}, meta: {$ref: '#/components/schemas/PageMeta'}}}}}}}}
+  /assessment/quiz-attempts/{id}/review:
+    get: {tags: [Assessment], operationId: getAttemptForReview, summary: 'Chủ khóa xem bài làm đầy đủ (đáp án + trả lời) để chấm', parameters: [{$ref: '#/components/parameters/Id'}], responses: {'200': {description: OK, content: {application/json: {schema: {type: object, additionalProperties: true}}}}}}
+  /assessment/quiz-attempts/{id}/manual-grades:
+    put:
+      {tags: [Assessment], operationId: gradeAttemptManually, summary: 'Chấm tay (DEC-03): Assessment → Learning.ApplyManualQuestionGrades → GradeQuizAttempt. points ≤ maxPoints',
+       parameters: [{$ref: '#/components/parameters/Id'}],
+       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [grades], properties: {grades: {type: array, items: {type: object, required: [questionId, points], properties: {questionId: {type: string, format: uuid}, points: {type: number}, feedback: {type: string}}}}, overallFeedback: {type: string}}}}}},
+       responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {totalScore: {type: number}, isFullyGraded: {type: boolean}}}}}}}}
+  /assessment/submissions/{id}/grade:
+    get: {tags: [Assessment], operationId: getSubmissionForGrading, summary: Xem bài nộp để chấm, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/SubmissionDto'}}}}}}
+    put:
+      {tags: [Assessment], operationId: gradeSubmission, summary: 'Chấm bài tập (score ≤ max_points); → Learning.MarkAssignmentGraded',
+       parameters: [{$ref: '#/components/parameters/Id'}],
+       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [score], properties: {score: {type: number}, feedback: {type: string}}}}}},
+       responses: {'204': {description: OK}}}
+  /courses/{courseId}/assessment/gradebook/me:
+    get: {tags: [Assessment], operationId: getMyGradebook, summary: 'Bảng điểm của tôi (FR-AST-05)', parameters: [{$ref: '#/components/parameters/CourseId'}], responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/GradebookDto'}}}}}}
+  /courses/{courseId}/assessment/gradebook/students/{userId}:
+    get: {tags: [Assessment], operationId: getStudentGradebook, summary: Bảng điểm một học viên (Chủ khóa), parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/UserId'}], responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/GradebookDto'}}}}}}
+  /courses/{courseId}/assessment/gradebook:
+    get:
+      {tags: [Assessment], operationId: listCourseGradebook, summary: Bảng điểm cả khóa (Chủ khóa),
+       parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}],
+       responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {items: {type: array, items: {$ref: '#/components/schemas/GradebookDto'}}, meta: {$ref: '#/components/schemas/PageMeta'}}}}}}}}
+  /courses/{courseId}/assessment/components/{blockId}/scores:
+    get: {tags: [Assessment], operationId: getComponentScores, summary: Bảng điểm theo bài (FR-AST-06), parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/BlockId'}], responses: {'200': {description: OK, content: {application/json: {schema: {type: array, items: {type: object, properties: {learner: {$ref: '#/components/schemas/UserRef'}, attempts: {type: array, items: {type: object}}, highest: {type: number, nullable: true}, latest: {type: number, nullable: true}, average: {type: number, nullable: true}, final: {type: number, nullable: true}}}}}}}}}
+  /courses/{courseId}/assessment/stats:
+    get: {tags: [Assessment], operationId: getAssessmentStats, summary: 'Thống kê Chủ khóa (FR-AST-16)', parameters: [{$ref: '#/components/parameters/CourseId'}], responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {scoreDistribution: {type: array, items: {type: object}}, hardestQuestions: {type: array, items: {type: object}}, cloPassRates: {type: array, items: {type: object}}, levelDistribution: {type: array, items: {type: object}}}}}}}}}
+  /courses/{courseId}/assessment/export:
+    get: {tags: [Assessment], operationId: exportAssessment, summary: Xuất báo cáo (FR-AST-20), parameters: [{$ref: '#/components/parameters/CourseId'}, {name: format, in: query, required: true, schema: {type: string, enum: [xlsx, pdf]}}, {name: scope, in: query, schema: {type: string, enum: [GRADEBOOK, CLO, STATS]}}], responses: {'200': {description: Tệp, content: {application/octet-stream: {schema: {type: string, format: binary}}}}}}
+  /courses/{courseId}/reviews:
+    get:
+      {tags: [Assessment], operationId: listReviews, security: [{}, {bearerAuth: []}], summary: Đánh giá khóa + sao trung bình (FR-AST-19),
+       parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}],
+       responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {avg: {type: number, nullable: true}, count: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/ReviewDto'}}, meta: {$ref: '#/components/schemas/PageMeta'}}}}}}}}
+  /courses/{courseId}/reviews/me:
+    put:
+      {tags: [Assessment], operationId: upsertMyReview, summary: 'Tạo/sửa đánh giá (FR-AST-17), học viên Đang học', parameters: [{$ref: '#/components/parameters/CourseId'}],
+       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [rating], properties: {rating: {type: integer, minimum: 1, maximum: 5}, commentText: {type: string}}}}}},
+       responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/ReviewDto'}}}}}}
+  /courses/{courseId}/reviews/{id}/reply:
+    put:
+      {tags: [Assessment], operationId: replyReview, summary: Chủ khóa trả lời (FR-AST-18), parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/Id'}],
+       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [replyText], properties: {replyText: {type: string}}}}}},
+       responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/ReviewDto'}}}}}}
+components:
+  schemas:
+    AssessmentConfigDto: {type: object, properties: {passThreshold: {type: number}, scoreSelectionRule: {type: string, enum: [HIGHEST, LATEST, AVERAGE]}, gradeScale: {type: array, nullable: true, items: {type: object, properties: {min: {type: number}, max: {type: number}, label: {type: string}}}}, achievementLevels: {type: array, nullable: true, items: {type: object, properties: {code: {type: string}, label: {type: string}, minPct: {type: number}, maxPct: {type: number}}}}, bloomScale: {type: object, nullable: true}, ploEnabled: {type: boolean}}}
+    ComponentDto: {type: object, properties: {blockId: {type: string, format: uuid}, sourceKind: {type: string, enum: [QUIZ, ASSIGNMENT]}, title: {type: string}, maxScore: {type: number}, courseWeight: {type: number, nullable: true}, isComponent: {type: boolean}, cloWeights: {type: array, items: {type: object, properties: {cloId: {type: string, format: uuid}, weight: {type: number}}}}}}
+    UpsertComponentRequest: {type: object, properties: {courseWeight: {type: number, minimum: 0}, cloWeights: {type: array, items: {type: object, required: [cloId, weight], properties: {cloId: {type: string, format: uuid}, weight: {type: number, exclusiveMinimum: true, minimum: 0}}}}}}
+    CloDto: {type: object, required: [code, description], properties: {id: {type: string, format: uuid}, code: {type: string}, description: {type: string}, bloomLevelCode: {type: string, nullable: true}, linkedPloIds: {type: array, items: {type: string, format: uuid}}}}
+    PloDto: {type: object, required: [code, description], properties: {id: {type: string, format: uuid}, code: {type: string}, description: {type: string}}}
+    GradebookDto: {type: object, properties: {learner: {$ref: '#/components/schemas/UserRef'}, components: {type: array, items: {type: object, properties: {blockId: {type: string}, title: {type: string}, maxScore: {type: number}, courseWeight: {type: number}, final: {type: number, nullable: true}, highest: {type: number, nullable: true}, latest: {type: number, nullable: true}, average: {type: number, nullable: true}, isPassed: {type: boolean, nullable: true}, feedback: {type: string, nullable: true}, status: {type: string, enum: [GRADED, PENDING_MANUAL, NOT_STARTED, NOT_DUE]}}}}, totalGrade: {type: number, nullable: true}, classification: {type: string, nullable: true}, cloAchievements: {type: array, items: {type: object, properties: {cloId: {type: string}, code: {type: string}, pct: {type: number}, level: {type: string}, achieved: {type: boolean}, contributions: {type: array, items: {type: object}}}}}, ploAchievements: {type: array, items: {type: object}}, allCloAchieved: {type: boolean}}}
+    ReviewDto: {type: object, properties: {id: {type: string, format: uuid}, user: {$ref: '#/components/schemas/UserRef'}, rating: {type: integer}, commentText: {type: string, nullable: true}, replyText: {type: string, nullable: true}, repliedAt: {type: string, format: date-time, nullable: true}, createdAt: {type: string, format: date-time}, updatedAt: {type: string, format: date-time}}}

@@ -1,0 +1,88 @@
+paths:
+  /courses:
+    post:
+      {tags: [Course], operationId: createCourse, summary: 'Tạo khóa (FR-CRS-01). Cần email đã xác minh (EMAIL_NOT_VERIFIED)',
+       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CourseUpsertRequest'}}}},
+       responses: {'201': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/CourseDto'}}}}}}
+  /courses/{courseId}:
+    parameters: [{$ref: '#/components/parameters/CourseId'}]
+    get: {tags: [Course], operationId: getCourse, security: [{}, {bearerAuth: []}], summary: 'Xem khóa (FR-CRS-02). Only Me/Tạm ẩn/Đã xóa với người khác → 404', responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/CourseDto'}}}}}}
+    patch:
+      {tags: [Course], operationId: updateCourse, summary: 'Sửa thông tin/trạng thái/chế độ truy cập/tag (FR-CRS-03,05,06). Đổi sang ONLY_ME khi đang Tạm ẩn → ONLY_ME_NOT_ALLOWED',
+       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CourseUpsertRequest'}}}},
+       responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/CourseDto'}}}}}}
+    delete: {tags: [Course], operationId: deleteCourse, summary: Xóa mềm (FR-CRS-04), responses: {'204': {description: OK}}}
+  /courses/{courseId}/stats:
+    get: {tags: [Course], operationId: getCourseStats, summary: Thống kê cơ bản (FR-CRS-14, Chủ khóa), parameters: [{$ref: '#/components/parameters/CourseId'}], responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/CourseStats'}}}}}}
+  /me/courses:
+    get:
+      {tags: [Course], operationId: listMyCourses, summary: Khóa của tôi (FR-PRF-05),
+       parameters: [{name: relation, in: query, required: true, schema: {type: string, enum: [OWNED, ENROLLED_ACTIVE]}}, {$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}],
+       responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {items: {type: array, items: {$ref: '#/components/schemas/CourseCard'}}, meta: {$ref: '#/components/schemas/PageMeta'}}}}}}}}
+  /courses/{courseId}/enrollments:
+    parameters: [{$ref: '#/components/parameters/CourseId'}]
+    post: {tags: [Course], operationId: enroll, summary: 'Ghi danh. PUBLIC → ACTIVE; PRIVATE → PENDING_APPROVAL (FR-CRS-08,10)', responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/EnrollmentDto'}}}}}}
+    get:
+      {tags: [Course], operationId: listEnrollments, summary: Danh sách học viên theo trạng thái (FR-CRS-12; Chủ khóa),
+       parameters: [{name: status, in: query, schema: {type: string, enum: [PENDING_APPROVAL, INVITED, ACTIVE, LEFT, REMOVED]}}, {$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}],
+       responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {items: {type: array, items: {$ref: '#/components/schemas/EnrollmentDto'}}, meta: {$ref: '#/components/schemas/PageMeta'}}}}}}}}
+  /courses/{courseId}/enrollments/me:
+    delete: {tags: [Course], operationId: leaveCourse, summary: Rời khóa (FR-CRS-11), parameters: [{$ref: '#/components/parameters/CourseId'}], responses: {'204': {description: OK}}}
+  /courses/{courseId}/enrollments/{userId}:
+    delete: {tags: [Course], operationId: removeLearner, summary: Xóa học viên (FR-CRS-13), parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/UserId'}], responses: {'204': {description: OK}}}
+  /courses/{courseId}/invitations:
+    post:
+      {tags: [Course], operationId: inviteLearner, summary: 'Mời bằng email (FR-CRS-09). Rate limit',
+       parameters: [{$ref: '#/components/parameters/CourseId'}],
+       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [email], properties: {email: {type: string, format: email}}}}}},
+       responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/EnrollmentDto'}}}}}}
+  /courses/{courseId}/invitations/accept:
+    post: {tags: [Course], operationId: acceptInvitation, summary: Chấp nhận lời mời (INVITED → ACTIVE), parameters: [{$ref: '#/components/parameters/CourseId'}], responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/EnrollmentDto'}}}}}}
+  /me/invitations:
+    get: {tags: [Course], operationId: listMyInvitations, summary: Lời mời đang chờ của tôi, responses: {'200': {description: OK, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/CourseCard'}}}}}}}
+  /courses/{courseId}/enrollment-requests/{requestId}/decision:
+    post:
+      {tags: [Course], operationId: decideEnrollmentRequest, summary: Duyệt/từ chối yêu cầu Private (FR-CRS-10),
+       parameters: [{$ref: '#/components/parameters/CourseId'}, {name: requestId, in: path, required: true, schema: {type: string, format: uuid}}],
+       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [decision], properties: {decision: {type: string, enum: [ACCEPTED, REJECTED]}}}}}},
+       responses: {'204': {description: OK}}}
+  /courses/{courseId}/chapters/{chapterId}/access:
+    put:
+      {tags: [Course], operationId: setChapterAccess, summary: 'Chế độ truy cập chương (FR-CRS-07). PROTECTED bắt buộc passcode; đổi passcode vô hiệu unlock cũ',
+       parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/ChapterId'}],
+       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [accessMode], properties: {accessMode: {type: string, enum: [PUBLIC, PROTECTED]}, passcode: {type: string, minLength: 4}}}}}},
+       responses: {'204': {description: OK}}}
+    get: {tags: [Course], operationId: getChapterAccess, summary: 'Xem cấu hình (không trả passcode)', parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/ChapterId'}], responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {accessMode: {type: string}, passcodeVersion: {type: integer}}}}}}}}
+  /courses/{courseId}/chapters/{chapterId}/unlock:
+    post:
+      {tags: [Course], operationId: unlockChapter, summary: 'Nhập passcode chương. Rate limit theo (user, chương)',
+       parameters: [{$ref: '#/components/parameters/CourseId'}, {$ref: '#/components/parameters/ChapterId'}],
+       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [passcode], properties: {passcode: {type: string}}}}}},
+       responses: {'204': {description: OK}}}
+  /courses/{courseId}/nomination:
+    put: {tags: [Course], operationId: nominateCourse, summary: Đề cử (FR-CRS-15; idempotent), parameters: [{$ref: '#/components/parameters/CourseId'}], responses: {'204': {description: OK}}}
+    delete: {tags: [Course], operationId: withdrawNomination, summary: Thu hồi đề cử (FR-CRS-16), parameters: [{$ref: '#/components/parameters/CourseId'}], responses: {'204': {description: OK}}}
+components:
+  schemas:
+    CourseUpsertRequest: {type: object, properties: {name: {type: string, maxLength: 200}, description: {type: string}, accessMode: {$ref: '#/components/schemas/AccessMode'}, status: {$ref: '#/components/schemas/CourseStatus'}, tags: {type: array, maxItems: 10, items: {type: string, maxLength: 50}}, coverUploadKey: {type: string}, removeCover: {type: boolean}}}
+    CourseDto:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        owner: {$ref: '#/components/schemas/UserRef'}
+        name: {type: string}
+        description: {type: string, nullable: true}
+        coverUrl: {type: string, nullable: true}
+        accessMode: {$ref: '#/components/schemas/AccessMode'}
+        status: {$ref: '#/components/schemas/CourseStatus'}
+        isHidden: {type: boolean}
+        isDeleted: {type: boolean}
+        tags: {type: array, items: {type: string}}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+        viewer: {type: object, description: Quyền của người xem, properties: {isOwner: {type: boolean}, enrollmentStatus: {type: string, nullable: true}, canReadContent: {type: boolean}, canLearn: {type: boolean}, hasNominated: {type: boolean}}}
+        ratingAvg: {type: number, nullable: true}
+        ratingCount: {type: integer}
+    CourseCard: {type: object, properties: {id: {type: string, format: uuid}, name: {type: string}, coverUrl: {type: string, nullable: true}, owner: {$ref: '#/components/schemas/UserRef'}, accessMode: {$ref: '#/components/schemas/AccessMode'}, status: {$ref: '#/components/schemas/CourseStatus'}, tags: {type: array, items: {type: string}}, learnerCount: {type: integer}, ratingAvg: {type: number, nullable: true}, ratingCount: {type: integer}, nominationCount: {type: integer}, progressPercent: {type: number, nullable: true}}}
+    CourseStats: {type: object, properties: {activeLearners: {type: integer}, completedLearners: {type: integer}, completionRate: {type: number}, commentCount: {type: integer}, chapterCount: {type: integer}, nominationCount: {type: integer}}}
+    EnrollmentDto: {type: object, properties: {id: {type: string, format: uuid}, courseId: {type: string, format: uuid}, user: {$ref: '#/components/schemas/UserRef'}, status: {type: string, enum: [PENDING_APPROVAL, INVITED, ACTIVE, LEFT, REMOVED]}, requestId: {type: string, format: uuid, nullable: true}, statusChangedAt: {type: string, format: date-time}}}
