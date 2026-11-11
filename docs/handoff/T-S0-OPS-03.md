@@ -3,7 +3,7 @@
 - **Task:** `T-S0-OPS-03` – `tools/merge-openapi` + Redocly lint + sinh `openapi/openapi.yaml`
 - **Vai trò:** OPS
 - **Nhánh:** `feat/T-S0-OPS-03-merge-openapi`
-- **Trạng thái:** REVIEW
+- **Trạng thái:** DONE
 
 ## Đã thực hiện
 

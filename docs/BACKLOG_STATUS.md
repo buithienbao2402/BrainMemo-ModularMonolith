@@ -13,7 +13,7 @@
 | T-S0-BE-03 | DONE | Antigravity (BE) | feat/T-S0-BE-03-shared-outbox | Outbox chung bảng-agnostic (`OutboxWriter` + `OutboxDispatcher` HostedService + `EfOutboxStore`) + 5 outbox tests |
 | T-S0-BE-04 | DONE | Antigravity (BE) | feat/T-S0-BE-04-architecture-tests | `Architecture.Tests` (NetArchTest + Cecil + Roslyn): kiểm đủ 9 luật REPO_STRUCTURE §2 + test âm tính |
 | T-S0-BE-05 | DONE | Antigravity (BE) | feat/T-S0-BE-05-s3-file-storage | `S3FileStorage` (`AWSSDK.S3` R2/MinIO), `FileUploadPolicy`, `POST /api/v1/files/upload-urls`, integration test MinIO (`140/140` tests pass) |
-| T-S0-OPS-03 | REVIEW | Antigravity (OPS) | feat/T-S0-OPS-03-merge-openapi | Script `tools/merge-openapi` (`pnpm --filter tools openapi:bundle` / `openapi:check`), Redocly lint (`openapi/redocly.yaml`, `pnpm --filter tools openapi:lint`), bundle `openapi/openapi.yaml` (`11` module, `110` paths, `55` schemas) & `11/11` unit tests pass |
+| T-S0-OPS-03 | DONE | Antigravity (OPS) | feat/T-S0-OPS-03-merge-openapi | Script `tools/merge-openapi` (`pnpm --filter tools openapi:bundle` / `openapi:check`), Redocly lint (`openapi/redocly.yaml`, `pnpm --filter tools openapi:lint`), bundle `openapi/openapi.yaml` (`11` module, `110` paths, `55` schemas) & `11/11` unit tests pass |
 | T-S0-FE-01 | TODO | – | – | – |
 | T-S0-OPS-04 | TODO | – | – | – |
 | T-S1-BE-01 | TODO | – | – | – |
