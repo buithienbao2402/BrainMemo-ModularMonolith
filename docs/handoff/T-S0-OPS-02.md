@@ -3,7 +3,7 @@
 - **Task:** `T-S0-OPS-02` – `infra/docker-compose.dev.yml` & `infra/env/.env.example`
 - **Vai trò:** OPS
 - **Nhánh:** `feat/T-S0-OPS-02-docker-compose-dev`
-- **Trạng thái:** REVIEW
+- **Trạng thái:** DONE
 
 ## Đã thực hiện
 
