@@ -3,7 +3,7 @@
 - **Task:** `T-S0-BE-03` – Outbox chung: bảng-agnostic `OutboxWriter` + `OutboxDispatcher` (HostedService) dùng cho Course/Learning/Assessment
 - **Vai trò:** BE
 - **Nhánh:** `feat/T-S0-BE-03-shared-outbox`
-- **Trạng thái:** REVIEW
+- **Trạng thái:** DONE
 
 ## Đã thực hiện
 
