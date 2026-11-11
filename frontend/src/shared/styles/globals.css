@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 25 100% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 20% 98%;
+    --secondary-foreground: 220 9% 34%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 25 100% 95%;
+    --accent-foreground: 25 100% 42%;
+    --destructive: 0 84% 58%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 25 100% 55%;
+    --radius: 0.75rem;
+    --surface-header: 0 0% 100%;
+    --surface-subnav: 210 20% 98%;
+    --surface-elevated: 0 0% 100%;
+  }
+
+  .dark {
+    --background: 240 12% 6%;
+    --foreground: 240 14% 96%;
+    --card: 240 10% 12%;
+    --card-foreground: 240 14% 96%;
+    --popover: 263 10% 15%;
+    --popover-foreground: 260 19% 90%;
+    --primary: 25 100% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 12% 13%;
+    --secondary-foreground: 240 10% 88%;
+    --muted: 240 11% 17%;
+    --muted-foreground: 240 7% 65%;
+    --accent: 25 45% 15%;
+    --accent-foreground: 25 100% 55%;
+    --destructive: 0 84% 62%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 11% 17%;
+    --input: 240 11% 20%;
+    --ring: 25 100% 55%;
+    --surface-header: 240 12% 6%;
+    --surface-subnav: 240 14% 9%;
+    --surface-elevated: 240 10% 12%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased selection:bg-primary/25 selection:text-foreground;
+  }
+}
+
