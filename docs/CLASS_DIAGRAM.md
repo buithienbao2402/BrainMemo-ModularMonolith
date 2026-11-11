@@ -398,8 +398,6 @@ classDiagram
         +IRepository~CourseCompletion~ CourseCompletions
         +IRepository~BlockCompletion~ BlockCompletions
         +IRepository~OutboxMessage~ Outbox
-        triển khai: LearningDbContext
-        (schema riêng của Learning)
     }
     class IAssessmentUnitOfWork {
         <<interface>>
@@ -408,13 +406,15 @@ classDiagram
         +IRepository~AssessmentComponent~ Components
         +IRepository~Clo~ CLOs
         +IRepository~OutboxMessage~ Outbox
-        triển khai: AssessmentDbContext
     }
 
     IUnitOfWork <|-- ILearningUnitOfWork
     IUnitOfWork <|-- IAssessmentUnitOfWork
-    ILearningUnitOfWork ..> IRepository~T~ : dùng
-    IAssessmentUnitOfWork ..> IRepository~T~ : dùng
+    ILearningUnitOfWork ..> IRepository : dùng
+    IAssessmentUnitOfWork ..> IRepository : dùng
+
+    note for ILearningUnitOfWork "triển khai: LearningDbContext\n(schema riêng của Learning)"
+    note for IAssessmentUnitOfWork "triển khai: AssessmentDbContext\n(schema riêng của Assessment)"
 ```
 
 ---
