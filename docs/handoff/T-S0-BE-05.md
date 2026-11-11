@@ -3,7 +3,7 @@
 - **Task:** `T-S0-BE-05` – File storage service (`S3FileStorage` cho R2/MinIO) + Presigned upload URL endpoint
 - **Vai trò:** BE
 - **Nhánh:** `feat/T-S0-BE-05-s3-file-storage`
-- **Trạng thái:** REVIEW
+- **Trạng thái:** DONE
 
 ## Đã thực hiện
 
