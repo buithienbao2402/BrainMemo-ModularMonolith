@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "brainmemo-ai-service"
+version = "0.1.0"
+description = "BrainMemo PhoBERT content moderation service (dev stub / ONNX runtime)"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115.0,<1.0.0",
+  "uvicorn>=0.32.0,<1.0.0",
+  "pydantic>=2.9.0,<3.0.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
