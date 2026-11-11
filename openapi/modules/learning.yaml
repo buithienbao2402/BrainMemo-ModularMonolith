@@ -17,7 +17,7 @@ paths:
     get: {tags: [Learning], operationId: getCourseProgress, summary: Tiến độ khóa/chương (FR-LRN-03), parameters: [{$ref: '#/components/parameters/CourseId'}], responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/ProgressDto'}}}}}}
   /courses/{courseId}/bookmark:
     put:
-      {tags: [Learning], operationId: setBookmark, summary: Đặt bookmark (1/khóa, FR-LRN-02),
+      {tags: [Learning], operationId: setBookmark, summary: 'Đặt bookmark (1/khóa, FR-LRN-02)',
        parameters: [{$ref: '#/components/parameters/CourseId'}],
        requestBody: {required: true, content: {application/json: {schema: {type: object, required: [chapterId], properties: {chapterId: {type: string, format: uuid}}}}}},
        responses: {'204': {description: OK}}}
@@ -57,7 +57,7 @@ paths:
        parameters: [{name: chapterId, in: query, schema: {type: string, format: uuid}}, {$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}],
        responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {items: {type: array, items: {$ref: '#/components/schemas/CommentDto'}}, meta: {$ref: '#/components/schemas/PageMeta'}}}}}}}}
     post:
-      {tags: [Learning], operationId: createComment, summary: Bình luận/trả lời (FR-LRN-10,11),
+      {tags: [Learning], operationId: createComment, summary: 'Bình luận/trả lời (FR-LRN-10,11)',
        requestBody: {required: true, content: {application/json: {schema: {type: object, required: [content], properties: {content: {type: string}, chapterId: {type: string, format: uuid}, parentCommentId: {type: string, format: uuid}}}}}},
        responses: {'201': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/CommentDto'}}}}}}
   /comments/{id}:
