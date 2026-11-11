@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using BrainMemo.BuildingBlocks.Infrastructure.Outbox;
+using BrainMemo.BuildingBlocks.Infrastructure.Storage;
 using BrainMemo.SharedKernel.Results;
 using BrainMemo.SharedKernel.Time;
 using BrainMemo.WebApi.Errors;
@@ -74,6 +75,7 @@ builder.Services.AddHealthChecks()
 builder.Services.AddBrainMemoSwagger();
 builder.Services.AddBrainMemoModules(mvcBuilder, builder.Configuration);
 builder.Services.AddOutboxDispatcher(builder.Configuration);
+builder.Services.AddS3FileStorage(builder.Configuration);
 
 WebApplication app = builder.Build();
 
