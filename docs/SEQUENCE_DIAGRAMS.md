@@ -1,4 +1,9 @@
 # TÀI LIỆU THIẾT KẾ UML SEQUENCE DIAGRAM
+## 10 PHÂN HỆ CỐT LÕI - HỆ THỐNG QUẢN LÝ KHÓA HỌC VÀ HỌC TẬP TRỰC TUYẾN
+
+> **Căn cứ tài liệu:** `DAC_TA_YEU_CAU_HE_THONG.md` & `schema.sql`  
+> **Kiến trúc:** Modular Monolith (10 Bounded Contexts, No Cross-Module FK).  
+> **Nguyên tắc giao tiếp:** Giao tiếp đồng bộ qua **Contract công khai**, giao tiếp bất đồng bộ qua **Domain Event** kết hợp **Transactional Outbox Pattern**; kiểm tra phân quyền đa tầng tại Backend; nguyên tắc AI **Human-in-the-loop**.
 
 ---
 
@@ -15,8 +20,6 @@
 9. [SD-09 (Moderation Module): Xử lý báo cáo vi phạm, Chế tài & Ghi Audit Log](#sd-09-moderation-module-xử-lý-báo-cáo-vi-phạm-chế-tài--ghi-audit-log)
 10. [SD-10 (AI Module): Sinh nội dung AI & Quét kiểm duyệt tự động](#sd-10-ai-module-sinh-nội-dung-ai--quét-kiểm-duyệt-tự-động)
 
-> **Bản sửa 2026-11-11** theo `CONFLICT_RESOLUTION.md`: tên Contract/event thống nhất với `THIET_KE_CSDL.md`; SD-05 chấm đồng bộ + Outbox; `pass_score` là phần trăm; Discovery dùng read model; thông báo dùng polling.
-
 ---
 
 ### SD-01 (Identity Module): Xác thực đăng nhập & Kiểm tra trạng thái tài khoản
@@ -28,21 +31,26 @@
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Guest as Khách (Guest)
-    participant Identity as Identity Module
+    actor Guest as "Khách (Guest)"
+    participant Identity as "Identity Module"
 
     Guest->>Identity: Đăng nhập (email, password)
     activate Identity
 
     Identity->>Identity: Kiểm tra mật khẩu (BCrypt hash)
     alt Mật khẩu không chính xác
-        Identity-->>Guest: Báo lỗi: Email hoặc mật khẩu không chính xác
+        Identity->>Identity: Tăng failed_login_attempts += 1
+        opt failed_login_attempts  >=  5
+            Identity->>Identity: Khóa tạm thời 15 phút (status = 'LOCKED', lock_until)
+        end
+        Identity-->>Guest: Báo lỗi - Email hoặc mật khẩu không chính xác
     else Mật khẩu chính xác
+        Identity->>Identity: Reset failed_login_attempts = 0
         Identity->>Identity: Kiểm tra trạng thái tài khoản
         
         alt Trạng thái: Bị khóa có thời hạn
             alt Thời hạn khóa đã hết
-                Identity->>Identity: Tự động mở khóa -> Trạng thái: Hoạt động
+                Identity->>Identity: Tự động mở khóa -> Trạng thái - Hoạt động (status = 'ACTIVE')
                 Identity->>Identity: Cấp phát phiên (Access Token <= 30m, Refresh Token)
                 Identity-->>Guest: Đăng nhập thành công (Trả về JWT Tokens)
             else Vẫn trong thời hạn khóa
@@ -51,7 +59,7 @@ sequenceDiagram
             end
         else Trạng thái: Bị khóa vĩnh viễn
             Identity->>Identity: Thu hồi toàn bộ Refresh Token
-            Identity-->>Guest: Từ chối đăng nhập: Tài khoản đã bị vô hiệu hóa
+            Identity-->>Guest: Từ chối đăng nhập - Tài khoản đã bị vô hiệu hóa
         else Trạng thái: Hoạt động
             Identity->>Identity: Cấp phát phiên mới (Access Token, Refresh Token)
             Identity-->>Guest: Đăng nhập thành công (Trả về JWT Tokens)
@@ -61,151 +69,169 @@ sequenceDiagram
 ```
 
 - **Mô tả ngắn gọn:** Khách nhập mật khẩu $\to$ Identity xác thực hash $\to$ kiểm tra trạng thái tài khoản. Nếu bị khóa thì từ chối và thu hồi refresh token. Nếu bình thường (hoặc đã hết hạn khóa) thì cấp phát JWT tokens.
-- **Quy tắc quan trọng:** Tài khoản bị khóa bị chặn toàn bộ API xác thực (`3.1.1`).
+- **Quy tắc quan trọng:** Tài khoản bị khóa bị chặn toàn bộ API xác thực (`3.1.1`). 5 lần sai liên tiếp bị khóa 15 phút.
 
 ---
 
 ### SD-02 (Course Module): Quản lý chế độ truy cập & Ghi danh khóa học
 
-- **Mục đích nghiệp vụ:** Ghi danh tự do khóa Public, yêu cầu + duyệt khóa Private, bảo vệ khóa Only Me. Mọi thay đổi ghi danh ghi `crs_outbox_event` cùng transaction.
+- **Mục đích nghiệp vụ:** Ghi danh tự do khóa Public, gửi yêu cầu + duyệt khóa Private, bảo vệ tuyệt đối khóa Only Me. Mọi thay đổi ghi danh ghi nhận sự kiện `EnrollmentChanged(action)` vào bảng `crs_outbox_event` cùng transaction để Outbox Dispatcher phát tán bất đồng bộ.
 - **Mã FR liên quan:** `FR-CRS-06`, `FR-CRS-08`, `FR-CRS-10`, `Mục 3.2.2`, `Mục 3.2.3`, `NFR-09`.
 - **Actor và Lifelines:** `Student`, `Owner`, `Identity`, `Course`, `Outbox Dispatcher`, `Notification`, `Discovery`.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Student as Học viên (User)
-    actor Owner as Chủ khóa (User)
-    participant Identity as Identity Module
-    participant Course as Course Module
-    participant Outbox as Outbox Dispatcher (crs_outbox_event)
-    participant Notification as Notification Module
-    participant Discovery as Discovery Module
+    actor Student as "Học viên (User)"
+    actor Owner as "Chủ khóa (User)"
+    participant Identity as "Identity Module"
+    participant Course as "Course Module"
+    participant Outbox as "Outbox Dispatcher"
+    participant Notification as "Notification Module"
+    participant Discovery as "Discovery Module"
 
     Student->>Course: Yêu cầu ghi danh (courseId)
     activate Course
     Course->>Identity: [Contract] GetAccountStatus(userId)
     Identity-->>Course: ACTIVE
-    Course->>Course: Tính trạng thái hiệu lực + access_mode (chủ khóa không ghi danh khóa của mình)
+    Course->>Course: Kiểm tra tính hợp lệ + access_mode (Chủ khóa không tự ghi danh khóa mình)
 
     alt Khóa Only Me / Tạm ẩn / Đã xóa
-        Course-->>Student: 404 (không lộ sự tồn tại)
+        Course-->>Student: 404 Not Found (Không tiết lộ sự tồn tại của khóa học)
     else Chế độ PUBLIC
-        Course->>Course: TX: chèn/cập nhật crs_enrollment = ACTIVE (giữ first_enrolled_at) + chèn crs_outbox_event EnrollmentChanged(action = SELF_ENROLL hoặc SELF_REENROLL)
-        Course-->>Student: Ghi danh thành công (học được chương Public)
+        Course->>Course: TX - Ghi crs_enrollment (status = ACTIVE) + ghi crs_outbox_event EnrollmentChanged(action = 'SELF_ENROLL')
+        Course-->>Student: Ghi danh thành công (Được phép học các chương Public)
     else Chế độ PRIVATE
-        Course->>Course: TX: crs_enrollment_request = PENDING, crs_enrollment = PENDING_APPROVAL + outbox EnrollmentChanged(action = REQUEST_SENT)
-        Course-->>Student: Đã gửi yêu cầu, chờ Chủ khóa duyệt
+        Course->>Course: TX - Ghi crs_enrollment_request (PENDING) + crs_enrollment (PENDING_APPROVAL) + ghi crs_outbox_event EnrollmentChanged(action = 'REQUEST_SENT')
+        Course-->>Student: Đã gửi yêu cầu, vui lòng chờ Chủ khóa xét duyệt
 
-        Owner->>Course: Duyệt yêu cầu (requestId, Accept hoặc Reject)
-        alt Chấp nhận
-            Course->>Course: TX: cập nhật có điều kiện status = PENDING_APPROVAL → ACTIVE, request = ACCEPTED + outbox (REQUEST_APPROVED)
-        else Từ chối
-            Course->>Course: TX: request = REJECTED; enrollment về LEFT (nếu từng học) hoặc xóa dòng + outbox (REQUEST_REJECTED)
+        %% Chủ khóa xét duyệt
+        Owner->>Course: Phê duyệt yêu cầu (requestId, action = 'Accept' | 'Reject')
+        alt Chấp nhận (Accept)
+            Course->>Course: TX - Cập nhật crs_enrollment (ACTIVE) + request (ACCEPTED) + ghi crs_outbox_event EnrollmentChanged(action = 'REQUEST_APPROVED')
+            Course-->>Owner: Đã phê duyệt học viên
+        else Từ chối (Reject)
+            Course->>Course: TX - Cập nhật request (REJECTED) + ghi crs_outbox_event EnrollmentChanged(action = 'REQUEST_REJECTED')
+            Course-->>Owner: Đã từ chối yêu cầu
         end
-        Course-->>Owner: Đã xử lý
     end
     deactivate Course
 
-    Outbox-)Notification: EnrollmentChanged (idempotent theo eventId)
-    Outbox-)Discovery: EnrollmentChanged (cập nhật learner_count, fact ENROLLMENT_NEW)
+    %% Bước Outbox: Dispatcher quét sự kiện và phát tán bất đồng bộ
+    Note over Course,Outbox: Tiến trình Outbox Dispatcher quét bảng crs_outbox_event
+    loop Quét định kỳ crs_outbox_event
+        Outbox->>Course: [Polling] Quét bản ghi crs_outbox_event (status = 'PENDING')
+        Course-->>Outbox: Danh sách sự kiện EnrollmentChanged (eventId, action, payload)
+        Outbox-->>Notification: [Event] EnrollmentChanged (action, recipient_id, payload - idempotent theo eventId)
+        Outbox-->>Discovery: [Event] EnrollmentChanged (action, course_id, fact_type = ENROLLMENT_NEW)
+        Outbox->>Course: Cập nhật crs_outbox_event (status = 'PUBLISHED')
+    end
 ```
 
-- **Mô tả ngắn gọn:** Public vào học ngay. Private: Chờ duyệt → Chủ khóa duyệt. Event đi qua Outbox, bên nhận idempotent.
-- **Quy tắc quan trọng:** Only Me không ai ghi danh, kể cả Admin. Người nhận thông báo theo `action` (bảng 3.5.9.5 trong CSDL). Luồng mời học viên (FR-CRS-09) dùng cùng cơ chế với `action = INVITE_SENT / INVITE_ACCEPTED`.
+- **Mô tả ngắn gọn:** Khóa Public vào học ngay; Khóa Private vào hàng đợi chờ duyệt. Dữ liệu ghi danh và sự kiện `EnrollmentChanged(action)` được lưu cùng Transaction vào bảng Outbox. Tiến trình Outbox Dispatcher quét bảng phát tán sang Notification và Discovery.
+- **Quy tắc quan trọng:** Khóa Only Me chặn tuyệt đối mọi hành vi ghi danh. Sự kiện đồng bộ qua `EnrollmentChanged` kèm tham số `action` rõ ràng (`SELF_ENROLL`, `REQUEST_SENT`, `REQUEST_APPROVED`, `REQUEST_REJECTED`).
 
 ---
 
 ### SD-03 (Content Module): Tổ chức cấu trúc phân cấp & Cấu hình bài kiểm tra
 
-- **Mục đích nghiệp vụ:** Chủ khóa soạn Course → Chapter → Block, Lưu (bản chụp bất biến, khóa lạc quan), cấu hình bài kiểm tra từ ngân hàng câu hỏi, đăng tải chương, liên kết CLO (thuộc Assessment).
-- **Mã FR liên quan:** `FR-CNT-01`, `FR-CNT-04`, `FR-CNT-10`, `FR-CNT-16`, `FR-CNT-12`, `FR-AST-13`.
+- **Mục đích nghiệp vụ:** Chủ khóa xây dựng cấu trúc Course $\to$ Chapter $\to$ Block, cấu hình bài thi xáo trộn từ ngân hàng câu hỏi, đăng tải chương. **Bỏ ValidateCloList và không lưu trọng số $w_{ik}$ ở Content**; việc liên kết CLO và lưu trọng số hoàn toàn do **Assessment Module** quản lý thông qua Contract `GetAssessableBlocks`.
+- **Mã FR liên quan:** `FR-CNT-01`, `FR-CNT-04`, `FR-CNT-10`, `FR-CNT-12`, `FR-CNT-16`, `FR-AST-13`.
 - **Actor và Lifelines:** `Owner`, `Content`, `Course`, `Assessment`, `Notification`, `Discovery`.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Owner as Chủ khóa (User)
-    participant Content as Content Module
-    participant Course as Course Module
-    participant Assessment as Assessment Module
-    participant Notification as Notification Module
-    participant Discovery as Discovery Module
+    actor Owner as "Chủ khóa (User)"
+    participant Content as "Content Module"
+    participant Course as "Course Module"
+    participant Assessment as "Assessment Module"
+    participant Notification as "Notification Module"
+    participant Discovery as "Discovery Module"
 
-    %% Bước 1: Lưu chương (không tự lưu)
-    Owner->>Content: Lưu chương (chapterId, lastVersionNo đang dựa trên, blocks, cấu hình quiz/bài tập)
+    %% Bước 1: Soạn thảo và lưu chương (khóa lạc quan)
+    Owner->>Content: Lưu chương (chapterId, lastVersionNo, blocks, quizConfig/assignmentConfig)
     activate Content
     Content->>Course: [Contract] GetCourseAccess(courseId, ownerId)
-    Course-->>Content: isOwner = true, khóa chưa Đã xóa
-    Content->>Content: TX: cập nhật có điều kiện last_version_no (xung đột thì báo lỗi, không ghi đè)
-    Content->>Content: Ghi cnt_block và bảng cấu hình con; chỉ nhận câu hỏi trạng thái READY
+    Course-->>Content: isOwner = true, khóa chưa bị xóa
+    Content->>Content: TX - Cập nhật có điều kiện last_version_no (khóa lạc quan chống ghi đè)
+    Content->>Content: Ghi cnt_block và bảng cấu hình con (chỉ nhận câu hỏi READY)
     Content->>Content: Chèn cnt_chapter_version (snapshot bất biến, chỉ chứa questionId)
-    Content-->>Owner: Lưu thành công (versionNo mới)
+    Content-->>Owner: Lưu bản nháp thành công (versionNo mới)
 
-    %% Bước 2: Đăng tải
-    Owner->>Content: Đăng tải chương
-    Content->>Content: Kiểm điều kiện đăng (flashcard AI đã duyệt, tài nguyên còn, quiz đủ câu READY, cấu hình thời gian hợp lệ)
-    Content->>Content: TX: published_version_no = last_version_no, dựng lại cnt_published_block
-    Content-->>Owner: Đã đăng tải
+    %% Bước 2: Đăng tải chương học
+    Owner->>Content: Đăng tải chương (chapterId)
+    Content->>Content: Kiểm tra điều kiện xuất bản (tài nguyên hợp lệ, quiz đủ câu READY)
+    Content->>Content: TX - published_version_no = last_version_no, tạo snapshot cnt_published_block
+    Content-->>Owner: Xuất bản chương thành công
     deactivate Content
-    Content-)Notification: ChapterPublished (thông báo "chương mới" khi isFirstPublish)
-    Content-)Discovery: ChapterPublished (published_chapter_count, first_published_at)
+    Content-->>Notification: [Event] ChapterPublished (thông báo chương mới khi isFirstPublish)
+    Content-->>Discovery: [Event] ChapterPublished (cập nhật published_chapter_count)
 
-    %% Bước 3: Liên kết CLO do Assessment sở hữu
-    Owner->>Assessment: Liên kết bài kiểm tra/bài tập với CLO (blockId, cloWeights: cloId + weight)
+    %% Bước 3: Liên kết CLO thuộc trách nhiệm của Assessment Module
+    Owner->>Assessment: Thiết lập liên kết bài thi với CLO (courseId, blockId, cloWeights - {cloId, weight})
     activate Assessment
     Assessment->>Content: [Contract] GetAssessableBlocks(courseId)
-    Content-->>Assessment: Danh sách bài kiểm tra/bài tập đã đăng tải + điểm tối đa
-    Assessment->>Assessment: Lưu ast_assessment_component và ast_component_outcome_weight (kiểm cùng courseId)
-    Assessment-->>Owner: Liên kết CLO hoàn tất
+    activate Content
+    Content-->>Assessment: Danh sách bài kiểm tra/bài tập đã xuất bản + điểm tối đa
+    deactivate Content
+    Assessment->>Assessment: Lưu ast_assessment_component và ast_component_outcome_weight (kiểm tra weight > 0)
+    Assessment-->>Owner: Liên kết CLO và trọng số thành công
     deactivate Assessment
 ```
 
-- **Mô tả ngắn gọn:** Lưu (khóa lạc quan + bản chụp) → Đăng tải (đổi con trỏ bản) → Assessment liên kết CLO qua `GetAssessableBlocks`.
-- **Quy tắc quan trọng:** Content **không** có bảng trọng số CLO; bài chưa liên kết CLO thì không đóng góp vào CLO (`FR-CNT-12`). Chỉ đăng được bài đã đăng tải mới liên kết CLO.
+- **Mô tả ngắn gọn:** Content quản lý nội dung bản nháp và bản xuất bản bất biến. Content không lưu trọng số CLO. Chủ khóa liên kết CLO trực tiếp với Assessment Module; Assessment lấy danh sách bài thi qua Contract `GetAssessableBlocks`.
+- **Quy tắc quan trọng:** Bỏ `ValidateCloList` và không lưu $w_{ik}$ ở Content. Chỉ bài kiểm tra/bài tập đã xuất bản mới được liên kết CLO.
 
 ---
 
 ### SD-04 (Learning Module): Truy cập học tập ma trận Khóa - Chương & Tiến độ
 
-- **Mục đích nghiệp vụ:** Kiểm tra quyền đọc theo ma trận Khóa–Chương (chương Protected cần passcode), phục vụ nội dung đã đăng tải, ghi nhận Block hoàn thành và tính tiến độ cho học viên Đang học.
+- **Mục đích nghiệp vụ:** Kiểm tra quyền đọc theo ma trận Khóa–Chương qua Contract `CheckChapterAccess` (chương Protected yêu cầu Passcode), phục vụ nội dung đã xuất bản qua Contract `GetPublishedChapterContent`, ghi nhận Block hoàn thành và tự động tính % tiến độ cho học viên Đang học.
 - **Mã FR liên quan:** `FR-CRS-07`, `FR-LRN-01`, `FR-LRN-03`, `FR-LRN-15`, `FR-LRN-16`, `Mục 3.2.2`, `Mục 3.4.1`.
-- **Actor và Lifelines:** `Client` (Student/Guest), `Learning`, `Course`, `Content`.
+- **Actor và Lifelines:** `Client` (Student / Guest), `Learning`, `Course`, `Content`.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Client as Người học (Student / Guest)
-    participant Learning as Learning Module
-    participant Course as Course Module
-    participant Content as Content Module
+    actor Client as "Người học (Student / Guest)"
+    participant Learning as "Learning Module"
+    participant Course as "Course Module"
+    participant Content as "Content Module"
 
-    Client->>Learning: Mở chương (courseId, chapterId)
+    Client->>Learning: Yêu cầu mở chương học (courseId, chapterId)
     activate Learning
     Learning->>Course: [Contract] CheckChapterAccess(courseId, chapterId, viewerUserId?)
+    activate Course
     Course-->>Learning: {allowed, canSaveProgress, reason}
+    deactivate Course
 
-    alt reason = COURSE_DENIED hoặc NOT_FOUND (Only Me, Tạm ẩn, Đã xóa, Private chưa ghi danh)
-        Learning-->>Client: 403 / 404
-    else reason = PASSCODE_REQUIRED hoặc NOT_ENROLLED
-        Learning-->>Client: Yêu cầu nhập passcode chương / yêu cầu ghi danh
-        Client->>Course: Nhập passcode chương (API của Course, có rate limit)
-        Course->>Course: So BCrypt, ghi crs_chapter_unlock (passcode_version hiện tại)
-        Course-->>Client: Đã mở khóa, mở lại chương
-    else allowed = true
+    alt reason = COURSE_DENIED hoặc NOT_FOUND (Khóa Only Me, Tạm ẩn, Private chưa ghi danh)
+        Learning-->>Client: 403 Forbidden / 404 Not Found
+    else reason = PASSCODE_REQUIRED (Chương Protected chưa mở khóa)
+        Learning-->>Client: Yêu cầu nhập Passcode của chương
+        Client->>Course: Nhập passcode chương (API Course Module, có rate limit)
+        Course->>Course: So khớp BCrypt, ghi crs_chapter_unlock
+        Course-->>Client: Mở khóa thành công, cho phép tải lại chương
+    else allowed = true (Được phép truy cập)
         Learning->>Content: [Contract] GetPublishedChapterContent(chapterId)
-        Content-->>Learning: Nội dung bản đã đăng tải, KHÔNG kèm đáp án
+        activate Content
+        Content-->>Learning: Nội dung chương và danh sách cnt_published_block (KHÔNG kèm đáp án)
+        deactivate Content
         Learning-->>Client: Hiển thị nội dung học tập
 
-        opt canSaveProgress = true (học viên Đang học; Khách và người chưa ghi danh khóa Public thì false)
-            Client->>Learning: Mở Block nội dung (blockId)
-            Learning->>Learning: Chèn lrn_block_completion (UK user + block, idempotent)
+        %% Ghi nhận tiến độ học tập
+        opt canSaveProgress = true (Chỉ áp dụng cho Học viên "Đang học")
+            Client->>Learning: Mở tương tác Block nội dung (blockId)
+            Learning->>Learning: Ghi lrn_block_completion (idempotent theo user_id + block_id)
             Learning->>Content: [Contract] ListPublishedBlocks(chapterId / courseId)
-            Learning->>Learning: Tiến độ chương = Block hoàn thành / Block đã đăng tải
-            opt Mọi Block đã đăng tải của chương hoàn thành
-                Learning->>Learning: Tính tiến độ khóa = chương hoàn thành / chương đã đăng tải
-                opt 100% chương đã đăng tải
-                    Learning->>Learning: Chèn lrn_course_completion (một lần, không bị hủy) và phát CourseCompleted
+            Learning->>Learning: Tính lại % tiến độ Chương = (Số Block hoàn thành / Tổng Block xuất bản) * 100
+            opt Tất cả Block trong chương hoàn thành
+                Learning->>Learning: Đánh dấu hoàn thành Chương
+                Learning->>Learning: Tính lại % tiến độ Khóa = (Số Chương hoàn thành / Tổng Chương xuất bản) * 100
+                opt 100% Chương hoàn thành
+                    Learning->>Learning: Ghi lrn_course_completion (xác lập mốc hoàn thành khóa học một lần)
+                    Learning-->>Course: [Event] CourseCompleted(userId, courseId)
                 end
             end
         end
@@ -213,351 +239,363 @@ sequenceDiagram
     deactivate Learning
 ```
 
-- **Mô tả ngắn gọn:** `CheckChapterAccess` quyết định cho đọc, hỏi passcode hay từ chối. Chỉ học viên Đang học được ghi tiến độ.
-- **Quy tắc quan trọng:** Khách chỉ đọc chương Public của khóa Public, không lưu gì (`FR-LRN-16`). Block QUESTION hoàn thành khi đã làm, bài tập khi đã nộp, bài kiểm tra khi đã nộp (xem SD-05).
+- **Mô tả ngắn gọn:** Sử dụng `CheckChapterAccess` để phân định quyền đọc/hỏi passcode. Lấy nội dung bài giảng bằng `GetPublishedChapterContent`. Chỉ học viên Đang học mới được ghi nhận tiến độ % hoàn thành.
+- **Quy tắc quan trọng:** Khách chỉ đọc chương Public của khóa Public và tuyệt đối không lưu tiến độ (`FR-LRN-16`). Mở block là hoàn thành block.
 
 ---
 
-### SD-05 (Learning + Assessment): Nộp bài thi, Chấm đồng bộ & nhãn Đạt
+### SD-05 (Assessment Module): Nộp bài thi, Chấm tự động & Tính chuẩn đầu ra CLO
 
-- **Mục đích nghiệp vụ:** Nộp bài → Assessment chấm tự động **đồng bộ** → học viên thấy điểm ngay. Event `QuizAttemptSubmitted` đi qua Outbox làm lưới an toàn (chấm lại nếu lỗi) và cập nhật tiến độ. Mức đạt CLO tính khi đọc bảng điểm, không tính lúc nộp.
-- **Mã FR liên quan:** `FR-LRN-08`, `FR-AST-01`, `FR-AST-02`, `FR-AST-03`, `FR-AST-15`, `FR-CNT-13`, `Mục 3.5.2`, `NFR-09`, `NFR-10`.
-- **Quyết định liên quan:** `[ADR-04]` chấm đồng bộ; `[ADR-05]` `pass_score` là phần trăm.
-- **Actor và Lifelines:** `Trigger` (Student hoặc Hệ thống khi hết giờ), `Learning`, `Assessment`, `Outbox Dispatcher`, `Notification`.
+- **Mục đích nghiệp vụ:** Nộp bài kiểm tra $\to$ Assessment chấm tự động **đồng bộ** $\to$ học viên nhận điểm ngay. Sự kiện đi qua Outbox cập nhật tiến độ học tập và gửi thông báo. Mức đạt CLO theo chuẩn AUN-QA được tính khi truy vấn Bảng điểm (không tính lúc nộp).
+- **Mã FR liên quan:** `FR-LRN-08`, `FR-AST-01`, `FR-AST-02`, `FR-AST-03`, `FR-AST-14`, `FR-AST-15`, `FR-CNT-13`, `Mục 3.5.2`, `NFR-09`, `NFR-10`.
+- **Actor và Lifelines:** `Trigger` (Student / System khi hết giờ), `Learning`, `Assessment`, `Outbox Dispatcher`, `Notification`.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Trigger as Người nộp (Student / System khi quá deadline_at)
-    participant Learning as Learning Module
-    participant Assessment as Assessment Module
-    participant Outbox as Outbox Dispatcher
-    participant Notification as Notification Module
+    actor Trigger as "Người nộp (Student / System khi quá deadline)"
+    participant Learning as "Learning Module"
+    participant Assessment as "Assessment Module"
+    participant Outbox as "Outbox Dispatcher"
+    participant Notification as "Notification Module"
 
-    Trigger->>Learning: Nộp bài (attemptId)
+    %% Luồng nộp bài và chấm điểm đồng bộ
+    Trigger->>Learning: Nộp bài kiểm tra (attemptId, answers)
     activate Learning
-    Learning->>Learning: TX1: cập nhật có điều kiện IN_PROGRESS → SUBMITTED (hoặc AUTO_SUBMITTED) + chèn lrn_outbox_event QuizAttemptSubmitted
+    Learning->>Learning: TX1 - Cập nhật lrn_quiz_attempt (status = 'SUBMITTED' hoặc 'AUTO_SUBMITTED', submitted_at = NOW()) + chèn lrn_outbox_event QuizAttemptSubmitted
+    
     Learning->>Assessment: [Contract] GradeQuizAttempt(attemptId)
     activate Assessment
     Assessment->>Learning: [Contract] GetQuizAttemptForGrading(attemptId)
-    Learning-->>Assessment: Snapshot đề (đáp án đúng, điểm, passScorePercent) + câu trả lời
-    Assessment->>Assessment: IGradingStrategy từng câu (tự luận → PendingManualGrading)
-    Assessment->>Assessment: TX: ghi ast_grade_record (QUIZ_ATTEMPT), áp score_selection_rule → COMPONENT_FINAL
-    opt Không còn câu chờ chấm tay
-        Assessment->>Assessment: is_fully_graded = TRUE; isPassed = (total / max × 100) ≥ passScorePercent, NULL nếu bài không đặt pass_score
-        Assessment->>Assessment: Chèn ast_outbox_event GradeRecorded (cùng TX)
-    end
-    Assessment-->>Learning: {totalScore, maxScore, pendingManual, passScorePercent?, isPassed?, questions[]}
-    deactivate Assessment
-    Learning->>Learning: TX2: ghi điểm từng câu; nếu không pendingManual → GRADED, total_score, graded_at
-    Learning-->>Trigger: Kết quả theo cấu hình hiển thị (FR-CNT-13); tự luận hiện "Chờ chấm tay"
+    activate Learning
+    Learning-->>Assessment: Trả về question_snapshot (đáp án đúng, điểm, passScorePercent) + câu trả lời học viên
     deactivate Learning
 
-    alt Assessment lỗi hoặc timeout
-        Learning-->>Trigger: "Đã nộp, đang chấm" (attempt giữ SUBMITTED)
+    Assessment->>Assessment: Chấm điểm tự động từng câu trắc nghiệm (so khớp đáp án đúng)
+    Assessment->>Assessment: TX - Ghi ast_grade_record (record_type = 'QUIZ_ATTEMPT'), áp dụng score_selection_rule cập nhật COMPONENT_FINAL
+    opt Không có câu tự luận chờ chấm tay
+        Assessment->>Assessment: is_fully_graded = TRUE - isPassed = (total_score / max_score * 100) >= passScorePercent
+        Assessment->>Assessment: Chèn ast_outbox_event GradeRecorded (cùng TX)
+    end
+    Assessment-->>Learning: Kết quả chấm - {totalScore, maxScore, isFullyGraded, isPassed, questionsResult[]}
+    deactivate Assessment
+
+    Learning->>Learning: TX2 - Lưu điểm từng câu vào lrn_quiz_attempt_answer - nếu fullyGraded -> status = 'GRADED', total_score, graded_at
+    Learning-->>Trigger: Hiển thị kết quả nộp bài (theo cấu hình review_policy FR-CNT-13)
+    deactivate Learning
+
+    alt Assessment gặp lỗi hoặc timeout
+        Learning-->>Trigger: Thông báo - "Bài thi đã được ghi nhận, hệ thống đang xử lý chấm điểm ngầm"
     end
 
-    Note over Outbox,Notification: Sau commit, Outbox Dispatcher phát event (bên nhận idempotent theo eventId)
-    Outbox-)Learning: QuizAttemptSubmitted → UpdateCourseProgressHandler (Quiz Block hoàn thành, không cần đạt)
-    Outbox-)Assessment: QuizAttemptSubmitted → lưới an toàn: gọi lại GradeQuizAttempt (bỏ qua nếu đã chấm xong)
-    Outbox-)Notification: GradeRecorded → thông báo GRADE_FEEDBACK cho học viên
+    %% Outbox Dispatcher phát sự kiện bất đồng bộ
+    Note over Outbox,Notification: Sau commit, Outbox Dispatcher quét bảng phát tán sự kiện
+    Outbox-->>Learning: [Event] QuizAttemptSubmitted -> UpdateCourseProgressHandler (Đánh dấu Block Quiz hoàn thành)
+    Outbox-->>Assessment: [Event] QuizAttemptSubmitted -> Lưới an toàn - kiểm tra và gọi lại GradeQuizAttempt nếu chưa chấm
+    Outbox-->>Notification: [Event] GradeRecorded -> Gửi thông báo kết quả điểm thi đến học viên
 ```
 
-**Nhánh phụ: xem bảng điểm và mức đạt CLO (tính khi đọc)**
+**Nhánh tính mức đạt Chuẩn đầu ra CLO/PLO theo chuẩn AUN-QA (khi xem Sổ điểm):**
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Viewer as Học viên / Chủ khóa
-    participant Assessment as Assessment Module
+    actor Viewer as "Học viên / Chủ khóa"
+    participant Assessment as "Assessment Module"
 
     Viewer->>Assessment: GetStudentGradebook(userId, courseId)
     activate Assessment
-    Assessment->>Assessment: Lấy COMPONENT_FINAL từng thành phần + trọng số ast_component_outcome_weight
-    Assessment->>Assessment: t_i = điểm / điểm tối đa; CLO_k (%) = Σ(w_ik · t_i) / Σ w_ik × 100
-    Assessment->>Assessment: Đạt CLO khi ≥ pass_threshold (mặc định 50%); gán tên mức theo achievement_levels_json
-    Assessment-->>Viewer: Điểm tổng kết, xếp loại, mức đạt từng CLO (và PLO nếu bật)
+    Assessment->>Assessment: Lấy điểm tổng kết COMPONENT_FINAL từng bài thi + ma trận trọng số ast_component_outcome_weight
+    Assessment->>Assessment: Tính tỷ lệ đạt bài thi - t_i = điểm / điểm_tối_đa
+    Assessment->>Assessment: Tính mức đạt CLO_k (%) = Sum(w_ik * t_i) / Sum(w_ik) * 100
+    Assessment->>Assessment: Đạt chuẩn CLO nếu mức đạt >= pass_threshold (mặc định 50.00%)
+    Assessment->>Assessment: Gán nhãn xếp loại - Chưa đạt, Đạt, Tốt, Xuất sắc (theo achievement_levels_json)
+    Assessment-->>Viewer: Bảng điểm chi tiết - Điểm tổng kết môn, Điểm thành phần, Mức đạt từng CLO/PLO
     deactivate Assessment
 ```
 
-- **Mô tả ngắn gọn:** Nộp → chấm đồng bộ → điểm trả ngay. Lỗi giữa chừng thì Outbox chấm lại. CLO tính lúc xem bảng điểm.
-- **Quy tắc quan trọng:** Nhãn Đạt của bài theo `pass_score` (%); ngưỡng chung `pass_threshold` chỉ dùng cho điểm tổng kết và CLO/PLO. Hoàn thành khóa (tiến độ) và Đạt chuẩn đầu ra là hai kết quả độc lập (`3.4.1`, `3.5.2`). Chấm tay: Chủ khóa nhập điểm câu tự luận, sau đó `GradeQuizAttempt` được gọi lại (idempotent) để tính tổng.
+- **Mô tả ngắn gọn:** Nộp bài $\to$ Assessment chấm điểm tự động đồng bộ $\to$ ghi nhận điểm ngay. Outbox kích hoạt cập nhật tiến độ học tập. Chuẩn đầu ra CLO được tính toán động khi truy vấn Sổ điểm dựa trên ma trận trọng số $w_{ik}$.
+- **Quy tắc quan trọng:** Ngưỡng đạt bài thi đơn lẻ tính theo `pass_score` (%); Ngưỡng đạt Chuẩn đầu ra CLO tính theo `pass_threshold` (mặc định 50%). Hoàn thành tiến độ và Đạt chuẩn CLO là 2 kết quả độc lập.
 
 ---
 
 ### SD-06 (Discovery Module): Khám phá, Tìm kiếm, Lọc & Bảng xếp hạng Top 10
 
-- **Mục đích nghiệp vụ:** Discovery phục vụ trang chủ, tìm kiếm, lọc, sắp xếp, Top 10 từ **read model riêng** (`dsc_course_entry`, `dsc_course_activity_fact`), được cập nhật bằng event từ Course (qua Outbox), Content, Assessment, Learning.
+- **Mục đích nghiệp vụ:** Discovery phục vụ trang chủ, tìm kiếm, lọc, Top 10 từ **read model riêng `dsc_course_entry` và `dsc_course_activity_fact`**, **tuyệt đối không gọi Course Module trong luồng đọc**. Read model được đồng bộ bất đồng bộ từ các module qua Outbox.
 - **Mã FR liên quan:** `FR-DSC-01..10`, `Mục 3.6.1`, `NFR-16`.
-- **Actor và Lifelines:** `Client`, `Discovery`, `Course`, `Outbox Dispatcher`, `Learning`.
+- **Actor và Lifelines:** `Client`, `Discovery`, `Learning`, `Outbox Dispatcher`.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Client as Người dùng / Khách
-    participant Discovery as Discovery Module
-    participant Learning as Learning Module
-    participant Course as Course Module
-    participant Outbox as Outbox Dispatcher
+    actor Client as "Người dùng / Khách"
+    participant Discovery as "Discovery Module"
+    participant Learning as "Learning Module"
+    participant Outbox as "Outbox Dispatcher"
 
-    %% Nhánh 1: đọc
-    Client->>Discovery: Trang chủ / Tìm kiếm / Lọc / Sắp xếp / Top 10 (query, filters, page ≤ 50)
+    %% Nhánh 1: Luồng đọc dữ liệu từ Read Model (KHÔNG gọi Course Module)
+    Client->>Discovery: Truy vấn Khám phá / Tìm kiếm / Lọc / Top 10 (query, filters, page <= 50)
     activate Discovery
     alt Danh sách đề xuất (FR-DSC-02)
-        Discovery->>Discovery: Chọn NGẪU NHIÊN từ dsc_course_entry (độc lập theo từng lần tải, không theo lịch sử học)
-    else Top 10 (FR-DSC-10)
-        Discovery->>Discovery: Đếm dsc_course_activity_fact theo kỳ (tuần / tháng / toàn thời gian), chỉ khóa còn trong dsc_course_entry
-    else Tìm kiếm / lọc / sắp xếp (FR-DSC-04..09)
-        Discovery->>Discovery: Truy vấn dsc_course_entry (tên, Chủ khóa, tag, chế độ, trạng thái), sắp xếp theo 6 tiêu chí
+        Discovery->>Discovery: Chọn ngẫu nhiên (RANDOM) từ dsc_course_entry (độc lập mỗi lần tải trang, không theo lịch sử học)
+    else Bảng xếp hạng Top 10 (FR-DSC-10)
+        Discovery->>Discovery: Tổng hợp dsc_course_activity_fact theo kỳ (Tuần, Tháng, Toàn thời gian), chỉ lấy khóa còn trong dsc_course_entry
+    else Tìm kiếm, lọc và sắp xếp (FR-DSC-04..09)
+        Discovery->>Discovery: Truy vấn dsc_course_entry (tên, chủ khóa, tag, chế độ, trạng thái) với 6 tiêu chí sắp xếp
     end
-    opt Khóa đang học dở của học viên (FR-DSC-03)
+    opt Lấy khóa đang học dở của học viên (FR-DSC-03)
         Discovery->>Learning: [Contract] ListInProgressCourses(userId)
-        Learning-->>Discovery: courseIds
-        Discovery->>Course: [Contract] GetCourseSummaries(courseIds, viewerUserId)
-        Course-->>Discovery: Tóm tắt (khóa không xem được trả visible = false, không kèm nội dung)
+        Learning-->>Discovery: Danh sách courseIds đang học
+        Discovery->>Discovery: Lọc thông tin khóa học trực tiếp từ dsc_course_entry theo courseIds (không gọi Course)
     end
-    Discovery-->>Client: Kết quả (khóa Private chỉ thông tin cơ bản)
+    Discovery-->>Client: Trả về kết quả hiển thị (Khóa Private chỉ hiển thị thông tin cơ bản)
     deactivate Discovery
 
-    %% Nhánh 2: cập nhật read model
-    Course->>Course: TX: đổi khóa + chèn crs_outbox_event CourseUpserted(revision, eligible)
-    Outbox-)Discovery: CourseUpserted
-    alt eligible = true và revision ≥ source_revision
-        Discovery->>Discovery: Upsert dsc_course_entry
-    else eligible = false (Only Me, Tạm ẩn, Đã xóa)
-        Discovery->>Discovery: Xóa dòng khỏi dsc_course_entry (event không mang tên/mô tả)
+    %% Nhánh 2: Luồng đồng bộ Read Model từ Outbox Events
+    Note over Outbox,Discovery: Cập nhật Read Model bất đồng bộ khi có thay đổi dữ liệu
+    Outbox-->>Discovery: [Event] CourseUpserted(courseId, revision, eligible, payload)
+    activate Discovery
+    alt eligible = true và revision  >=  source_revision
+        Discovery->>Discovery: Upsert bản ghi dsc_course_entry
+    else eligible = false (Khóa Only Me, Tạm ẩn hoặc Đã xóa)
+        Discovery->>Discovery: Xóa bản ghi khỏi dsc_course_entry (loại bỏ hoàn toàn khỏi tìm kiếm)
     end
-    Outbox-)Discovery: EnrollmentChanged, NominationChanged, CourseReviewCreated/Updated → cập nhật số đếm + ghi fact (UK source_event_id)
+    deactivate Discovery
+    
+    Outbox-->>Discovery: [Event] EnrollmentChanged / NominationChanged / CourseReviewCreated -> Cập nhật số đếm + ghi dsc_course_activity_fact
 ```
 
-- **Mô tả ngắn gọn:** Đọc từ read model của Discovery, không gọi Course lúc tìm kiếm. Khóa không đủ điều kiện công khai bị xóa khỏi read model.
-- **Quy tắc quan trọng:** Only Me, Tạm ẩn, Đã xóa **không bao giờ** có trong `dsc_course_entry` (`3.6.1`). Read model dựng lại được qua `ListCourseSnapshots`, `ListEnrollmentFacts`, `ListNominationFacts`.
+- **Mô tả ngắn gọn:** Toàn bộ thao tác tìm kiếm, lọc, xem Top 10 đều đọc trực tiếp từ bảng Read Model `dsc_course_entry` của Discovery, hoàn toàn không gọi Course Module. Khóa Only Me hoặc Tạm ẩn tự động bị loại bỏ khỏi Read Model.
+- **Quy tắc quan trọng:** Bảng xếp hạng Top 10 tính theo số hoạt động phát sinh mới trong kỳ từ bảng fact. Khóa đề xuất được bốc ngẫu nhiên độc lập.
 
 ---
 
 ### SD-07 (Profile Module): Quản lý hồ sơ cá nhân & Thiết lập quyền riêng tư
 
-- **Mục đích nghiệp vụ:** Người dùng cập nhật hồ sơ (tên, avatar, giới thiệu, ẩn/hiện danh sách khóa, giao diện). Người khác xem hồ sơ công khai; khóa Only Me không bao giờ hiển thị.
+- **Mục đích nghiệp vụ:** Người dùng cập nhật hồ sơ cá nhân (kiểm tra tài khoản qua `GetAccountStatus`). Người xem tra cứu hồ sơ công khai; danh sách khóa học lấy qua Course Module với bộ lọc `audience = PUBLIC` (khóa Only Me không bao giờ hiển thị).
 - **Mã FR liên quan:** `FR-PRF-01..07`, `FR-PRF-06`.
 - **Actor và Lifelines:** `User`, `Viewer`, `Profile`, `Identity`, `Course`, `Discovery`.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor User as Chủ tài khoản (User)
-    actor Viewer as Người xem (Guest / User khác)
-    participant Profile as Profile Module
-    participant Identity as Identity Module
-    participant Course as Course Module
-    participant Discovery as Discovery Module
+    actor User as "Chủ tài khoản (User)"
+    actor Viewer as "Người xem (Guest / User khác)"
+    participant Profile as "Profile Module"
+    participant Identity as "Identity Module"
+    participant Course as "Course Module"
+    participant Discovery as "Discovery Module"
 
-    %% Nhánh 1: cập nhật
-    User->>Profile: Cập nhật hồ sơ (displayName, avatar, bio, showCourseList, uiTheme); userId lấy từ JWT
+    %% Nhánh 1: Cập nhật thông tin hồ sơ
+    User->>Profile: Cập nhật hồ sơ (displayName, avatar, bio, showCourseList, uiTheme - userId từ JWT)
     activate Profile
     Profile->>Identity: [Contract] GetAccountStatus(userId)
-    Identity-->>Profile: ACTIVE
-    Profile->>Profile: Lưu prf_user_profile (làm sạch HTML)
-    Profile-->>User: Cập nhật thành công
+    activate Identity
+    Identity-->>Profile: Trạng thái - ACTIVE
+    deactivate Identity
+    Profile->>Profile: Lưu dữ liệu vào prf_user_profile (làm sạch dữ liệu đầu vào HTML)
+    Profile-->>User: Cập nhật hồ sơ thành công
     deactivate Profile
-    Profile-)Discovery: ProfileUpdated (cập nhật tên Chủ khóa trong read model)
+    Profile-->>Discovery: [Event] ProfileUpdated (đồng bộ tên hiển thị Chủ khóa trong dsc_course_entry)
 
-    %% Nhánh 2: xem công khai
+    %% Nhánh 2: Xem hồ sơ công khai
     Viewer->>Profile: GetPublicProfile(targetUserId)
     activate Profile
     Profile->>Identity: [Contract] GetUserSummary(targetUserId)
-    Identity-->>Profile: created_at (ngày gia nhập)
-    alt show_course_list = FALSE
-        Profile-->>Viewer: Hồ sơ cơ bản, ẩn danh sách khóa
-    else show_course_list = TRUE
-        Profile->>Course: [Contract] ListUserCourses(targetUserId, relation, audience = PUBLIC, page ≤ 50)
-        Course-->>Profile: Chỉ khóa Public/Private, KHÔNG Only Me / Tạm ẩn / Đã xóa
-        Profile-->>Viewer: Hồ sơ kèm danh sách khóa
+    activate Identity
+    Identity-->>Profile: {displayName, created_at (ngày gia nhập)}
+    deactivate Identity
+
+    alt show_course_list = FALSE (Người dùng chọn ẩn danh sách khóa)
+        Profile-->>Viewer: Trả về thông tin hồ sơ cơ bản, ẩn danh sách khóa học
+    else show_course_list = TRUE (Cho phép hiển thị danh sách khóa)
+        Profile->>Course: [Contract] ListUserCourses(targetUserId, relation, audience = PUBLIC, page <= 50)
+        activate Course
+        Course-->>Profile: Danh sách khóa Public/Private (TUYỆT ĐỐI KHÔNG chứa khóa Only Me / Tạm ẩn / Đã xóa)
+        deactivate Course
+        Profile-->>Viewer: Trả về thông tin hồ sơ đầy đủ kèm danh sách khóa học
     end
     deactivate Profile
 ```
 
-- **Mô tả ngắn gọn:** Cập nhật hồ sơ rồi phát `ProfileUpdated`. Xem công khai lấy danh sách khóa qua Course với `audience = PUBLIC`.
-- **Quy tắc quan trọng:** Khóa Only Me không bao giờ hiển thị (`FR-PRF-06`). Ngày gia nhập lấy từ Identity, không sao chép.
+- **Mô tả ngắn gọn:** Xác thực trạng thái tài khoản qua `GetAccountStatus`. Khi xem hồ sơ công khai, gọi `ListUserCourses(audience = PUBLIC)` để bảo đảm khóa Only Me không bao giờ lộ ra ngoài.
+- **Quy tắc quan trọng:** Khóa học `ONLY_ME` luôn luôn bị ẩn trên hồ sơ công khai bất kể người dùng cấu hình thế nào (`FR-PRF-06`).
 
 ---
 
 ### SD-08 (Notification Module): Tiếp nhận Domain Event & Quản trị thông báo hệ thống
 
-- **Mục đích nghiệp vụ:** Tạo thông báo in-app từ event (sau khi nghiệp vụ chính commit), gửi email 3 loại, Admin phát thông báo hệ thống. Giao diện lấy thông báo bằng **polling**.
+- **Mục đích nghiệp vụ:** Tạo thông báo in-app từ Domain Event (idempotent), gửi email (3 loại xác minh/reset/khóa tài khoản). Admin phát loa Broadcast toàn hệ thống. **Giao diện người dùng lấy thông báo qua cơ chế Polling định kỳ (không dùng đẩy thời gian thực)**.
 - **Mã FR liên quan:** `FR-NTF-01..07`.
-- **Actor và Lifelines:** `Admin`, `Source` (module phát event), `Notification`, `Identity`, `Email Service`, `User`.
+- **Actor và Lifelines:** `Admin`, `Source` (Module phát event / Outbox Dispatcher), `Notification`, `Identity`, `Email Service`, `User`.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Admin as Quản trị viên (Admin)
-    participant Source as Module phát event / Outbox Dispatcher
-    participant Notification as Notification Module
-    participant Identity as Identity Module
-    participant Email as Email Service (SMTP)
-    actor User as Người dùng
+    actor Admin as "Quản trị viên (Admin)"
+    participant Source as "Module phát event / Outbox Dispatcher"
+    participant Notification as "Notification Module"
+    participant Identity as "Identity Module"
+    participant Email as "Email Service (SMTP)"
+    actor User as "Người dùng"
 
-    %% Nhánh 1: thông báo in-app từ event
-    Source-)Notification: Domain Event (eventId, loại, người nhận, payload)
+    %% Nhánh 1: Tiếp nhận Domain Event tạo thông báo in-app
+    Source-->>Notification: [Domain Event] EventPayload (eventId, eventType, recipientId, payload)
     activate Notification
-    Notification->>Notification: Chèn ntf_notification, bỏ qua nếu trùng (UK source_event_id + recipient)
+    Notification->>Notification: Chèn ntf_notification, bỏ qua nếu trùng lặp (UNIQUE KEY source_event_id + recipient_id)
     deactivate Notification
 
-    %% Nhánh 2: email (chỉ 3 loại)
-    Source-)Notification: EmailVerificationRequested / PasswordResetRequested / AccountLocked
+    %% Nhánh 2: Xử lý hàng đợi gửi Email (3 loại: Verify Email, Reset Password, Account Locked)
+    Source-->>Notification: [Event] EmailNotificationRequested(userId, emailType, tokenOrReason)
     activate Notification
-    Notification->>Identity: [Contract] GetUserSummary(userId) lấy email
-    Notification->>Email: Gửi email (timeout 10s)
-    alt Gửi thành công
-        Email-->>Notification: Đã gửi, ghi ntf_email_delivery = SENT
-    else Lỗi hoặc timeout
-        Notification->>Notification: Token thô (xác minh, đặt lại mật khẩu): retry trong bộ nhớ, thất bại thì FAILED. ACCOUNT_LOCKED: retry bền vững theo next_attempt_at
+    Notification->>Identity: [Contract] GetUserSummary(userId) để lấy email
+    Notification->>Email: Gửi email qua SMTP (timeout 10s)
+    alt Gửi email thành công
+        Email-->>Notification: Đã gửi -> Ghi ntf_email_delivery (status = 'SENT')
+    else Gửi thất bại hoặc timeout
+        Notification->>Notification: Ghi ntf_email_delivery (status = 'FAILED', retry_count++) - kích hoạt retry nền
     end
     deactivate Notification
 
-    %% Nhánh 3: người dùng đọc thông báo (polling)
-    loop Định kỳ
-        User->>Notification: Lấy số chưa đọc / danh sách thông báo (phân trang ≤ 50)
-        Notification-->>User: Thông báo của chính người dùng
+    %% Nhánh 3: Người dùng đọc thông báo bằng cơ chế Polling (thay vì kết nối thời gian thực)
+    loop Định kỳ Polling (mỗi 10 - 30 giây)
+        User->>Notification: [Polling] Lấy số thông báo chưa đọc / danh sách thông báo mới (page <= 50)
+        Notification-->>User: Danh sách thông báo in-app của người dùng
     end
-    User->>Notification: Đánh dấu đã đọc / xóa (xóa mềm)
+    User->>Notification: Đánh dấu đã đọc / xóa thông báo
 
-    %% Nhánh 4: broadcast
-    Admin->>Notification: Gửi thông báo hệ thống (title, body)
+    %% Nhánh 4: Admin Broadcast phát loa toàn trường
+    Admin->>Notification: Phát thông báo hệ thống (title, content, priority)
     activate Notification
     Notification->>Identity: [Contract] IsAdmin(adminId)
-    Notification->>Notification: Chèn ntf_announcement = PENDING
-    Notification-->>Admin: Đã tiếp nhận
-    loop Job fan-out, lô ≤ 50
+    Notification->>Notification: Chèn ntf_announcement (status = 'PENDING')
+    Notification-->>Admin: Tiếp nhận thông báo thành công
+    loop Job nền Fan-out theo lô (mỗi lô  <=  50 người)
         Notification->>Identity: [Contract] ListActiveUserIds(afterId, limit)
-        Notification->>Notification: Chèn ntf_notification SYSTEM_ANNOUNCEMENT từng người (idempotent)
+        Notification->>Notification: Chèn hàng loạt vào ntf_notification (loại SYSTEM_ANNOUNCEMENT)
     end
-    Notification->>Notification: ntf_announcement = COMPLETED, recipient_count
+    Notification->>Notification: Cập nhật ntf_announcement (status = 'COMPLETED', recipient_count)
     deactivate Notification
 ```
 
-- **Mô tả ngắn gọn:** Event → thông báo in-app (idempotent). Email chỉ 3 loại. Giao diện polling, không đẩy thời gian thực. Broadcast fan-out theo lô, có thể tiếp tục nếu gián đoạn.
-- **Quy tắc quan trọng:** Lỗi gửi không rollback nghiệp vụ chính (`FR-NTF-01`). Token thô chỉ nằm trong bộ nhớ, không ghi DB/log (`NFR-04`).
+- **Mô tả ngắn gọn:** Tiếp nhận sự kiện tạo thông báo in-app (chống trùng lặp qua UK). Gửi email có retry queue. **Người dùng lấy thông báo mới qua cơ chế Polling định kỳ**. Admin phát thông báo toàn trường chạy job fan-out theo lô.
+- **Quy tắc quan trọng:** Lỗi gửi email bên ngoài không bao giờ làm rollback giao dịch học tập chính (`FR-NTF-01`). Không dùng WebSocket đẩy thời gian thực để giảm tải và tránh rò rỉ kết nối.
 
 ---
 
 ### SD-09 (Moderation Module): Xử lý báo cáo vi phạm, Chế tài & Ghi Audit Log
 
-- **Mục đích nghiệp vụ:** Người dùng gửi báo cáo (chống spam), Admin thẩm định trong hàng đợi, thực thi chế tài (Ẩn khóa / Khóa tài khoản) và ghi Audit Log bất biến.
+- **Mục đích nghiệp vụ:** Tiếp nhận báo cáo vi phạm (chống spam), Admin thẩm định trong hàng đợi, thực thi chế tài (Tạm ẩn khóa học / Khóa tài khoản) và bắt buộc ghi nhật ký kiểm toán **Audit Log bất biến (Immutable)** trong cùng Transaction.
 - **Mã FR liên quan:** `FR-MOD-01`, `FR-MOD-04`, `FR-MOD-07`, `FR-MOD-10`, `FR-MOD-13`.
 - **Actor và Lifelines:** `Reporter`, `Admin`, `Moderation Module`, `Course Module`, `Identity Module`, `Notification Module`.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Reporter as Người dùng báo cáo
-    actor Admin as Quản trị viên (Admin)
-    participant Moderation as Moderation Module
-    participant Course as Course Module
-    participant Identity as Identity Module
-    participant Notification as Notification Module
+    actor Reporter as "Người dùng báo cáo"
+    actor Admin as "Quản trị viên (Admin)"
+    participant Moderation as "Moderation Module"
+    participant Course as "Course Module"
+    participant Identity as "Identity Module"
+    participant Notification as "Notification Module"
 
     %% Bước 1: Tiếp nhận báo cáo và Chống Spam
     Reporter->>Moderation: Gửi báo cáo vi phạm (target_type, target_id, lý do, bằng chứng)
     activate Moderation
-    Moderation->>Moderation: Kiểm tra rate limit chống spam (Không gửi trùng lặp liên tục - FR-MOD-02)
-    Moderation->>Moderation: Lưu vào Hàng đợi báo cáo (Trạng thái = Chờ xử lý)
+    Moderation->>Moderation: Kiểm tra rate limit chống spam (UNIQUE KEY uk_mod_report_pending ngăn gửi trùng lặp)
+    Moderation->>Moderation: Lưu vào mod_report (status = 'PENDING') + lưu mod_report_evidence
     Moderation-->>Reporter: Gửi báo cáo thành công
     deactivate Moderation
 
-    %% Bước 2: Admin thẩm định và áp dụng chế tài
-    Admin->>Moderation: Thẩm định và Xử lý báo cáo (report_id, quyết định = 'Chấp nhận', lý do, chế tài)
+    %% Bước 2: Admin thẩm định và thi hành chế tài
+    Admin->>Moderation: Xử lý báo cáo (reportId, quyết định = 'RESOLVED', lý do, chế tài)
     activate Moderation
-    Moderation->>Moderation: Kiểm tra lý do bắt buộc (Lý do không được để trống)
+    Moderation->>Moderation: Kiểm tra bắt buộc có lý do xử phạt (không để trống)
     
     alt Chế tài: Tạm ẩn khóa học (FR-MOD-07)
         Moderation->>Course: [Contract] HideCourse(courseId, sanctionId, actorAdminId)
         activate Course
-        Course->>Course: Chuyển trạng thái khóa: "Tạm ẩn" (Ẩn khỏi Discovery, giữ tiến độ học viên)
+        Course->>Course: Đổi trạng thái - "Tạm ẩn" (loại khỏi Discovery, giữ nguyên tiến độ học viên)
         Course-->>Moderation: Đã ẩn khóa học
         deactivate Course
     else Chế tài: Khóa tài khoản có thời hạn (FR-MOD-10)
         Moderation->>Identity: [Contract] LockAccount(userId, type, until, reason, sanctionId, actorAdminId)
         activate Identity
-        Identity->>Identity: Chuyển trạng thái: "Bị khóa có thời hạn", thu hồi mọi Refresh Token
+        Identity->>Identity: Đổi trạng thái - "Bị khóa có thời hạn", thu hồi toàn bộ Refresh Token
         Identity-->>Moderation: Đã khóa tài khoản
         deactivate Identity
     end
 
-    %% Bước 3: Ghi Audit Log bất biến và gửi thông báo
-    Moderation->>Moderation: Ghi Audit Log bất biến (admin_id, action, target_id, reason, timestamp)
-    Moderation->>Moderation: Cập nhật trạng thái báo cáo: "Đã chấp nhận"
+    %% Bước 3: Ghi Audit Log bất biến và phát sự kiện
+    Moderation->>Moderation: TX - Ghi mod_sanction + ghi mod_audit_log bất biến (chỉ INSERT, không UPDATE/DELETE)
+    Moderation->>Moderation: Cập nhật mod_report (status = 'RESOLVED')
     
-    Moderation-)Notification: [Domain Event] ReportResolved(reportId, decision, reason, reporterUserId, reportedUserId, sanctions)
-    Moderation-->>Admin: Xử lý vi phạm hoàn tất
+    Moderation-->>Notification: [Domain Event] ReportResolved(reportId, decision, reason, reporterUserId, targetUserId)
+    Moderation-->>Admin: Thi hành chế tài và lưu nhật ký kiểm toán hoàn tất
     deactivate Moderation
 ```
 
-- **Mô tả ngắn gọn:** Tiếp nhận báo cáo qua bộ lọc spam $\to$ Admin xử lý bắt buộc có lý do $\to$ áp dụng chế tài (ẩn khóa hoặc khóa tài khoản) $\to$ ghi Audit Log bất biến.
-- **Giao dịch:** cập nhật `mod_report` (điều kiện PENDING) → chèn `mod_sanction` → gọi Contract → ghi `mod_audit_log` trong **một transaction**; Contract từ chối (`LAST_ADMIN`, `ALREADY_LOCKED`, Only Me...) thì rollback toàn bộ. `ReportResolved` phát sau commit.
-- **Quy tắc quan trọng:** Khóa Only Me không thể bị báo cáo hay tạm ẩn (`FR-MOD-01`, `FR-MOD-07`). Admin không thể tự khóa nick chính mình (`3.9.1`).
+- **Mô tả ngắn gọn:** Tiếp nhận báo cáo qua bộ lọc spam `uk_mod_report_pending` $\to$ Admin xử lý bắt buộc có lý do $\to$ áp dụng chế tài qua Contract $\to$ ghi Audit Log bất biến.
+- **Quy tắc quan trọng:** Khóa Only Me không thể bị báo cáo hay tạm ẩn. Admin không thể tự khóa nick chính mình (`3.9.1`). Bảng Audit Log là bất biến.
 
 ---
 
 ### SD-10 (AI Module): Sinh nội dung AI & Quét kiểm duyệt tự động
 
-- **Mục đích nghiệp vụ:** Chủ khóa dùng LLM ngoài sinh câu hỏi (luôn Nháp, duyệt mới thành Sẵn sàng). PhoBERT chạy cục bộ quét bình luận, tên và giới thiệu khóa sau khi lưu; vượt ngưỡng thì gắn cờ vào hàng đợi Admin (AI không tự xóa/phạt).
+- **Mục đích nghiệp vụ:** Chủ khóa dùng AI sinh câu hỏi (luôn ở trạng thái Nháp, duyệt mới thành Sẵn sàng - Human-in-the-loop). Mô hình PhoBERT quét ngầm phân loại mức độ độc hại sau khi lưu; vượt ngưỡng cảnh báo thì tự động gắn cờ tạo báo cáo chuyển Admin xử lý (AI không tự ý xóa bài/xử phạt).
 - **Mã FR liên quan:** `FR-AI-01`, `FR-AI-02`, `FR-AI-03`, `FR-MOD-03`, `Mục 3.10.1`, `NFR-13`, `NFR-22`.
-- **Actor và Lifelines:** `Owner`, `AI`, `LLM`, `Content`, `Learning/Course` (nguồn event), `PhoBERT`, `Moderation`.
+- **Actor và Lifelines:** `Owner`, `AI`, `LLM`, `Content`, `Source` (Learning/Course), `PhoBERT`, `Moderation`.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Owner as Chủ khóa (User)
-    participant AI as AI Module
-    participant LLM as External LLM API
-    participant Content as Content Module
-    participant Source as Learning / Course (nguồn event)
-    participant PhoBERT as PhoBERT Service (Python)
-    participant Moderation as Moderation Module
+    actor Owner as "Chủ khóa (User)"
+    participant AI as "AI Module"
+    participant LLM as "External LLM API"
+    participant Content as "Content Module"
+    participant Source as "Learning / Course (nguồn event)"
+    participant PhoBERT as "PhoBERT Service (Python)"
+    participant Moderation as "Moderation Module"
 
-    %% Nhánh 1: sinh câu hỏi
+    %% Nhánh 1: Sinh câu hỏi tự động (Human-in-the-loop)
     Owner->>AI: Yêu cầu sinh câu hỏi (courseId, văn bản dán hoặc chapterId, số lượng, độ khó)
     activate AI
-    AI->>AI: Cập nhật có điều kiện ai_user_daily_quota (used_count < quota_limit)
-    alt Hết hạn mức trong ngày
-        AI-->>Owner: Báo lỗi: đã hết lượt AI hôm nay
+    AI->>AI: Kiểm tra và tăng ai_user_daily_quota (used_count < quota_limit)
+    alt Hết hạn mức gọi AI trong ngày
+        AI-->>Owner: Báo lỗi - Bạn đã sử dụng hết lượt AI hôm nay
     else Còn hạn mức
-        opt Nguồn là chương
+        opt Nguồn đầu vào là chương học
             AI->>Content: [Contract] GetChapterTextForAi(chapterId, ownerId)
-            Content-->>AI: Văn bản chương (chỉ cho Chủ khóa)
+            Content-->>AI: Nội dung văn bản chương học
         end
         AI->>LLM: Sinh câu hỏi trắc nghiệm (timeout 30s)
-        LLM-->>AI: Danh sách câu hỏi và đáp án gợi ý
+        LLM-->>AI: Danh sách câu hỏi, phương án và đáp án giải thích
         AI->>Content: [Contract] ImportAiGeneratedQuestions(courseId, ownerId, aiJobId, items)
-        Content->>Content: Lưu cnt_question status = DRAFT, origin = AI (idempotent theo aiJobId + itemNo)
-        Content-->>AI: Đã lưu bản nháp
-        AI-->>Owner: Danh sách câu hỏi nháp
-        Owner->>Content: Xem lại, chỉnh sửa, duyệt (DRAFT → READY)
-        Content-->>Owner: Câu hỏi sẵn sàng đưa vào bài thi
+        Content->>Content: Lưu vào cnt_question với status = 'DRAFT', origin = 'AI'
+        Content-->>AI: Đã lưu bản nháp vào ngân hàng
+        AI-->>Owner: Hiển thị danh sách câu hỏi nháp
+        Owner->>Content: Xem trước, chỉnh sửa câu từ và bấm Duyệt (DRAFT -> READY)
+        Content-->>Owner: Câu hỏi chính thức sẵn sàng đưa vào đề thi
     end
     deactivate AI
 
-    %% Nhánh 2: quét kiểm duyệt (chạy sau khi lưu, không chặn người dùng)
-    Source-)AI: CommentCreated / CourseUpserted (eligible = true, changedFields có name hoặc description)
+    %% Nhánh 2: Quét kiểm duyệt độc hại ngầm bằng PhoBERT (chạy sau lưu, không chặn người dùng)
+    Source-->>AI: [Event] CommentCreated / CourseUpserted (eligible = true, nội dung cần quét)
     activate AI
-    AI->>PhoBERT: Phân tích nội dung (timeout 10s)
-    alt Dịch vụ lỗi
-        PhoBERT-->>AI: Lỗi hoặc timeout
-        AI->>AI: Ghi ai_moderation_scan_log (error_message, flagged = FALSE), bỏ qua
-    else Trả điểm
-        PhoBERT-->>AI: violation_score
-        AI->>AI: Ghi ai_moderation_scan_log (score, threshold_used)
-        opt score ≥ ngưỡng Admin cấu hình
-            AI->>Moderation: [Contract] SubmitAiFlag(aiFindingId, targetType, targetId, ...)
-            Moderation->>Moderation: Tạo mod_report nguồn AI, PENDING (idempotent theo ai_finding_id)
+    AI->>PhoBERT: Phân tích độ độc hại văn bản (timeout 10s)
+    alt Dịch vụ AI lỗi hoặc timeout
+        PhoBERT-->>AI: Lỗi kết nối
+        AI->>AI: Ghi ai_moderation_scan_log (error_message, flagged = FALSE) và bỏ qua
+    else Phân tích thành công
+        PhoBERT-->>AI: Trả về toxicity_score
+        AI->>AI: Ghi ai_moderation_scan_log (score, threshold_used, flagged = (score >= threshold))
+        opt score  >=  Ngưỡng cảnh báo Admin cấu hình
+            AI->>Moderation: [Contract] SubmitAiFlag(aiFindingId, targetType, targetId, score, contentSnapshot)
+            Moderation->>Moderation: Tạo bản ghi mod_report nguồn 'AI', status = 'PENDING'
         end
     end
     deactivate AI
 ```
 
-- **Mô tả ngắn gọn:** Sinh quiz bằng LLM → Nháp → Chủ khóa duyệt. Quét PhoBERT nhận event sau khi lưu; vượt ngưỡng thì chuyển cờ cho Moderation.
-- **Quy tắc quan trọng:** Khóa Only Me không bao giờ bị quét (event `eligible = false` không mang nội dung). Hết hạn mức AI thì bị chặn (`3.10.1`). Lỗi PhoBERT chỉ ghi log.
-
----
-
+- **Mô tả ngắn gọn:** Sinh quiz bằng LLM $\to$ lưu bản Nháp $\to$ Chủ khóa duyệt mới đưa vào ngân hàng đề. Quét PhoBERT nhận sự kiện chạy nền; nếu phát hiện vi phạm thì tạo báo cáo gắn cờ gửi về hàng đợi Admin, AI không tự ý xóa dữ liệu.
+- **Quy tắc quan trọng:** Khóa Only Me không bao giờ bị quét. Quota gọi AI được kiểm soát chặt chẽ theo ngày.
