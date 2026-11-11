@@ -3,6 +3,7 @@ using BrainMemo.BuildingBlocks.Abstractions.Events;
 using BrainMemo.BuildingBlocks.Abstractions.Transactions;
 using BrainMemo.BuildingBlocks.Infrastructure.Events;
 using BrainMemo.BuildingBlocks.Infrastructure.MediatR;
+using BrainMemo.BuildingBlocks.Infrastructure.Outbox;
 using BrainMemo.BuildingBlocks.Infrastructure.Time;
 using BrainMemo.BuildingBlocks.Infrastructure.Transactions;
 using BrainMemo.SharedKernel.Time;
@@ -45,6 +46,8 @@ public static class DependencyInjection
         Assembly[] assembliesToScan = mediatRAssemblies.Length > 0
             ? mediatRAssemblies
             : [typeof(DependencyInjection).Assembly];
+
+        services.AddOutboxCore(assembliesToScan);
 
         services.AddMediatR(config =>
         {

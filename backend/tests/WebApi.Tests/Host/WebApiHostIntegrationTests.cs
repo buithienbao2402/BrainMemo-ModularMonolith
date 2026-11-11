@@ -5,6 +5,8 @@ using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
+using BrainMemo.BuildingBlocks.Abstractions.Outbox;
+using BrainMemo.BuildingBlocks.Infrastructure.Outbox;
 using BrainMemo.SharedKernel.Results;
 using BrainMemo.WebApi.Errors;
 using BrainMemo.WebApi.RateLimiting;
@@ -15,6 +17,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using Xunit;
 
@@ -176,6 +179,17 @@ public sealed class WebApiHostIntegrationTests
         Assert.Equal(HttpStatusCode.OK, swaggerResp.StatusCode);
         string swaggerJson = await swaggerResp.Content.ReadAsStringAsync();
         Assert.Contains("bearerAuth", swaggerJson, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void OutboxServicesAndDispatcherHostedService_AreRegisteredInHost()
+    {
+        using TestWebApiFactory factory = new();
+        using IServiceScope scope = factory.Services.CreateScope();
+
+        Assert.NotNull(scope.ServiceProvider.GetService<IOutboxWriter>());
+        IEnumerable<IHostedService> hostedServices = factory.Services.GetServices<IHostedService>();
+        Assert.Contains(hostedServices, service => service is OutboxDispatcher);
     }
 
     private static string CreateJwt(string userId, string role)
