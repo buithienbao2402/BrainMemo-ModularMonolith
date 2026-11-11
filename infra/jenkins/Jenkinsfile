@@ -1,0 +1,221 @@
+pipeline {
+  agent any
+
+  options {
+    timestamps()
+    disableConcurrentBuilds()
+    timeout(time: 30, unit: 'MINUTES')
+    buildDiscarder(logRotator(numToKeepStr: '20'))
+  }
+
+  parameters {
+    booleanParam(
+      name: 'RUN_MINIO_INTEGRATION_TESTS',
+      defaultValue: true,
+      description: 'Start temporary MinIO via infra/docker-compose.dev.yml for BE MinIO integration tests when Docker daemon is reachable'
+    )
+    booleanParam(
+      name: 'BUILD_DOCKER_IMAGES',
+      defaultValue: true,
+      description: 'Validate Compose/Nginx configs and build BE/FE/AI Docker images when Docker daemon is reachable'
+    )
+    booleanParam(
+      name: 'REQUIRE_DOCKER',
+      defaultValue: false,
+      description: 'Fail pipeline if Docker daemon is unavailable on the Jenkins agent'
+    )
+  }
+
+  environment {
+    CI = 'true'
+    DOTNET_CLI_TELEMETRY_OPTOUT = '1'
+    DOTNET_NOLOGO = '1'
+    COREPACK_ENABLE_DOWNLOAD_PROMPT = '0'
+    COMPOSE_PROJECT_NAME = "brainmemo-ci-${env.BUILD_NUMBER ?: 'local'}"
+    IMAGE_TAG = "${env.GIT_COMMIT ? env.GIT_COMMIT.take(12) : 'ci'}"
+  }
+
+  stages {
+    stage('Preflight') {
+      steps {
+        script {
+          sh '''
+            set -eu
+            echo "Node: $(node --version)"
+            echo "pnpm (corepack): $(corepack pnpm --version)"
+            echo ".NET SDK: $(dotnet --version)"
+          '''
+
+          def dockerStatus = sh(
+            script: 'command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1',
+            returnStatus: true
+          )
+          env.DOCKER_AVAILABLE = (dockerStatus == 0) ? 'true' : 'false'
+
+          if (env.DOCKER_AVAILABLE == 'true') {
+            sh '''
+              set -eu
+              docker --version
+              docker compose version
+            '''
+          } else if (params.REQUIRE_DOCKER) {
+            error('REQUIRE_DOCKER=true but Docker CLI or daemon is unavailable on this agent.')
+          } else {
+            echo 'Docker daemon not reachable; Docker-backed stages (MinIO integration tests and image builds) will be skipped.'
+          }
+        }
+      }
+    }
+
+    stage('Workspace Install (pnpm)') {
+      steps {
+        sh '''
+          set -eu
+          # Avoid `corepack enable` because non-root Jenkins users may lack write access to system bin dirs.
+          corepack pnpm install --frozen-lockfile
+        '''
+      }
+    }
+
+    stage('OpenAPI Bundle & Lint') {
+      steps {
+        sh '''
+          set -eu
+          corepack pnpm --filter tools test
+          corepack pnpm --filter tools openapi:check
+          corepack pnpm --filter tools openapi:lint
+        '''
+      }
+    }
+
+    stage('Frontend Quality & Build') {
+      steps {
+        sh '''
+          set -eu
+          corepack pnpm --filter frontend lint
+          corepack pnpm --filter frontend typecheck
+          corepack pnpm --filter frontend test
+          corepack pnpm --filter frontend build
+        '''
+      }
+    }
+
+    stage('Backend Build & Unit/Architecture Tests') {
+      steps {
+        sh '''
+          set -eu
+          dotnet restore backend/BrainMemo.sln
+          dotnet build backend/BrainMemo.sln --configuration Release --no-restore
+          dotnet test backend/BrainMemo.sln \
+            --configuration Release \
+            --no-build \
+            --filter "FullyQualifiedName!~MinioIntegrationTests" \
+            --results-directory TestResults \
+            --logger "trx;LogFileName=backend-unit.trx"
+        '''
+      }
+    }
+
+    stage('Backend MinIO Integration Tests') {
+      when {
+        expression { return params.RUN_MINIO_INTEGRATION_TESTS && env.DOCKER_AVAILABLE == 'true' }
+      }
+      steps {
+        sh '''
+          set -eu
+          docker compose -f infra/docker-compose.dev.yml up -d --wait minio
+          docker compose -f infra/docker-compose.dev.yml up --exit-code-from minio-init minio-init
+
+          S3_ENDPOINT="http://127.0.0.1:${MINIO_API_PORT:-9000}"
+          if command -v curl >/dev/null 2>&1 && ! curl -fsS "${S3_ENDPOINT}/minio/health/live" >/dev/null 2>&1; then
+            MINIO_CID="$(docker compose -f infra/docker-compose.dev.yml ps -q minio)"
+            MINIO_IP="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "${MINIO_CID}" 2>/dev/null || true)"
+            if [ -n "${MINIO_IP}" ]; then
+              S3_ENDPOINT="http://${MINIO_IP}:9000"
+            fi
+          fi
+
+          export S3__Endpoint="${S3_ENDPOINT}"
+          export S3__AccessKey="${MINIO_ROOT_USER:-brainmemo_minio}"
+          export S3__SecretKey="${MINIO_ROOT_PASSWORD:-brainmemo_minio_dev_pw}"
+          export S3__Bucket="${MINIO_BUCKET:-brainmemo-media}"
+          export S3__ForcePathStyle="true"
+
+          dotnet test backend/tests/WebApi.Tests/WebApi.Tests.csproj \
+            --configuration Release \
+            --no-build \
+            --filter "FullyQualifiedName~MinioIntegrationTests" \
+            --results-directory TestResults \
+            --logger "trx;LogFileName=backend-minio.trx"
+        '''
+      }
+      post {
+        always {
+          sh 'docker compose -f infra/docker-compose.dev.yml down -v --remove-orphans || true'
+        }
+      }
+    }
+
+    stage('AI Service Verification') {
+      steps {
+        sh '''
+          set -eu
+          if command -v python3 >/dev/null 2>&1; then
+            PYTHON_BIN=python3
+          elif command -v python >/dev/null 2>&1; then
+            PYTHON_BIN=python
+          else
+            PYTHON_BIN=""
+          fi
+
+          if [ -n "${PYTHON_BIN}" ]; then
+            "${PYTHON_BIN}" -m compileall -q ai-service/app
+            if ls ai-service/tests/test_*.py ai-service/tests/*_test.py >/dev/null 2>&1; then
+              "${PYTHON_BIN}" -m pytest ai-service/tests
+            else
+              echo "ai-service has no pytest test files yet (stub); compileall passed."
+            fi
+          else
+            echo "Python runtime not installed on Jenkins agent; ai-service is built/verified via Docker."
+          fi
+        '''
+      }
+    }
+
+    stage('Infra Config & Docker Image Builds') {
+      when {
+        expression { return params.BUILD_DOCKER_IMAGES && env.DOCKER_AVAILABLE == 'true' }
+      }
+      environment {
+        DOCKER_BUILDKIT = '1'
+      }
+      steps {
+        sh '''
+          set -eu
+          docker compose -f infra/docker-compose.dev.yml config --quiet
+          docker compose --env-file infra/env/.env.example -f infra/docker-compose.yml config --quiet
+          docker run --rm -i nginx:1.27-alpine sh -c 'cat > /etc/nginx/nginx.conf && nginx -t' < infra/nginx/nginx.conf
+
+          docker build -f backend/Dockerfile -t "brainmemo-webapi:${IMAGE_TAG}" backend
+          docker build -f frontend/Dockerfile \
+            --build-arg VITE_API_BASE_URL=/api/v1 \
+            --build-arg VITE_USE_MOCK=false \
+            -t "brainmemo-frontend:${IMAGE_TAG}" .
+          docker build -f ai-service/Dockerfile -t "brainmemo-ai-service:${IMAGE_TAG}" ai-service
+        '''
+      }
+    }
+  }
+
+  post {
+    always {
+      script {
+        if (env.DOCKER_AVAILABLE == 'true') {
+          sh 'docker compose -f infra/docker-compose.dev.yml down -v --remove-orphans >/dev/null 2>&1 || true'
+        }
+      }
+      archiveArtifacts artifacts: 'TestResults/*.trx', allowEmptyArchive: true
+    }
+  }
+}
+

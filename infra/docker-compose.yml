@@ -1,0 +1,215 @@
+name: ${COMPOSE_PROJECT_NAME:-brainmemo}
+
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    env_file:
+      - path: ../.env
+        required: false
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env or environment}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-brainmemo_lms}
+      MYSQL_USER: ${MYSQL_USER:-brainmemo}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env or environment}
+      TZ: UTC
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --default-time-zone=+00:00
+    ports:
+      - "${BIND_HOST:-127.0.0.1}:${MYSQL_PORT:-3307}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ../db:/docker-entrypoint-initdb.d:ro
+    networks:
+      - brainmemo_net
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p\"$$MYSQL_ROOT_PASSWORD\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+
+  minio:
+    image: pgsty/silo:latest
+    restart: unless-stopped
+    env_file:
+      - path: ../.env
+        required: false
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in .env or environment}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env or environment}
+      MINIO_API_CORS_ALLOW_ORIGIN: "${MINIO_API_CORS_ALLOW_ORIGIN:-*}"
+    ports:
+      - "${BIND_HOST:-127.0.0.1}:${MINIO_API_PORT:-9000}:9000"
+      - "${BIND_HOST:-127.0.0.1}:${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - brainmemo_net
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
+
+  minio-init:
+    image: pgsty/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    env_file:
+      - path: ../.env
+        required: false
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in .env or environment}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env or environment}
+      MINIO_BUCKET: ${MINIO_BUCKET:-brainmemo-media}
+      MC_CONFIG_DIR: /tmp/.mc
+    networks:
+      - brainmemo_net
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"
+        mc mb --ignore-existing "local/$$MINIO_BUCKET"
+        mc anonymous set none "local/$$MINIO_BUCKET"
+        rules="$$(mc ilm rule ls "local/$$MINIO_BUCKET" 2>/dev/null || true)"
+        case "$$rules" in
+          *"tmp/"*) echo "Lifecycle rule for tmp/ already exists" ;;
+          *) mc ilm rule add --expire-days 1 --prefix "tmp/" "local/$$MINIO_BUCKET" ;;
+        esac
+        mc ilm rule ls "local/$$MINIO_BUCKET"
+    restart: "no"
+
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "${BIND_HOST:-127.0.0.1}:${MAILPIT_UI_PORT:-8025}:8025"
+    networks:
+      - brainmemo_net
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  ai-service:
+    build:
+      context: ../ai-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    networks:
+      - brainmemo_net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  webapi:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      ai-service:
+        condition: service_healthy
+    env_file:
+      - path: ../.env
+        required: false
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__Default: "${DOCKER_CONNECTION_STRING:-Server=${MYSQL_HOST:-mysql};Port=${MYSQL_INTERNAL_PORT:-3306};Database=${MYSQL_DATABASE:-brainmemo_lms};User=${MYSQL_USER:-brainmemo};Password=${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env or environment};SslMode=${MYSQL_SSL_MODE:-None};AllowPublicKeyRetrieval=${MYSQL_ALLOW_PUBLIC_KEY_RETRIEVAL:-True};}"
+      Jwt__Issuer: ${Jwt__Issuer:-brainmemo-api}
+      Jwt__Audience: ${Jwt__Audience:-brainmemo-web}
+      Jwt__SigningKey: ${Jwt__SigningKey:?Set Jwt__SigningKey (at least 32 chars) in .env or environment}
+      Jwt__AccessTokenMinutes: ${Jwt__AccessTokenMinutes:-30}
+      Jwt__RefreshTokenDays: ${Jwt__RefreshTokenDays:-14}
+      S3__Endpoint: ${DOCKER_S3_ENDPOINT:-http://minio:9000}
+      S3__AccessKey: ${S3__AccessKey:?Set S3__AccessKey in .env or environment}
+      S3__SecretKey: ${S3__SecretKey:?Set S3__SecretKey in .env or environment}
+      S3__Bucket: ${S3__Bucket:-brainmemo-media}
+      S3__Region: ${S3__Region:-auto}
+      S3__ForcePathStyle: ${S3__ForcePathStyle:-true}
+      Smtp__Host: ${DOCKER_SMTP_HOST:-mailpit}
+      Smtp__Port: ${Smtp__Port:-1025}
+      Smtp__UseSsl: ${Smtp__UseSsl:-false}
+      Smtp__From: ${Smtp__From:-noreply@brainmemo.local}
+      Smtp__FromName: ${Smtp__FromName:-BrainMemo LMS}
+      Smtp__Username: ${Smtp__Username:-}
+      Smtp__Password: ${Smtp__Password:-}
+      GoogleAuth__ClientId: ${GoogleAuth__ClientId:-}
+      GoogleAuth__ClientSecret: ${GoogleAuth__ClientSecret:-}
+      PhoBert__BaseUrl: ${DOCKER_PHOBERT_BASE_URL:-http://ai-service:8000}
+      Llm__Provider: ${Llm__Provider:-gemini}
+      Llm__ApiKey: ${Llm__ApiKey:-}
+      Llm__Model: ${Llm__Model:-gemini-2.5-flash}
+      Cors__AllowedOrigins: ${Cors__AllowedOrigins:-http://localhost,http://localhost:5173}
+      Swagger__Enabled: ${Swagger__Enabled:-false}
+    networks:
+      - brainmemo_net
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1}
+        VITE_USE_MOCK: ${VITE_USE_MOCK:-false}
+    restart: unless-stopped
+    networks:
+      - brainmemo_net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:80/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      webapi:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - brainmemo_net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:80/nginx-health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+networks:
+  brainmemo_net:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  minio_data:
+
