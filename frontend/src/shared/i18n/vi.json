@@ -1,0 +1,98 @@
+{
+  "brand": {
+    "name": "BrainMemo",
+    "subtitle": "NỀN TẢNG HỌC TẬP TRỰC TUYẾN",
+    "slogan": "Khám phá tri thức, mở mang tầm mắt",
+    "copyright": "© 2026 BrainMemo LMS. Tất cả các quyền được bảo lưu."
+  },
+  "nav": {
+    "home": "Trang chủ",
+    "explore": "Khám phá",
+    "myCourses": "Khóa học của tôi",
+    "admin": "Quản trị",
+    "createCourse": "Tạo khóa học",
+    "searchPlaceholder": "Tìm khóa học, chủ khóa...",
+    "searchSubmit": "Tìm kiếm"
+  },
+  "auth": {
+    "login": "Đăng nhập",
+    "register": "Đăng ký",
+    "logout": "Đăng xuất",
+    "verifyEmailBanner": "Tài khoản chưa xác minh email. Vui lòng kiểm tra hộp thư để xác minh trước khi tạo khóa học hoặc sử dụng tính năng AI.",
+    "checkingSession": "Đang khôi phục phiên đăng nhập...",
+    "profileMenu": {
+      "publicProfile": "Xem thông tin công khai",
+      "myCourses": "Khóa học của tôi",
+      "bookmarks": "Bookmark",
+      "settings": "Cài đặt",
+      "adminPanel": "Khu vực quản trị"
+    }
+  },
+  "theme": {
+    "toggle": "Chuyển giao diện Sáng/Tối",
+    "toLight": "Chuyển sang giao diện sáng",
+    "toDark": "Chuyển sang giao diện tối"
+  },
+  "notifications": {
+    "label": "Thông báo",
+    "unreadCount": "Có {{count}} thông báo chưa đọc"
+  },
+  "admin": {
+    "badge": "ADMIN",
+    "roleSubtitle": "Quản trị viên",
+    "backToApp": "Về trang học tập",
+    "nav": {
+      "overview": "Tổng quan",
+      "moderation": "Kiểm duyệt nội dung",
+      "reports": "Báo cáo vi phạm",
+      "users": "Quản lý tài khoản",
+      "courses": "Quản lý khóa học",
+      "aiSettings": "Cấu hình AI kiểm duyệt",
+      "auditLogs": "Nhật ký hệ thống",
+      "systemSettings": "Cài đặt hệ thống"
+    }
+  },
+  "states": {
+    "loading": "Đang tải dữ liệu...",
+    "emptyTitle": "Chưa có dữ liệu",
+    "emptyDescription": "Hiện chưa có mục nào được hiển thị ở đây.",
+    "errorTitle": "Có lỗi xảy ra",
+    "errorFallback": "Không thể tải dữ liệu. Vui lòng thử lại.",
+    "retry": "Thử lại",
+    "backHome": "Quay về trang chủ",
+    "exploreCourses": "Khám phá khóa học"
+  },
+  "errors": {
+    "network": "Mất kết nối máy chủ. Vui lòng thử lại.",
+    "rateLimited": "Bạn thao tác quá nhanh. Vui lòng đợi 10 giây rồi thử lại.",
+    "genericRetry": "Có lỗi, thử lại",
+    "unauthenticated": "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
+    "forbidden": "Bạn không có quyền thực hiện thao tác này.",
+    "notFoundPage": {
+      "code": "404",
+      "title": "Không tìm thấy trang",
+      "description": "Đường dẫn bạn truy cập không tồn tại, đã bị xóa hoặc bạn chưa được cấp quyền xem nội dung này."
+    },
+    "lockedPage": {
+      "title": "Tài khoản đang bị khóa",
+      "description": "Tài khoản của bạn hiện bị hạn chế truy cập hệ thống.",
+      "reasonLabel": "Lý do",
+      "untilLabel": "Thời hạn khóa",
+      "permanent": "Vĩnh viễn"
+    }
+  },
+  "pagination": {
+    "previous": "Trước",
+    "next": "Sau",
+    "summary": "Trang {{page}} / {{totalPages}} ({{total}} mục)"
+  },
+  "homeShell": {
+    "heroBadge": "NỀN TẢNG S0 – KHUNG GIAO DIỆN",
+    "heroTitle": "Không gian học tập & biên soạn BrainMemo",
+    "heroDescription": "Khung ứng dụng frontend đã sẵn sàng: định tuyến React Router 6, OpenAPI typed client, single-flight refresh token, đa giao diện Sáng/Tối và chuẩn trạng thái Loading/Empty/Error/Success.",
+    "exploreAction": "Mở danh mục khóa học",
+    "test404Action": "Xem trang 404 (SCR-COM-02)",
+    "stateDemoHeading": "Kiểm tra nhanh 4 trạng thái chuẩn (Loading · Empty · Error · Success)"
+  }
+}
+

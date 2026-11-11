@@ -1,0 +1,4 @@
+dist
+public/mockServiceWorker.js
+src/shared/api/schema.d.ts
+
