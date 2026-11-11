@@ -5,7 +5,7 @@
 
 | Task | Trạng thái | AI/Người làm | PR | Ghi chú |
 |:--|:--|:--|:--|:--|
-| T-S0-OPS-01 | REVIEW | Antigravity (OPS) | feat/T-S0-OPS-01-init-monorepo | Khởi tạo monorepo theo `REPO_STRUCTURE.md`, `.gitignore`, `.editorconfig`, `README.md`, `docs/spec/`, handoff note |
+| T-S0-OPS-01 | DONE | Antigravity (OPS) | feat/T-S0-OPS-01-init-monorepo | Khởi tạo monorepo theo `REPO_STRUCTURE.md`, `.gitignore`, `.editorconfig`, `README.md`, `docs/spec/`, handoff note |
 | T-S0-OPS-02 | TODO | – | – | – |
 | T-S0-DB-01 | TODO | – | – | – |
 | T-S0-BE-01 | TODO | – | – | – |

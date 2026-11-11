@@ -3,7 +3,7 @@
 - **Task:** `T-S0-OPS-01` – Khởi tạo monorepo theo `REPO_STRUCTURE`
 - **Vai trò:** OPS
 - **Nhánh:** `feat/T-S0-OPS-01-init-monorepo`
-- **Trạng thái:** REVIEW
+- **Trạng thái:** DONE
 
 ## Đã thực hiện
 
