@@ -3,7 +3,7 @@
 - **Task**: `T-S1-BE-01`
 - **Role**: BE
 - **Branch**: `feat/T-S1-BE-01-identity-domain`
-- **Status**: `REVIEW`
+- **Status**: `DONE`
 
 ## 1. Phạm vi đã triển khai
 
