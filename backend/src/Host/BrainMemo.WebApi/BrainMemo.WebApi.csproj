@@ -3,6 +3,9 @@
     <ProjectReference Include="..\..\BuildingBlocks\BrainMemo.SharedKernel\BrainMemo.SharedKernel.csproj" />
     <ProjectReference Include="..\..\BuildingBlocks\BrainMemo.BuildingBlocks.Abstractions\BrainMemo.BuildingBlocks.Abstractions.csproj" />
     <ProjectReference Include="..\..\BuildingBlocks\BrainMemo.BuildingBlocks.Infrastructure\BrainMemo.BuildingBlocks.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Identity\BrainMemo.Identity.Api\BrainMemo.Identity.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Identity\BrainMemo.Identity.Contracts\BrainMemo.Identity.Contracts.csproj" />
+    <ProjectReference Include="..\..\Modules\Identity\BrainMemo.Identity.Infrastructure\BrainMemo.Identity.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

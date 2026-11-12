@@ -657,7 +657,7 @@ public sealed class ArchitectureViolationTests
 
             string assemblyDir = Path.Combine(_tempDirectory, _nextAssemblyFolderIndex++.ToString(System.Globalization.CultureInfo.InvariantCulture));
             Directory.CreateDirectory(assemblyDir);
-            _searchDirectories.Add(assemblyDir);
+            _searchDirectories.Insert(0, assemblyDir);
 
             string dllPath = Path.Combine(assemblyDir, $"{assemblyName}.dll");
             EmitResult emitResult = compilation.Emit(dllPath);
@@ -683,25 +683,31 @@ public sealed class ArchitectureViolationTests
                 {
                     string fileName = Path.GetFileNameWithoutExtension(path);
                     if (fileName.StartsWith("Architecture.Tests", StringComparison.OrdinalIgnoreCase)
-                        || fileName.StartsWith("xunit", StringComparison.OrdinalIgnoreCase))
+                        || fileName.StartsWith("xunit", StringComparison.OrdinalIgnoreCase)
+                        || IsRealModuleAssemblyName(fileName))
                     {
                         continue;
                     }
 
-                    references.TryAdd(path, MetadataReference.CreateFromFile(path));
+                    references.TryAdd(fileName, MetadataReference.CreateFromFile(path));
                 }
             }
 
             foreach (Assembly extra in additionalReferences)
             {
-                if (!string.IsNullOrWhiteSpace(extra.Location))
+                string? simpleName = extra.GetName().Name;
+                if (!string.IsNullOrWhiteSpace(extra.Location) && !string.IsNullOrWhiteSpace(simpleName))
                 {
-                    references[extra.Location] = MetadataReference.CreateFromFile(extra.Location);
+                    references[simpleName] = MetadataReference.CreateFromFile(extra.Location);
                 }
             }
 
             return references.Values.ToList();
         }
+
+        private static bool IsRealModuleAssemblyName(string assemblyName)
+            => ModuleArchitectureSpec.TryDescribe(assemblyName, out BrainMemoAssemblyDescriptor? descriptor)
+               && descriptor?.ModuleName is not null;
 
         public void Dispose()
         {

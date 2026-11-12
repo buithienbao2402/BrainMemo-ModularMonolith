@@ -16,7 +16,7 @@
 | T-S0-OPS-03 | DONE | Antigravity (OPS) | feat/T-S0-OPS-03-merge-openapi | Script `tools/merge-openapi` (`pnpm --filter tools openapi:bundle` / `openapi:check`), Redocly lint (`openapi/redocly.yaml`, `pnpm --filter tools openapi:lint`), bundle `openapi/openapi.yaml` (`11` module, `110` paths, `55` schemas) & `11/11` unit tests pass |
 | T-S0-FE-01 | DONE | Antigravity (FE) | feat/T-S0-FE-01-frontend-shell | Khung FE (`frontend/`: Vite/TS 5.9/Tailwind/Radix UI, Router 6, TanStack Query 5, `shared/api` single-flight refresh, `gen:api`, MSW 3, `SCR-COM-01/02/03`) & 12/12 Vitest tests pass |
 | T-S0-OPS-04 | DONE | Antigravity (OPS) | feat/T-S0-OPS-04-ci-dockerfiles-nginx | Jenkinsfile, Dockerfiles BE/FE/AI, Nginx reverse proxy, Docker Compose full-stack + handoff note |
-| T-S1-BE-01 | TODO | – | – | – |
+| T-S1-BE-01 | REVIEW | Antigravity (BE) | feat/T-S1-BE-01-identity-domain | Identity Domain (idn_*), IdentityDbContext + InitialIdentity migration, IIdentityContract & integration events, BCrypt/SHA-256 services, unit & MySQL 8 integration tests, handoff note |
 | T-S1-BE-02 | TODO | – | – | – |
 | T-S1-BE-03 | TODO | – | – | – |
 | T-S1-BE-04 | TODO | – | – | – |
