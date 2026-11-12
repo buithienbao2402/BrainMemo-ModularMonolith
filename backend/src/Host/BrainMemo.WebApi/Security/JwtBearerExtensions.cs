@@ -85,6 +85,9 @@ public static class JwtBearerExtensions
         return services;
     }
 
+    private static byte[]? _ephemeralDevKey;
+    private static readonly object KeyLock = new();
+
     private static byte[] ResolveSigningKeyBytes(string? configuredKey, IHostEnvironment environment)
     {
         if (!string.IsNullOrWhiteSpace(configuredKey) && configuredKey.Length >= 32)
@@ -94,8 +97,10 @@ public static class JwtBearerExtensions
 
         if (environment.IsDevelopment() || environment.IsEnvironment("Testing"))
         {
-            // Ephemeral per-process dev key avoids committing secrets while letting /health and host tests boot cleanly.
-            return RandomNumberGenerator.GetBytes(32);
+            lock (KeyLock)
+            {
+                return _ephemeralDevKey ??= Encoding.UTF8.GetBytes("brainmemo-development-jwt-signing-key-minimum-32-chars-2026");
+            }
         }
 
         throw new InvalidOperationException(
