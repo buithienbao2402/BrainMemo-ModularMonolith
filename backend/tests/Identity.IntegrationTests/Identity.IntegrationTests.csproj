@@ -12,6 +12,8 @@
     <ProjectReference Include="..\..\src\Modules\Identity\BrainMemo.Identity.Domain\BrainMemo.Identity.Domain.csproj" />
     <ProjectReference Include="..\..\src\Modules\Identity\BrainMemo.Identity.Application\BrainMemo.Identity.Application.csproj" />
     <ProjectReference Include="..\..\src\Modules\Identity\BrainMemo.Identity.Infrastructure\BrainMemo.Identity.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Identity\BrainMemo.Identity.Api\BrainMemo.Identity.Api.csproj" />
+    <ProjectReference Include="..\..\src\Host\BrainMemo.WebApi\BrainMemo.WebApi.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -19,6 +21,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.2" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.2" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.2" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />

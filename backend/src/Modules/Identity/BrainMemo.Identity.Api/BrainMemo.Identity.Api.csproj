@@ -1,9 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\..\BuildingBlocks\BrainMemo.BuildingBlocks.Abstractions\BrainMemo.BuildingBlocks.Abstractions.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BrainMemo.SharedKernel\BrainMemo.SharedKernel.csproj" />
     <ProjectReference Include="..\BrainMemo.Identity.Application\BrainMemo.Identity.Application.csproj" />
     <ProjectReference Include="..\BrainMemo.Identity.Contracts\BrainMemo.Identity.Contracts.csproj" />
   </ItemGroup>
 </Project>
+
 

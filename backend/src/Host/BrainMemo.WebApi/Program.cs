@@ -26,7 +26,10 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 });
 
 IMvcBuilder mvcBuilder = builder.Services
-    .AddControllers()
+    .AddControllers(options =>
+    {
+        options.Filters.Add<ErrorResultFilter>();
+    })
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
