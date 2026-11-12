@@ -1,12 +1,16 @@
 using System.Security.Claims;
+using BrainMemo.Identity.Application.Auth.Commands.ChangePassword;
+using BrainMemo.Identity.Application.Auth.Commands.ForgotPassword;
 using BrainMemo.Identity.Application.Auth.Commands.Login;
 using BrainMemo.Identity.Application.Auth.Commands.Logout;
 using BrainMemo.Identity.Application.Auth.Commands.LogoutAll;
 using BrainMemo.Identity.Application.Auth.Commands.Refresh;
 using BrainMemo.Identity.Application.Auth.Commands.Register;
+using BrainMemo.Identity.Application.Auth.Commands.ResetPassword;
 using BrainMemo.Identity.Application.Auth.Commands.RevokeSession;
 using BrainMemo.Identity.Application.Auth.Commands.VerifyEmail;
 using BrainMemo.Identity.Application.Auth.Models;
+using BrainMemo.Identity.Application.Auth.Queries.GetMe;
 using BrainMemo.Identity.Application.Auth.Queries.ListSessions;
 using BrainMemo.SharedKernel.Results;
 using MediatR;
@@ -269,6 +273,105 @@ public sealed class AuthController(
         }
 
         return NoContent();
+    }
+
+    /// <summary>
+    /// Initiates password reset for a user email (FR-IDN-07). Always returns 204 to prevent email enumeration.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpPost("forgot-password")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> ForgotPassword(
+        [FromBody] ForgotPasswordRequest request,
+        CancellationToken ct)
+    {
+        await sender
+            .Send(new ForgotPasswordCommand(request.Email), ct)
+            .ConfigureAwait(false);
+
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Resets password using a one-time reset token (FR-IDN-07).
+    /// </summary>
+    [AllowAnonymous]
+    [HttpPost("reset-password")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> ResetPassword(
+        [FromBody] ResetPasswordRequest request,
+        CancellationToken ct)
+    {
+        Result result = await sender
+            .Send(new ResetPasswordCommand(request.Token, request.NewPassword), ct)
+            .ConfigureAwait(false);
+
+        return result.IsSuccess
+            ? NoContent()
+            : new ObjectResult(result.Error);
+    }
+
+    /// <summary>
+    /// Changes password for authenticated user and revokes all active sessions (FR-IDN-08).
+    /// </summary>
+    [Authorize]
+    [HttpPost("change-password")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> ChangePassword(
+        [FromBody] ChangePasswordRequest request,
+        CancellationToken ct)
+    {
+        if (!TryGetCurrentUserId(out Guid userId))
+        {
+            return new ObjectResult(Error.Unauthenticated("Chưa xác thực"));
+        }
+
+        Result result = await sender
+            .Send(new ChangePasswordCommand(userId, request.CurrentPassword, request.NewPassword), ct)
+            .ConfigureAwait(false);
+
+        if (result.IsFailure)
+        {
+            return new ObjectResult(result.Error);
+        }
+
+        ClearRefreshTokenCookie();
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Retrieves current user profile and account status.
+    /// </summary>
+    [Authorize]
+    [HttpGet("me")]
+    [ProducesResponseType<CurrentUserResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetMe(CancellationToken ct)
+    {
+        if (!TryGetCurrentUserId(out Guid userId))
+        {
+            return new ObjectResult(Error.Unauthenticated("Chưa xác thực"));
+        }
+
+        Result<CurrentUserDto> result = await sender
+            .Send(new GetMeQuery(userId), ct)
+            .ConfigureAwait(false);
+
+        return result.IsSuccess
+            ? Ok(new CurrentUserResponse(
+                result.Value.Id,
+                result.Value.Email,
+                result.Value.EmailVerified,
+                result.Value.IsAdmin,
+                result.Value.AccountStatus))
+            : new ObjectResult(result.Error);
     }
 
     private bool TryGetCurrentUserId(out Guid userId)

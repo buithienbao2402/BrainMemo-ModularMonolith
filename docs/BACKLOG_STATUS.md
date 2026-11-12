@@ -19,7 +19,7 @@
 | T-S1-BE-01 | DONE | Antigravity (BE) | feat/T-S1-BE-01-identity-domain | Identity Domain (idn_*), IdentityDbContext + InitialIdentity migration, IIdentityContract & integration events, BCrypt/SHA-256 services, unit & MySQL 8 integration tests, handoff note |
 | T-S1-BE-02 | DONE | Antigravity (BE) | feat/T-S1-BE-02-register-verify-email | `POST /api/v1/auth/register` & `verify-email`, BCrypt/SHA-256 + atomic token consume, `IPostCommitEventQueue`, `ErrorResultFilter`, unit & MySQL 8 integration tests, handoff note |
 | T-S1-BE-03 | REVIEW | Antigravity (BE) | feat/T-S1-BE-03-auth-sessions | `POST /api/v1/auth/login`, `refresh`, `logout`, `logout-all`, `GET/DELETE /api/v1/auth/sessions`, JWT 30' + rotating HttpOnly cookie 14d, `AccountStatusMiddleware`, auto-unlock expired lock, unit & integration tests, handoff note |
-| T-S1-BE-04 | TODO | – | – | – |
+| T-S1-BE-04 | REVIEW | Antigravity (BE) | feat/T-S1-BE-04-password-flows-me | ForgotPassword/ResetPassword/ChangePassword (+ vô hiệu token cũ cùng purpose, thu hồi phiên khi đổi mật khẩu); `GET /auth/me` |
 | T-S1-BE-05 | TODO | – | – | – |
 | T-S1-BE-06 | TODO | – | – | – |
 | T-S1-FE-01 | TODO | – | – | – |
