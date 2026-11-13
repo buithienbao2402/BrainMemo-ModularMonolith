@@ -1,12 +1,10 @@
 import {
   Bookmark,
-  BookOpen,
   ChevronDown,
   LogOut,
   Plus,
   Search,
   Settings,
-  ShieldCheck,
   User as UserIcon,
 } from 'lucide-react';
 import * as React from 'react';
@@ -108,7 +106,7 @@ export function SiteHeader() {
                 size="pill"
                 className="h-9 px-3 text-xs font-bold uppercase tracking-wide sm:px-4"
               >
-                <Link to="/courses/new" aria-label={t('nav.createCourse')}>
+                <Link to="/manage/courses" aria-label={t('nav.createCourse')}>
                   <Plus className="h-4 w-4" aria-hidden="true" />
                   <span className="hidden sm:inline">{t('nav.createCourse')}</span>
                 </Link>
@@ -153,34 +151,20 @@ export function SiteHeader() {
                     </p>
                   ) : null}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => navigate('/settings/profile')}>
-                    <UserIcon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                    <span>Hồ sơ cá nhân</span>
-                  </DropdownMenuItem>
                   {user.id ? (
                     <DropdownMenuItem onSelect={() => navigate(`/users/${user.id}`)}>
                       <UserIcon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                       <span>{t('auth.profileMenu.publicProfile')}</span>
                     </DropdownMenuItem>
                   ) : null}
-                  <DropdownMenuItem onSelect={() => navigate('/me/courses')}>
-                    <BookOpen className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                    <span>{t('auth.profileMenu.myCourses')}</span>
-                  </DropdownMenuItem>
                   <DropdownMenuItem onSelect={() => navigate('/me/bookmarks')}>
                     <Bookmark className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                     <span>{t('auth.profileMenu.bookmarks')}</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => navigate('/settings/security')}>
+                  <DropdownMenuItem onSelect={() => navigate('/settings/profile')}>
                     <Settings className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                     <span>{t('auth.profileMenu.settings')}</span>
                   </DropdownMenuItem>
-                  {user.isAdmin ? (
-                    <DropdownMenuItem onSelect={() => navigate('/admin')}>
-                      <ShieldCheck className="h-4 w-4 text-brand-orange" aria-hidden="true" />
-                      <span>{t('auth.profileMenu.adminPanel')}</span>
-                    </DropdownMenuItem>
-                  ) : null}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onSelect={() => {

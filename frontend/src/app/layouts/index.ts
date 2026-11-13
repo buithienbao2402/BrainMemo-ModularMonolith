@@ -5,5 +5,6 @@ export * from './NotificationBellLink';
 export * from './PublicLayout';
 export * from './SiteFooter';
 export * from './SiteHeader';
+export * from './SettingsLayout';
 export * from './SubNav';
 export * from './ThemeToggleButton';

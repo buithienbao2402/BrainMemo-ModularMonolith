@@ -21,6 +21,7 @@ function applyDocumentTheme(theme: ResolvedTheme): void {
   const root = document.documentElement;
   root.classList.toggle('dark', theme === 'dark');
   root.dataset.theme = theme;
+  root.style.colorScheme = theme;
 }
 
 export function ThemeProvider({
