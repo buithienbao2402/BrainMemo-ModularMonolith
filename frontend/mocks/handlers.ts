@@ -437,4 +437,364 @@ export const handlers = [
     const count = persona === 'admin' ? 5 : persona === 'user' ? 3 : 1;
     return HttpResponse.json({ count }, { status: 200 });
   }),
+
+  // Presigned S3/R2 File Upload Mock Handlers (DEC-05)
+  http.post('*/api/v1/files/upload-urls', async ({ request }) => {
+    const body = (await request.json().catch(() => ({}))) as {
+      purpose?: string;
+      fileName?: string;
+      sizeBytes?: number;
+      contentType?: string;
+    };
+
+    if (!body.purpose || !body.fileName || !body.sizeBytes || !body.contentType) {
+      return problemResponse(422, {
+        title: 'Dữ liệu không hợp lệ',
+        status: 422,
+        code: 'VALIDATION_ERROR',
+        detail: 'Thiếu thông tin yêu cầu cấp presigned URL.',
+      });
+    }
+
+    const key = `mock-key-${Date.now()}-${body.fileName}`;
+    return HttpResponse.json(
+      {
+        uploadKey: key,
+        uploadUrl: `https://storage.mock.local/tmp/${key}`,
+        method: 'PUT',
+        headers: {},
+        expiresAt: '2026-11-13T23:59:59Z',
+      },
+      { status: 200 }
+    );
+  }),
+
+  http.put('https://storage.mock.local/tmp/*', () => {
+    return new HttpResponse(null, { status: 200 });
+  }),
+
+  // Public Profile Handlers (FR-PRF-05, FR-PRF-06)
+  http.get('*/api/v1/profiles/:userId', ({ params }) => {
+    const { userId } = params;
+    const foundProfile = Object.values(mockProfiles).find((p) => p.userId === userId);
+
+    if (foundProfile) {
+      return HttpResponse.json(foundProfile, { status: 200 });
+    }
+
+    if (userId === '404' || userId === 'not-found') {
+      return problemResponse(404, {
+        title: 'Không tìm thấy hồ sơ',
+        status: 404,
+        code: 'PROFILE_NOT_FOUND',
+        detail: 'Không tìm thấy người dùng được yêu cầu.',
+      });
+    }
+
+    // Default mock public profile for any arbitrary valid-looking UUID
+    const fallbackProfile: ProfileDto = {
+      userId: String(userId),
+      displayName: 'Nguyễn Văn A',
+      avatarUrl: null,
+      bio: 'Lập trình viên & thành viên cộng đồng BrainMemo LMS',
+      showCourseList: true,
+      uiTheme: 'DARK',
+      joinedAt: '2026-03-01T08:00:00Z',
+    };
+    return HttpResponse.json(fallbackProfile, { status: 200 });
+  }),
+
+  http.get('*/api/v1/profiles/:userId/courses', ({ params, request }) => {
+    const { userId } = params;
+    const url = new URL(request.url);
+    const relation = url.searchParams.get('relation') || 'OWNED';
+
+    if (userId === 'hidden-courses-user') {
+      return HttpResponse.json({ items: [], meta: { totalCount: 0 } }, { status: 200 });
+    }
+
+    const mockItems = [
+      {
+        id: 'mock-crs-1',
+        name: 'Kiến trúc Modular Monolith trong thực tế',
+        coverUrl: null,
+        owner: { id: String(userId), displayName: 'Tác giả' },
+        accessMode: 'PUBLIC',
+        status: 'PUBLISHED',
+        tags: ['architecture', 'dotnet'],
+        learnerCount: 120,
+        ratingAvg: 4.9,
+        ratingCount: 35,
+        nominationCount: 15,
+        progressPercent: relation === 'ENROLLED' ? 65 : null,
+      },
+    ];
+
+    return HttpResponse.json(
+      {
+        items: mockItems,
+        meta: {
+          page: 1,
+          pageSize: 12,
+          totalCount: mockItems.length,
+          totalPages: 1,
+        },
+      },
+      { status: 200 }
+    );
+  }),
+
+  // Course Module Handlers (FR-CRS-01..16)
+  http.get('*/api/v1/courses/:courseId', ({ params, request }) => {
+    const { courseId } = params;
+    const persona = readPersonaFromCookie(request);
+
+    if (courseId === '404' || courseId === 'not-found') {
+      return problemResponse(404, {
+        title: 'Khóa học không tồn tại',
+        status: 404,
+        code: 'COURSE_NOT_FOUND',
+        detail: 'Khóa học không tồn tại hoặc đã bị xóa.',
+      });
+    }
+
+    const isOwner = persona === 'user' && courseId === 'my-course-1';
+    const isEnrolled = courseId === 'enrolled-course-1';
+
+    return HttpResponse.json(
+      {
+        id: String(courseId),
+        name: isOwner
+          ? 'Khóa học do tôi biên soạn'
+          : 'Lập trình Fullstack Modular Monolith với ASP.NET Core & React',
+        description:
+          'Khóa học thực chiến hướng dẫn toàn diện từ thiết kế Domain-Driven Design, kiến trúc Modular Monolith, quản lý state và UI với React 18.',
+        coverUrl: null,
+        accessMode: courseId === 'private-course-1' ? 'PRIVATE' : 'PUBLIC',
+        status: 'PUBLISHED',
+        isHidden: false,
+        isDeleted: false,
+        tags: ['fullstack', 'csharp', 'react'],
+        createdAt: '2026-03-01T08:00:00Z',
+        updatedAt: '2026-11-12T10:00:00Z',
+        owner: {
+          id: isOwner ? mockUsers.user.id : mockUsers.admin.id,
+          displayName: isOwner ? mockProfiles.user.displayName : mockProfiles.admin.displayName,
+          avatarUrl: null,
+        },
+        viewer: {
+          isOwner,
+          enrollmentStatus: isEnrolled ? 'ACTIVE' : null,
+          canReadContent: isOwner || isEnrolled,
+          canLearn: isOwner || isEnrolled,
+          hasNominated: false,
+        },
+        ratingAvg: 4.8,
+        ratingCount: 28,
+      },
+      { status: 200 }
+    );
+  }),
+
+  http.post('*/api/v1/courses', async ({ request }) => {
+    const body = (await request.json().catch(() => ({}))) as any;
+    if (!body.name) {
+      return problemResponse(422, {
+        title: 'Dữ liệu không hợp lệ',
+        status: 422,
+        code: 'VALIDATION_ERROR',
+        errors: [{ field: 'name', message: 'Tên khóa học không được để trống' }],
+      });
+    }
+
+    const newCourse = {
+      id: `created-course-${Date.now()}`,
+      name: body.name,
+      description: body.description || '',
+      accessMode: body.accessMode || 'PUBLIC',
+      status: body.status || 'DRAFT',
+      tags: body.tags || [],
+      coverUrl: null,
+      owner: {
+        id: mockUsers.user.id,
+        displayName: mockProfiles.user.displayName,
+      },
+      viewer: {
+        isOwner: true,
+        enrollmentStatus: null,
+        canReadContent: true,
+        canLearn: true,
+        hasNominated: false,
+      },
+      ratingAvg: null,
+      ratingCount: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    return HttpResponse.json(newCourse, { status: 201 });
+  }),
+
+  http.patch('*/api/v1/courses/:courseId', async ({ params, request }) => {
+    const { courseId } = params;
+    const body = (await request.json().catch(() => ({}))) as any;
+
+    return HttpResponse.json(
+      {
+        id: String(courseId),
+        name: body.name || 'Khóa học cập nhật',
+        description: body.description || '',
+        accessMode: body.accessMode || 'PUBLIC',
+        status: body.status || 'PUBLISHED',
+        tags: body.tags || [],
+        coverUrl: null,
+        owner: {
+          id: mockUsers.user.id,
+          displayName: mockProfiles.user.displayName,
+        },
+        viewer: {
+          isOwner: true,
+          enrollmentStatus: null,
+          canReadContent: true,
+          canLearn: true,
+          hasNominated: false,
+        },
+        updatedAt: new Date().toISOString(),
+      },
+      { status: 200 }
+    );
+  }),
+
+  http.delete('*/api/v1/courses/:courseId', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.get('*/api/v1/me/courses', ({ request }) => {
+    const persona = readPersonaFromCookie(request);
+    if (persona === 'guest' || persona === 'locked') {
+      return problemResponse(401, {
+        title: 'Chưa xác thực',
+        status: 401,
+        code: 'UNAUTHORIZED',
+      });
+    }
+
+    const url = new URL(request.url);
+    const relation = url.searchParams.get('relation');
+
+    const sampleItems =
+      relation === 'OWNED'
+        ? [
+            {
+              id: 'my-course-1',
+              name: 'Khóa học do tôi biên soạn',
+              coverUrl: null,
+              owner: { id: mockUsers.user.id, displayName: mockProfiles.user.displayName },
+              accessMode: 'PUBLIC',
+              status: 'PUBLISHED',
+              tags: ['csharp', 'react'],
+              learnerCount: 45,
+              ratingAvg: 4.9,
+              ratingCount: 12,
+              nominationCount: 8,
+              progressPercent: null,
+            },
+          ]
+        : [
+            {
+              id: 'enrolled-course-1',
+              name: 'Khóa học đang học: Kiến trúc phần mềm',
+              coverUrl: null,
+              owner: { id: mockUsers.admin.id, displayName: mockProfiles.admin.displayName },
+              accessMode: 'PUBLIC',
+              status: 'PUBLISHED',
+              tags: ['architecture'],
+              learnerCount: 110,
+              ratingAvg: 4.8,
+              ratingCount: 30,
+              nominationCount: 20,
+              progressPercent: 75,
+            },
+          ];
+
+    return HttpResponse.json(
+      {
+        items: sampleItems,
+        meta: {
+          page: 1,
+          pageSize: 12,
+          totalCount: sampleItems.length,
+          totalPages: 1,
+        },
+      },
+      { status: 200 }
+    );
+  }),
+
+  http.get('*/api/v1/me/invitations', ({ request }) => {
+    const persona = readPersonaFromCookie(request);
+    if (persona === 'guest' || persona === 'locked') {
+      return problemResponse(401, {
+        title: 'Chưa xác thực',
+        status: 401,
+        code: 'UNAUTHORIZED',
+      });
+    }
+
+    return HttpResponse.json(
+      [
+        {
+          id: 'invited-course-1',
+          name: 'Lời mời: Lập trình Cloud Native trên AWS & Azure',
+          coverUrl: null,
+          owner: { id: mockUsers.admin.id, displayName: mockProfiles.admin.displayName },
+          accessMode: 'PRIVATE',
+          status: 'PUBLISHED',
+          tags: ['cloud', 'devops'],
+          learnerCount: 25,
+          ratingAvg: 5.0,
+          ratingCount: 6,
+        },
+      ],
+      { status: 200 }
+    );
+  }),
+
+  http.post('*/api/v1/courses/:courseId/enrollments', ({ params }) => {
+    return HttpResponse.json(
+      {
+        id: `enrollment-${Date.now()}`,
+        courseId: String(params.courseId),
+        user: { id: mockUsers.user.id, displayName: mockProfiles.user.displayName },
+        status: 'ACTIVE',
+        statusChangedAt: new Date().toISOString(),
+      },
+      { status: 200 }
+    );
+  }),
+
+  http.delete('*/api/v1/courses/:courseId/enrollments/me', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.post('*/api/v1/courses/:courseId/invitations/accept', ({ params }) => {
+    return HttpResponse.json(
+      {
+        id: `enrollment-inv-${Date.now()}`,
+        courseId: String(params.courseId),
+        user: { id: mockUsers.user.id, displayName: mockProfiles.user.displayName },
+        status: 'ACTIVE',
+        statusChangedAt: new Date().toISOString(),
+      },
+      { status: 200 }
+    );
+  }),
+
+  http.put('*/api/v1/courses/:courseId/nomination', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.delete('*/api/v1/courses/:courseId/nomination', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
 ];

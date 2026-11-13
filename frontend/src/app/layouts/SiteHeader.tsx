@@ -153,6 +153,10 @@ export function SiteHeader() {
                     </p>
                   ) : null}
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => navigate('/settings/profile')}>
+                    <UserIcon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                    <span>Hồ sơ cá nhân</span>
+                  </DropdownMenuItem>
                   {user.id ? (
                     <DropdownMenuItem onSelect={() => navigate(`/users/${user.id}`)}>
                       <UserIcon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
