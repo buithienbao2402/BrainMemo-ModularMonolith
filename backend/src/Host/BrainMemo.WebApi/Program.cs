@@ -112,6 +112,7 @@ app.UseRouting();
 app.UseCors(CorsOptions.PolicyName);
 app.UseRateLimiter();
 app.UseAuthentication();
+app.UseMiddleware<AccountStatusMiddleware>();
 app.UseAuthorization();
 
 app.MapHealthChecks("/health", new HealthCheckOptions
