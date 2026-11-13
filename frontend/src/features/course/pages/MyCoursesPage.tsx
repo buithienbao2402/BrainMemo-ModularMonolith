@@ -21,7 +21,7 @@ import { CourseCardItem } from '../components/CourseCardItem';
 
 export function MyCoursesPage() {
   const { t } = useTranslation();
-  const { showToast } = useToast();
+  const { pushToast } = useToast();
 
   const [activeTab, setActiveTab] = useState<'owned' | 'enrolled' | 'invitations'>('owned');
   const [page, setPage] = useState(1);
@@ -47,23 +47,23 @@ export function MyCoursesPage() {
     refetch: refetchInvitations,
   } = useMyInvitationsQuery();
 
-  const acceptInvitationMutation = useAcceptInvitationMutation('');
+  const acceptInvitationMutation = useAcceptInvitationMutation();
 
   const handleAcceptInvitation = async (courseId?: string) => {
     if (!courseId) return;
     try {
-      await acceptInvitationMutation.mutateAsync();
-      showToast({
+      await acceptInvitationMutation.mutateAsync(courseId);
+      pushToast({
         title: 'Chấp nhận thành công!',
         description: 'Bạn đã tham gia khóa học.',
-        variant: 'default',
+        tone: 'success',
       });
       refetchInvitations();
     } catch (err: any) {
-      showToast({
+      pushToast({
         title: 'Không thể chấp nhận lời mời',
         description: err?.detail || err?.message || 'Có lỗi xảy ra.',
-        variant: 'destructive',
+        tone: 'error',
       });
     }
   };

@@ -106,19 +106,12 @@ export function PublicProfilePage() {
 
   // State 2: Profile Error
   if (isProfileError || !profile) {
-    const is404 = (profileError as any)?.status === 404;
     return (
       <div className="mx-auto max-w-[1280px] px-4 py-12 sm:px-6">
         <ErrorState
-          title={is404 ? 'Không tìm thấy người dùng' : 'Lỗi tải hồ sơ'}
-          description={
-            is404
-              ? 'Hồ sơ người dùng này không tồn tại hoặc đã bị ẩn khỏi hệ thống.'
-              : 'Không thể kết nối đến máy chủ. Vui lòng thử lại.'
-          }
-          actionLabel={is404 ? 'Về trang chủ' : 'Thử lại'}
-          onAction={is404 ? undefined : () => refetchProfile()}
-          actionTo={is404 ? '/' : undefined}
+          title="Không tìm thấy người dùng"
+          error={profileError}
+          onRetry={() => refetchProfile()}
         />
       </div>
     );

@@ -12,6 +12,9 @@
     <ProjectReference Include="..\..\Modules\Notification\BrainMemo.Notification.Api\BrainMemo.Notification.Api.csproj" />
     <ProjectReference Include="..\..\Modules\Notification\BrainMemo.Notification.Contracts\BrainMemo.Notification.Contracts.csproj" />
     <ProjectReference Include="..\..\Modules\Notification\BrainMemo.Notification.Infrastructure\BrainMemo.Notification.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Course\BrainMemo.Course.Api\BrainMemo.Course.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Course\BrainMemo.Course.Contracts\BrainMemo.Course.Contracts.csproj" />
+    <ProjectReference Include="..\..\Modules\Course\BrainMemo.Course.Infrastructure\BrainMemo.Course.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

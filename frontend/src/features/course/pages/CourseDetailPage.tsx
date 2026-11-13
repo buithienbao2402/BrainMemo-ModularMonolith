@@ -195,19 +195,12 @@ export function CourseDetailPage() {
   }
 
   if (isError || !course) {
-    const is404 = (error as any)?.status === 404;
     return (
       <div className="mx-auto max-w-[1280px] px-4 py-12 sm:px-6">
         <ErrorState
-          title={is404 ? 'Không tìm thấy khóa học' : 'Lỗi tải khóa học'}
-          description={
-            is404
-              ? 'Khóa học này không tồn tại, đã bị xóa hoặc đang ở chế độ Chỉ mình tôi / Tạm ẩn.'
-              : 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra đường truyền mạng.'
-          }
-          actionLabel={is404 ? 'Khám phá khóa học khác' : 'Thử lại'}
-          actionTo={is404 ? '/courses' : undefined}
-          onAction={is404 ? undefined : () => refetch()}
+          title="Không tìm thấy khóa học"
+          error={error}
+          onRetry={() => refetch()}
         />
       </div>
     );

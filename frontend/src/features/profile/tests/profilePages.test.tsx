@@ -50,9 +50,7 @@ describe('Profile Pages (SCR-PRF-01 & SCR-PRF-02)', () => {
       await waitFor(() => {
         expect(screen.getByText('Không tìm thấy người dùng')).toBeInTheDocument();
       });
-      expect(
-        screen.getByText('Hồ sơ người dùng này không tồn tại hoặc đã bị ẩn khỏi hệ thống.')
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Không tìm thấy hồ sơ/i)).toBeInTheDocument();
     });
 
     it('allows switching relation tabs to view enrolled courses', async () => {

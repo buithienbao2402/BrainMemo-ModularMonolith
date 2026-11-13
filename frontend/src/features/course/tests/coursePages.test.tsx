@@ -81,9 +81,7 @@ describe('Course Pages (SCR-CRS-01..03)', () => {
       await waitFor(() => {
         expect(screen.getByText('Không tìm thấy khóa học')).toBeInTheDocument();
       });
-      expect(
-        screen.getByText(/Khóa học này không tồn tại, đã bị xóa hoặc đang ở chế độ Chỉ mình tôi/i)
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Khóa học không tồn tại/i)).toBeInTheDocument();
     });
 
     it('allows toggling nominate button', async () => {
