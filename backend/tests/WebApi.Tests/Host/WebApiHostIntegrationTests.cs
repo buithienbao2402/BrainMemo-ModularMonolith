@@ -90,6 +90,17 @@ public sealed class WebApiHostIntegrationTests
         {
             Assert.Equal(ErrorCodes.Forbidden, doc.RootElement.GetProperty("code").GetString());
         }
+
+        string lockedToken = CreateJwt("01960000-0000-7000-8000-000000000002", "LEARNER", "LOCKED_TEMPORARY");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", lockedToken);
+
+        HttpResponseMessage locked = await client.GetAsync("/test-probes/protected");
+        Assert.Equal(HttpStatusCode.Forbidden, locked.StatusCode);
+        Assert.Equal("application/problem+json", locked.Content.Headers.ContentType?.MediaType);
+        using (JsonDocument doc = JsonDocument.Parse(await locked.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(ErrorCodes.AccountLocked, doc.RootElement.GetProperty("code").GetString());
+        }
     }
 
     [Fact]
@@ -192,7 +203,7 @@ public sealed class WebApiHostIntegrationTests
         Assert.Contains(hostedServices, service => service is OutboxDispatcher);
     }
 
-    private static string CreateJwt(string userId, string role)
+    private static string CreateJwt(string userId, string role, string accountStatus = "ACTIVE")
     {
         SymmetricSecurityKey key = new(Encoding.UTF8.GetBytes(TestSigningKey));
         SigningCredentials creds = new(key, SecurityAlgorithms.HmacSha256);
@@ -204,6 +215,7 @@ public sealed class WebApiHostIntegrationTests
             [
                 new Claim("sub", userId),
                 new Claim("role", role),
+                new Claim("account_status", accountStatus),
             ],
             notBefore: DateTime.UtcNow.AddMinutes(-1),
             expires: DateTime.UtcNow.AddMinutes(30),

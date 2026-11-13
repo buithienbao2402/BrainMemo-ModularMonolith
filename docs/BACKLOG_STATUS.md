@@ -17,8 +17,8 @@
 | T-S0-FE-01 | DONE | Antigravity (FE) | feat/T-S0-FE-01-frontend-shell | Khung FE (`frontend/`: Vite/TS 5.9/Tailwind/Radix UI, Router 6, TanStack Query 5, `shared/api` single-flight refresh, `gen:api`, MSW 3, `SCR-COM-01/02/03`) & 12/12 Vitest tests pass |
 | T-S0-OPS-04 | DONE | Antigravity (OPS) | feat/T-S0-OPS-04-ci-dockerfiles-nginx | Jenkinsfile, Dockerfiles BE/FE/AI, Nginx reverse proxy, Docker Compose full-stack + handoff note |
 | T-S1-BE-01 | DONE | Antigravity (BE) | feat/T-S1-BE-01-identity-domain | Identity Domain (idn_*), IdentityDbContext + InitialIdentity migration, IIdentityContract & integration events, BCrypt/SHA-256 services, unit & MySQL 8 integration tests, handoff note |
-| T-S1-BE-02 | REVIEW | Antigravity (BE) | feat/T-S1-BE-02-register-verify-email | `POST /api/v1/auth/register` & `verify-email`, BCrypt/SHA-256 + atomic token consume, `IPostCommitEventQueue`, `ErrorResultFilter`, unit & MySQL 8 integration tests, handoff note |
-| T-S1-BE-03 | TODO | – | – | – |
+| T-S1-BE-02 | DONE | Antigravity (BE) | feat/T-S1-BE-02-register-verify-email | `POST /api/v1/auth/register` & `verify-email`, BCrypt/SHA-256 + atomic token consume, `IPostCommitEventQueue`, `ErrorResultFilter`, unit & MySQL 8 integration tests, handoff note |
+| T-S1-BE-03 | REVIEW | Antigravity (BE) | feat/T-S1-BE-03-auth-sessions | `POST /api/v1/auth/login`, `refresh`, `logout`, `logout-all`, `GET/DELETE /api/v1/auth/sessions`, JWT 30' + rotating HttpOnly cookie 14d, `AccountStatusMiddleware`, auto-unlock expired lock, unit & integration tests, handoff note |
 | T-S1-BE-04 | TODO | – | – | – |
 | T-S1-BE-05 | TODO | – | – | – |
 | T-S1-BE-06 | TODO | – | – | – |
