@@ -1,7 +1,8 @@
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import brandLogoLg from '@/assets/figma/brand-logo-lg.svg';
-import brandLogoSm from '@/assets/figma/brand-logo-sm.svg';
+import brainMemoIcon from '@/assets/brand/brain-memo-icon.png';
+import logoDark from '@/assets/brand/logo-dark.png';
+import logoLight from '@/assets/brand/logo-light.png';
 import { cn } from '@/shared/lib/utils';
 
 export interface BrandLogoProps {
@@ -23,40 +24,44 @@ export function BrandLogo({
     <Link
       to={to}
       className={cn(
-        'inline-flex shrink-0 items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg',
+        'inline-flex shrink-0 items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg group',
         className
       )}
+      aria-label={t('brand.name')}
     >
-      <span
-        className={cn(
-          'flex shrink-0 items-center justify-center rounded-xl border transition-shadow',
-          'border-[#e5e7eb] bg-white shadow-[0_0_12px_rgba(255,122,26,0.22)] dark:border-[#2a2a36] dark:bg-[#1b1b21]',
-          compact ? 'h-8 w-8 rounded-lg' : 'h-10 w-10'
-        )}
-      >
-        <img
-          src={compact ? brandLogoLg : brandLogoSm}
-          alt=""
-          width={compact ? 24 : 22}
-          height={compact ? 24 : 16}
-          className="block select-none"
-        />
-      </span>
-      <span className="flex flex-col">
-        <span
-          className={cn(
-            'font-serif font-bold tracking-[-0.475px] text-foreground leading-none',
-            compact ? 'text-base' : 'text-[19px]'
-          )}
-        >
-          {t('brand.name')}
+      {compact ? (
+        <span className="flex shrink-0 items-center justify-center rounded-xl transition-transform group-hover:scale-105">
+          <img
+            src={brainMemoIcon}
+            alt={t('brand.name')}
+            width={32}
+            height={32}
+            className="h-8 w-8 object-contain select-none"
+          />
         </span>
-        {showSubtitle && !compact ? (
-          <span className="mt-1 hidden text-[9px] font-semibold uppercase tracking-[0.45px] text-muted-foreground sm:block">
-            {t('brand.subtitle')}
-          </span>
-        ) : null}
-      </span>
+      ) : (
+        <div className="flex flex-col">
+          <div className="flex items-center">
+            {/* Logo cho Light Mode (chữ đen Brain + cam Memo) */}
+            <img
+              src={logoLight}
+              alt={t('brand.name')}
+              className="h-8 sm:h-9 w-auto object-contain select-none block dark:hidden"
+            />
+            {/* Logo cho Dark Mode (chữ trắng Brain + cam Memo) */}
+            <img
+              src={logoDark}
+              alt={t('brand.name')}
+              className="h-8 sm:h-9 w-auto object-contain select-none hidden dark:block"
+            />
+          </div>
+          {showSubtitle ? (
+            <span className="text-[9px] font-semibold uppercase tracking-[0.45px] text-muted-foreground hidden sm:block pl-1">
+              {t('brand.subtitle')}
+            </span>
+          ) : null}
+        </div>
+      )}
     </Link>
   );
 }
