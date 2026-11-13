@@ -2,13 +2,14 @@ using BrainMemo.Course.Contracts.Dtos;
 using BrainMemo.Course.Contracts.Enums;
 using BrainMemo.Course.Domain.Entities;
 using BrainMemo.Course.Domain.Enums;
+using CourseEntity = BrainMemo.Course.Domain.Entities.Course;
 
 namespace BrainMemo.Course.Application.Common;
 
 public static class CourseAccessEvaluator
 {
     public static CourseAccessDto EvaluateCourseAccess(
-        Entities.Course? course,
+        CourseEntity? course,
         Guid? viewerUserId,
         Enrollment? enrollment,
         AccessPurpose purpose = AccessPurpose.Normal)
@@ -18,8 +19,8 @@ public static class CourseAccessEvaluator
         {
             return new CourseAccessDto(
                 Exists: false,
-                EffectiveState: "DELETED",
-                AccessMode: "PUBLIC",
+                EffectiveState: "NOT_FOUND",
+                AccessMode: "NONE",
                 OwnerUserId: Guid.Empty,
                 IsOwner: false,
                 EnrollmentStatus: null,
@@ -35,12 +36,18 @@ public static class CourseAccessEvaluator
                 ? "HIDDEN"
                 : "ACTIVE";
 
-        string accessModeStr = course.AccessMode.ToString().ToUpperInvariant();
-        string? enrollmentStatusStr = enrollment?.Status.ToString().ToUpperInvariant();
+        string accessModeStr = course.AccessMode switch
+        {
+            CourseAccessMode.Public => "PUBLIC",
+            CourseAccessMode.Private => "PRIVATE",
+            CourseAccessMode.OnlyMe => "ONLY_ME",
+            _ => "PUBLIC"
+        };
 
         bool isOwner = viewerUserId.HasValue && viewerUserId.Value == course.OwnerUserId;
+        string? enrollmentStatusStr = enrollment?.Status.ToString().ToUpperInvariant();
 
-        // (2) Owner: allow all owner actions (even when Hidden or Soft-deleted)
+        // (2) Course owner - allowed all operations, even when hidden or soft deleted
         if (isOwner)
         {
             return new CourseAccessDto(
@@ -53,14 +60,14 @@ public static class CourseAccessEvaluator
                 CanViewInfo: true,
                 CanReadContent: true,
                 CanLearn: true,
-                ReasonCode: "OK");
+                ReasonCode: "OWNER");
         }
 
-        // (3) ONLY_ME: reject everyone else, even Admin and ModerationReview (DEC-02)
+        // (3) ONLY_ME - denied to everyone else, EVEN ADMIN AND MODERATION REVIEW (3.5.8.1 + DEC-02)
         if (course.AccessMode == CourseAccessMode.OnlyMe)
         {
             return new CourseAccessDto(
-                Exists: false, // Hidden from others
+                Exists: true,
                 EffectiveState: effectiveState,
                 AccessMode: accessModeStr,
                 OwnerUserId: course.OwnerUserId,
@@ -72,7 +79,7 @@ public static class CourseAccessEvaluator
                 ReasonCode: "ONLY_ME");
         }
 
-        // (3b) purpose=ModerationReview: read-only for Private / Hidden / Deleted / Public
+        // (3b / 4) ModerationReview - allows read-only (CanReadContent=true, CanLearn=false) for Private/Hidden/Deleted/Public
         if (purpose == AccessPurpose.ModerationReview)
         {
             return new CourseAccessDto(
@@ -84,15 +91,15 @@ public static class CourseAccessEvaluator
                 EnrollmentStatus: enrollmentStatusStr,
                 CanViewInfo: true,
                 CanReadContent: true,
-                CanLearn: false, // Read-only: learning/progress forbidden
+                CanLearn: false,
                 ReasonCode: "MODERATION_REVIEW");
         }
 
-        // (4) Hidden or Soft-deleted: reject non-owner viewers (hide existence per DEC-16)
-        if (course.IsHidden || course.IsDeleted)
+        // (5) Hidden or Deleted course - denied to all non-owners
+        if (course.IsDeleted || course.IsHidden)
         {
             return new CourseAccessDto(
-                Exists: false,
+                Exists: true,
                 EffectiveState: effectiveState,
                 AccessMode: accessModeStr,
                 OwnerUserId: course.OwnerUserId,
@@ -101,13 +108,13 @@ public static class CourseAccessEvaluator
                 CanViewInfo: false,
                 CanReadContent: false,
                 CanLearn: false,
-                ReasonCode: course.IsDeleted ? "DELETED" : "HIDDEN");
+                ReasonCode: course.IsDeleted ? "COURSE_DELETED" : "COURSE_HIDDEN");
         }
 
-        // (5) PUBLIC
+        // (6) PUBLIC
         if (course.AccessMode == CourseAccessMode.Public)
         {
-            bool canLearn = viewerUserId.HasValue;
+            bool canLearn = viewerUserId.HasValue; // Only authenticated users can save progress/learn
             return new CourseAccessDto(
                 Exists: true,
                 EffectiveState: effectiveState,
@@ -118,10 +125,10 @@ public static class CourseAccessEvaluator
                 CanViewInfo: true,
                 CanReadContent: true,
                 CanLearn: canLearn,
-                ReasonCode: "OK");
+                ReasonCode: "PUBLIC_ACCESS");
         }
 
-        // (6) PRIVATE: only ACTIVE enrollments can view content & learn
+        // (7) PRIVATE - Only active enrolled learners can read content & learn
         bool isActiveEnrollment = enrollment?.Status == Domain.Enums.EnrollmentStatus.Active;
         return new CourseAccessDto(
             Exists: true,
@@ -130,47 +137,42 @@ public static class CourseAccessEvaluator
             OwnerUserId: course.OwnerUserId,
             IsOwner: false,
             EnrollmentStatus: enrollmentStatusStr,
-            CanViewInfo: true, // Can view general course card / landing info
+            CanViewInfo: true,
             CanReadContent: isActiveEnrollment,
-            CanLearn: isActiveEnrollment && viewerUserId.HasValue,
-            ReasonCode: isActiveEnrollment ? "OK" : "PRIVATE_ENROLLMENT_REQUIRED");
+            CanLearn: isActiveEnrollment,
+            ReasonCode: isActiveEnrollment ? "ENROLLED" : "ENROLLMENT_REQUIRED");
     }
 
     public static ChapterAccessResult EvaluateChapterAccess(
-        CourseAccessDto courseAccess,
         ChapterAccess? chapterAccess,
-        ChapterUnlock? chapterUnlock)
+        CourseAccessDto courseAccess,
+        ChapterUnlock? unlock)
     {
-        if (!courseAccess.Exists || !courseAccess.CanReadContent)
+        if (!courseAccess.CanReadContent)
         {
-            return new ChapterAccessResult(
-                Allowed: false,
-                CanSaveProgress: false,
-                Reason: "COURSE_DENIED");
+            return new ChapterAccessResult(false, false, "COURSE_DENIED");
         }
 
-        if (chapterAccess is null || chapterAccess.AccessMode == ChapterAccessMode.Public)
+        if (chapterAccess is null)
         {
-            return new ChapterAccessResult(
-                Allowed: true,
-                CanSaveProgress: courseAccess.CanLearn,
-                Reason: "OK");
+            return new ChapterAccessResult(true, courseAccess.CanLearn, "OK");
         }
 
-        // Protected chapter
-        if (courseAccess.IsOwner)
+        if (chapterAccess.AccessMode == BrainMemo.Course.Domain.Enums.ChapterAccessMode.Protected)
         {
-            return new ChapterAccessResult(
-                Allowed: true,
-                CanSaveProgress: true,
-                Reason: "OK");
+            if (courseAccess.IsOwner)
+            {
+                return new ChapterAccessResult(true, courseAccess.CanLearn, "OK");
+            }
+
+            if (unlock != null && unlock.PasscodeVersion == chapterAccess.PasscodeVersion)
+            {
+                return new ChapterAccessResult(true, courseAccess.CanLearn, "OK");
+            }
+
+            return new ChapterAccessResult(false, false, "PASSCODE_REQUIRED");
         }
 
-        bool isUnlocked = chapterUnlock is not null
-            && chapterUnlock.PasscodeVersion == chapterAccess.PasscodeVersion;
-
-        return isUnlocked
-            ? new ChapterAccessResult(Allowed: true, CanSaveProgress: courseAccess.CanLearn, Reason: "OK")
-            : new ChapterAccessResult(Allowed: false, CanSaveProgress: false, Reason: "PASSCODE_REQUIRED");
+        return new ChapterAccessResult(true, courseAccess.CanLearn, "OK");
     }
 }

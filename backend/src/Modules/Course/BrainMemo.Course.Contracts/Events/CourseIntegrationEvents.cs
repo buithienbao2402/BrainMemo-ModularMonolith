@@ -2,43 +2,42 @@ using BrainMemo.SharedKernel.Events;
 
 namespace BrainMemo.Course.Contracts.Events;
 
+/// <summary>
+/// Emitted via crs_outbox_event whenever a course is created, updated, soft deleted, hidden, or restored.
+/// CRITICAL RULE (D18): When Eligible is false, Name, Description, Tags, and other content fields MUST be null.
+/// </summary>
 public sealed record CourseUpserted(
     Guid EventId,
     DateTimeOffset OccurredAt,
     Guid CourseId,
-    int Revision,
     bool Eligible,
-    IReadOnlyList<string> ChangedFields,
-    Guid? OwnerUserId = null,
+    uint Revision,
     string? Name = null,
     string? Description = null,
-    string? CoverStorageKey = null,
     string? AccessMode = null,
     string? Status = null,
     IReadOnlyList<string>? Tags = null,
-    DateTimeOffset? CreatedAt = null,
-    DateTimeOffset? UpdatedAt = null) : IntegrationEvent(EventId, OccurredAt);
+    Guid? OwnerUserId = null) : IntegrationEvent(EventId, OccurredAt);
 
 public sealed record CoursePermanentlyDeleted(
     Guid EventId,
     DateTimeOffset OccurredAt,
     Guid CourseId,
-    string? CoverStorageKey = null) : IntegrationEvent(EventId, OccurredAt);
+    string CourseName,
+    Guid OwnerUserId,
+    Guid ActorAdminId) : IntegrationEvent(EventId, OccurredAt);
 
 public sealed record EnrollmentChanged(
     Guid EventId,
     DateTimeOffset OccurredAt,
     Guid CourseId,
-    Guid OwnerUserId,
     Guid UserId,
-    string Action,
-    string FromStatus,
-    string ToStatus,
-    bool IsFirstActivation) : IntegrationEvent(EventId, OccurredAt);
+    string PreviousStatus,
+    string NewStatus) : IntegrationEvent(EventId, OccurredAt);
 
 public sealed record NominationChanged(
     Guid EventId,
     DateTimeOffset OccurredAt,
     Guid CourseId,
     Guid UserId,
-    string Action) : IntegrationEvent(EventId, OccurredAt);
+    bool IsActive) : IntegrationEvent(EventId, OccurredAt);

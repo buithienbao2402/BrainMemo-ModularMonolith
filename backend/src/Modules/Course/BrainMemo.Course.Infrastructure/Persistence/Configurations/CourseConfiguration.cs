@@ -1,18 +1,16 @@
-using BrainMemo.Course.Domain.Entities;
-using BrainMemo.Course.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using CourseEntity = BrainMemo.Course.Domain.Entities.Course;
 
 namespace BrainMemo.Course.Infrastructure.Persistence.Configurations;
 
-internal sealed class CourseConfiguration : IEntityTypeConfiguration<Domain.Entities.Course>
+public sealed class CourseConfiguration : IEntityTypeConfiguration<CourseEntity>
 {
-    public void Configure(EntityTypeBuilder<Domain.Entities.Course> builder)
+    public void Configure(EntityTypeBuilder<CourseEntity> builder)
     {
         builder.ToTable("crs_course");
 
         builder.HasKey(c => c.Id);
-
         builder.Property(c => c.Id)
             .HasColumnName("id")
             .ValueGeneratedNever();
@@ -23,7 +21,7 @@ internal sealed class CourseConfiguration : IEntityTypeConfiguration<Domain.Enti
 
         builder.Property(c => c.Name)
             .HasColumnName("name")
-            .HasMaxLength(Domain.Entities.Course.MaxNameLength)
+            .HasMaxLength(200)
             .IsRequired();
 
         builder.Property(c => c.Description)
@@ -37,21 +35,25 @@ internal sealed class CourseConfiguration : IEntityTypeConfiguration<Domain.Enti
         builder.Property(c => c.AccessMode)
             .HasColumnName("access_mode")
             .HasConversion<string>()
+            .HasMaxLength(20)
             .IsRequired();
 
         builder.Property(c => c.Status)
             .HasColumnName("status")
             .HasConversion<string>()
+            .HasMaxLength(20)
             .IsRequired();
 
         builder.Property(c => c.HiddenAt)
-            .HasColumnName("hidden_at");
+            .HasColumnName("hidden_at")
+            .HasPrecision(3);
 
         builder.Property(c => c.HiddenSanctionId)
             .HasColumnName("hidden_sanction_id");
 
         builder.Property(c => c.DeletedAt)
-            .HasColumnName("deleted_at");
+            .HasColumnName("deleted_at")
+            .HasPrecision(3);
 
         builder.Property(c => c.Revision)
             .HasColumnName("revision")
@@ -59,10 +61,12 @@ internal sealed class CourseConfiguration : IEntityTypeConfiguration<Domain.Enti
 
         builder.Property(c => c.CreatedAt)
             .HasColumnName("created_at")
+            .HasPrecision(3)
             .IsRequired();
 
         builder.Property(c => c.UpdatedAt)
             .HasColumnName("updated_at")
+            .HasPrecision(3)
             .IsRequired();
 
         builder.HasMany(c => c.Tags)
@@ -70,10 +74,11 @@ internal sealed class CourseConfiguration : IEntityTypeConfiguration<Domain.Enti
             .HasForeignKey(t => t.CourseId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.Navigation(c => c.Tags)
-            .UsePropertyAccessMode(PropertyAccessMode.Field);
-
         builder.HasIndex(c => new { c.OwnerUserId, c.DeletedAt, c.CreatedAt })
             .HasDatabaseName("ix_crs_course_owner");
+
+        builder.Ignore(c => c.IsHidden);
+        builder.Ignore(c => c.IsDeleted);
+        builder.Ignore(c => c.DomainEvents);
     }
 }

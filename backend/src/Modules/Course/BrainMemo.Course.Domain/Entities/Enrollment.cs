@@ -3,34 +3,28 @@ using BrainMemo.SharedKernel.Domain;
 
 namespace BrainMemo.Course.Domain.Entities;
 
-public sealed class Enrollment : Entity<Guid>
+public sealed class Enrollment : Entity
 {
-    private Enrollment() { }
+    private Enrollment()
+    {
+    }
 
     public Enrollment(
         Guid id,
         Guid courseId,
         Guid userId,
         EnrollmentStatus status,
-        DateTimeOffset utcNow) : base(id)
+        DateTimeOffset? firstEnrolledAt,
+        DateTimeOffset now)
+        : base(id)
     {
-        if (courseId == Guid.Empty)
-        {
-            throw new ArgumentException("Course ID cannot be empty.", nameof(courseId));
-        }
-
-        if (userId == Guid.Empty)
-        {
-            throw new ArgumentException("User ID cannot be empty.", nameof(userId));
-        }
-
         CourseId = courseId;
         UserId = userId;
         Status = status;
-        FirstEnrolledAt = status == EnrollmentStatus.Active ? utcNow : null;
-        StatusChangedAt = utcNow;
-        CreatedAt = utcNow;
-        UpdatedAt = utcNow;
+        FirstEnrolledAt = firstEnrolledAt;
+        StatusChangedAt = now;
+        CreatedAt = now;
+        UpdatedAt = now;
     }
 
     public Guid CourseId { get; private set; }
@@ -41,20 +35,20 @@ public sealed class Enrollment : Entity<Guid>
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
 
-    public void ChangeStatus(EnrollmentStatus newStatus, DateTimeOffset utcNow)
+    public void ChangeStatus(EnrollmentStatus newStatus, DateTimeOffset now)
     {
         if (Status == newStatus)
         {
             return;
         }
 
-        Status = newStatus;
-        StatusChangedAt = utcNow;
-        UpdatedAt = utcNow;
-
         if (newStatus == EnrollmentStatus.Active && FirstEnrolledAt == null)
         {
-            FirstEnrolledAt = utcNow;
+            FirstEnrolledAt = now;
         }
+
+        Status = newStatus;
+        StatusChangedAt = now;
+        UpdatedAt = now;
     }
 }

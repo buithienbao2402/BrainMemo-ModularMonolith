@@ -8,12 +8,13 @@ using BrainMemo.Profile.Contracts;
 using BrainMemo.Profile.Contracts.Dtos;
 using BrainMemo.SharedKernel.Results;
 using Microsoft.Extensions.Logging;
+using CourseEntity = BrainMemo.Course.Domain.Entities.Course;
 
 namespace BrainMemo.Course.Application.Queries.GetCourse;
 
-internal sealed class GetCourseQueryHandler(
+public sealed class GetCourseQueryHandler(
     ICourseRepository courseRepository,
-    IProfileContract profileContract,
+    IProfileContract? profileContract,
     IFileStorage? fileStorage = null,
     ILogger<GetCourseQueryHandler>? logger = null) : IQueryHandler<GetCourseQuery, CourseDto>
 {
@@ -21,100 +22,88 @@ internal sealed class GetCourseQueryHandler(
 
     public async Task<Result<CourseDto>> Handle(GetCourseQuery request, CancellationToken cancellationToken)
     {
-        Entities.Course? course = await courseRepository
-            .FindByIdWithTagsAsync(request.CourseId, cancellationToken)
+        CourseEntity? course = await courseRepository
+            .GetByIdWithTagsAsync(request.CourseId, cancellationToken)
             .ConfigureAwait(false);
 
+        if (course is null)
+        {
+            return Result.Failure<CourseDto>(new Error("COURSE_NOT_FOUND", "Khóa học không tồn tại hoặc đã bị xóa."));
+        }
+
         Enrollment? enrollment = null;
-        if (request.ViewerUserId.HasValue && course is not null)
-        {
-            enrollment = await courseRepository
-                .FindEnrollmentAsync(course.Id, request.ViewerUserId.Value, cancellationToken)
-                .ConfigureAwait(false);
-        }
-
-        CourseAccessDto access = CourseAccessEvaluator.EvaluateCourseAccess(
-            course,
-            request.ViewerUserId,
-            enrollment);
-
-        if (!access.CanViewInfo)
-        {
-            // DEC-16: 404 to hide existence of Only Me, Hidden, Deleted courses
-            return Error.NotFound("Không tìm thấy khóa học.");
-        }
-
-        UserRefDto ownerRef = await ResolveOwnerRefAsync(course!.OwnerUserId, cancellationToken).ConfigureAwait(false);
-
         bool hasNominated = false;
+
         if (request.ViewerUserId.HasValue)
         {
-            Nomination? nomination = await courseRepository
-                .FindActiveNominationAsync(course.Id, request.ViewerUserId.Value, cancellationToken)
+            enrollment = await courseRepository
+                .GetEnrollmentAsync(course.Id, request.ViewerUserId.Value, cancellationToken)
                 .ConfigureAwait(false);
 
-            hasNominated = nomination is not null;
+            hasNominated = await courseRepository
+                .HasNominatedAsync(course.Id, request.ViewerUserId.Value, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        CourseAccessDto access = CourseAccessEvaluator.EvaluateCourseAccess(course, request.ViewerUserId, enrollment);
+
+        // DEC-16 & 3.5.8.1: Hide existence of ONLY_ME / Hidden / Deleted courses with 404 for non-owners
+        if (!access.CanViewInfo)
+        {
+            return Result.Failure<CourseDto>(new Error("COURSE_NOT_FOUND", "Khóa học không tồn tại hoặc đã bị xóa."));
         }
 
         string? coverUrl = null;
-        if (!string.IsNullOrWhiteSpace(course.CoverStorageKey) && fileStorage is not null)
+        if (!string.IsNullOrEmpty(course.CoverStorageKey) && fileStorage != null)
         {
             try
             {
-                coverUrl = await fileStorage
-                    .CreateDownloadUrl(course.CoverStorageKey, CoverUrlTtl, ct: cancellationToken)
-                    .ConfigureAwait(false);
+                coverUrl = await fileStorage.CreateDownloadUrl(course.CoverStorageKey, CoverUrlTtl, null, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
-                logger?.LogWarning(ex, "Failed to create cover download URL for course {CourseId}", course.Id);
+                logger?.LogWarning(ex, "Failed to create presigned download URL for course cover: {StorageKey}", course.CoverStorageKey);
             }
         }
 
+        string ownerDisplayName = "User";
+        string? ownerAvatarUrl = null;
+
+        if (profileContract != null)
+        {
+            Result<PublicProfileDto> profileResult = await profileContract.GetPublicProfile(course.OwnerUserId, cancellationToken).ConfigureAwait(false);
+            if (profileResult.IsSuccess && !string.IsNullOrWhiteSpace(profileResult.Value.DisplayName))
+            {
+                ownerDisplayName = profileResult.Value.DisplayName;
+                ownerAvatarUrl = profileResult.Value.AvatarUrl;
+            }
+        }
+
+        UserRefDto ownerRef = new(course.OwnerUserId, ownerDisplayName, ownerAvatarUrl);
+        CourseViewerDto viewer = new(
+            IsOwner: access.IsOwner,
+            EnrollmentStatus: access.EnrollmentStatus,
+            CanReadContent: access.CanReadContent,
+            CanLearn: access.CanLearn,
+            HasNominated: hasNominated);
+
         CourseDto dto = new(
-            course.Id,
-            ownerRef,
-            course.Name,
-            course.Description,
-            coverUrl,
-            course.AccessMode.ToString().ToUpperInvariant(),
-            course.Status.ToString().ToUpperInvariant(),
-            course.IsHidden,
-            course.IsDeleted,
-            course.Tags.Select(static t => t.Tag).ToList(),
-            course.CreatedAt,
-            course.UpdatedAt,
-            new ViewerAccessDto(
-                access.IsOwner,
-                access.EnrollmentStatus,
-                access.CanReadContent,
-                access.CanLearn,
-                hasNominated),
+            Id: course.Id,
+            Owner: ownerRef,
+            Name: course.Name,
+            Description: course.Description,
+            CoverUrl: coverUrl,
+            AccessMode: course.AccessMode.ToString().ToUpperInvariant(),
+            Status: course.Status.ToString().ToUpperInvariant(),
+            IsHidden: course.IsHidden,
+            IsDeleted: course.IsDeleted,
+            Tags: course.Tags.Select(t => t.Tag).ToArray(),
+            CreatedAt: course.CreatedAt,
+            UpdatedAt: course.UpdatedAt,
+            Viewer: viewer,
             RatingAvg: null,
             RatingCount: 0);
 
-        return dto;
-    }
-
-    private async Task<UserRefDto> ResolveOwnerRefAsync(Guid ownerUserId, CancellationToken ct)
-    {
-        try
-        {
-            Result<IReadOnlyList<DisplayInfoDto>> displayResult = await profileContract
-                .GetDisplayInfo([ownerUserId], ct)
-                .ConfigureAwait(false);
-
-            if (displayResult.IsSuccess && displayResult.Value.Count > 0)
-            {
-                DisplayInfoDto info = displayResult.Value[0];
-                return new UserRefDto(info.UserId, info.DisplayName, info.AvatarUrl);
-            }
-        }
-        catch (Exception ex)
-        {
-            logger?.LogWarning(ex, "Failed to resolve owner display info for {OwnerUserId}", ownerUserId);
-        }
-
-        return new UserRefDto(ownerUserId, "Chủ khóa", null);
+        return Result.Success(dto);
     }
 }

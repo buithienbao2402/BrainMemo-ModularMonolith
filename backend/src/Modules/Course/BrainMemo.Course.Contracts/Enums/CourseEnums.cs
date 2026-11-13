@@ -44,7 +44,13 @@ public enum CourseAudience
 
 public enum ActorKind
 {
-    Admin = 1,
-    System = 2,
-    User = 3,
+    User = 1,
+    Admin = 2,
+    System = 3,
+}
+
+public enum ChapterAccessMode
+{
+    Public = 1,
+    Protected = 2,
 }

@@ -2,24 +2,12 @@ namespace BrainMemo.Course.Domain.Entities;
 
 public sealed class ChapterUnlock
 {
-    private ChapterUnlock() { }
-
-    public ChapterUnlock(
-        Guid chapterId,
-        Guid userId,
-        int passcodeVersion,
-        DateTimeOffset unlockedAt)
+    private ChapterUnlock()
     {
-        if (chapterId == Guid.Empty)
-        {
-            throw new ArgumentException("Chapter ID cannot be empty.", nameof(chapterId));
-        }
+    }
 
-        if (userId == Guid.Empty)
-        {
-            throw new ArgumentException("User ID cannot be empty.", nameof(userId));
-        }
-
+    public ChapterUnlock(Guid chapterId, Guid userId, uint passcodeVersion, DateTimeOffset unlockedAt)
+    {
         ChapterId = chapterId;
         UserId = userId;
         PasscodeVersion = passcodeVersion;
@@ -28,12 +16,6 @@ public sealed class ChapterUnlock
 
     public Guid ChapterId { get; private set; }
     public Guid UserId { get; private set; }
-    public int PasscodeVersion { get; private set; }
+    public uint PasscodeVersion { get; private set; }
     public DateTimeOffset UnlockedAt { get; private set; }
-
-    public void RefreshVersion(int newVersion, DateTimeOffset utcNow)
-    {
-        PasscodeVersion = newVersion;
-        UnlockedAt = utcNow;
-    }
 }

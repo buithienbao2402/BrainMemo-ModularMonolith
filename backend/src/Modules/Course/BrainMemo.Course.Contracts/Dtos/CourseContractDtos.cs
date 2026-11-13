@@ -1,9 +1,13 @@
+using BrainMemo.Course.Contracts.Enums;
+
 namespace BrainMemo.Course.Contracts.Dtos;
+
+public sealed record UserRefDto(Guid Id, string DisplayName, string? AvatarUrl = null);
 
 public sealed record CourseAccessDto(
     bool Exists,
-    string EffectiveState,
-    string AccessMode,
+    string EffectiveState, /* ACTIVE | HIDDEN | DELETED */
+    string AccessMode,     /* PUBLIC | PRIVATE | ONLY_ME */
     Guid OwnerUserId,
     bool IsOwner,
     string? EnrollmentStatus,
@@ -15,10 +19,10 @@ public sealed record CourseAccessDto(
 public sealed record ChapterAccessResult(
     bool Allowed,
     bool CanSaveProgress,
-    string Reason);
+    string Reason /* OK | COURSE_DENIED | PASSCODE_REQUIRED | NOT_ENROLLED | NOT_FOUND */);
 
 public sealed record CourseSummaryDto(
-    Guid CourseId,
+    Guid Id,
     string? Name,
     string? Description,
     string? CoverUrl,
@@ -26,47 +30,44 @@ public sealed record CourseSummaryDto(
     string AccessMode,
     string Status,
     bool Visible,
-    IReadOnlyList<string> Tags,
-    DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt);
+    IReadOnlyList<string>? Tags = null);
 
 public sealed record ReportTargetDto(
     Guid CourseId,
+    string CourseName,
     Guid OwnerUserId,
-    string Name,
     string AccessMode,
-    string Status);
+    bool CanBeReported);
 
 public sealed record CourseSnapshotDto(
-    Guid CourseId,
+    Guid Id,
     Guid OwnerUserId,
     string Name,
     string? Description,
-    string? CoverStorageKey,
     string AccessMode,
     string Status,
     IReadOnlyList<string> Tags,
+    uint Revision,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt,
-    int Revision);
+    DateTimeOffset UpdatedAt);
 
 public sealed record EnrollmentFactDto(
+    Guid EnrollmentId,
     Guid CourseId,
     Guid UserId,
-    DateTimeOffset OccurredAt);
+    string Status,
+    DateTimeOffset? FirstEnrolledAt,
+    DateTimeOffset StatusChangedAt);
 
 public sealed record NominationFactDto(
+    Guid NominationId,
     Guid CourseId,
     Guid UserId,
-    string Action,
-    DateTimeOffset OccurredAt);
+    DateTimeOffset NominatedAt,
+    DateTimeOffset? WithdrawnAt,
+    bool IsActive);
 
-public sealed record UserRefDto(
-    Guid Id,
-    string DisplayName,
-    string? AvatarUrl);
-
-public sealed record ViewerAccessDto(
+public sealed record CourseViewerDto(
     bool IsOwner,
     string? EnrollmentStatus,
     bool CanReadContent,
@@ -86,7 +87,7 @@ public sealed record CourseDto(
     IReadOnlyList<string> Tags,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    ViewerAccessDto Viewer,
+    CourseViewerDto Viewer,
     double? RatingAvg,
     int RatingCount);
 

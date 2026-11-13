@@ -1,17 +1,17 @@
 using BrainMemo.Course.Domain.Entities;
+using BrainMemo.Course.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace BrainMemo.Course.Infrastructure.Persistence.Configurations;
 
-internal sealed class ChapterAccessConfiguration : IEntityTypeConfiguration<ChapterAccess>
+public sealed class ChapterAccessConfiguration : IEntityTypeConfiguration<ChapterAccess>
 {
     public void Configure(EntityTypeBuilder<ChapterAccess> builder)
     {
         builder.ToTable("crs_chapter_access");
 
         builder.HasKey(a => a.ChapterId);
-
         builder.Property(a => a.ChapterId)
             .HasColumnName("chapter_id")
             .ValueGeneratedNever();
@@ -23,6 +23,7 @@ internal sealed class ChapterAccessConfiguration : IEntityTypeConfiguration<Chap
         builder.Property(a => a.AccessMode)
             .HasColumnName("access_mode")
             .HasConversion<string>()
+            .HasMaxLength(20)
             .IsRequired();
 
         builder.Property(a => a.PasscodeHash)
@@ -35,6 +36,7 @@ internal sealed class ChapterAccessConfiguration : IEntityTypeConfiguration<Chap
 
         builder.Property(a => a.UpdatedAt)
             .HasColumnName("updated_at")
+            .HasPrecision(3)
             .IsRequired();
 
         builder.HasIndex(a => a.CourseId)

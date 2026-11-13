@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace BrainMemo.Course.Infrastructure.Persistence.Configurations;
 
-internal sealed class ChapterUnlockConfiguration : IEntityTypeConfiguration<ChapterUnlock>
+public sealed class ChapterUnlockConfiguration : IEntityTypeConfiguration<ChapterUnlock>
 {
     public void Configure(EntityTypeBuilder<ChapterUnlock> builder)
     {
@@ -14,7 +14,7 @@ internal sealed class ChapterUnlockConfiguration : IEntityTypeConfiguration<Chap
 
         builder.Property(u => u.ChapterId)
             .HasColumnName("chapter_id")
-            .IsRequired();
+            .ValueGeneratedNever();
 
         builder.Property(u => u.UserId)
             .HasColumnName("user_id")
@@ -26,6 +26,7 @@ internal sealed class ChapterUnlockConfiguration : IEntityTypeConfiguration<Chap
 
         builder.Property(u => u.UnlockedAt)
             .HasColumnName("unlocked_at")
+            .HasPrecision(3)
             .IsRequired();
 
         builder.HasIndex(u => u.UserId)

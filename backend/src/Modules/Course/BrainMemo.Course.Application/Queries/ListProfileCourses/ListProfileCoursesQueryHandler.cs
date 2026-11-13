@@ -2,91 +2,107 @@ using BrainMemo.BuildingBlocks.Abstractions.Cqrs;
 using BrainMemo.BuildingBlocks.Abstractions.Storage;
 using BrainMemo.Course.Application.Abstractions;
 using BrainMemo.Course.Contracts.Dtos;
-using BrainMemo.Course.Domain.Entities;
+using BrainMemo.Course.Domain.Enums;
 using BrainMemo.Profile.Contracts;
 using BrainMemo.Profile.Contracts.Dtos;
 using BrainMemo.SharedKernel.Pagination;
 using BrainMemo.SharedKernel.Results;
 using Microsoft.Extensions.Logging;
+using CourseEntity = BrainMemo.Course.Domain.Entities.Course;
 
 namespace BrainMemo.Course.Application.Queries.ListProfileCourses;
 
-internal sealed class ListProfileCoursesQueryHandler(
+public sealed class ListProfileCoursesQueryHandler(
     ICourseRepository courseRepository,
-    IProfileContract profileContract,
+    IProfileContract? profileContract,
     IFileStorage? fileStorage = null,
-    ILogger<ListProfileCoursesQueryHandler>? logger = null) : IQueryHandler<ListProfileCoursesQuery, Page<CourseCardDto>>
+    ILogger<ListProfileCoursesQueryHandler>? logger = null) : IQueryHandler<ListProfileCoursesQuery, PagedResult<CourseCardDto>>
 {
     private static readonly TimeSpan CoverUrlTtl = TimeSpan.FromMinutes(15);
 
-    public async Task<Result<Page<CourseCardDto>>> Handle(ListProfileCoursesQuery request, CancellationToken cancellationToken)
+    public async Task<Result<PagedResult<CourseCardDto>>> Handle(ListProfileCoursesQuery request, CancellationToken cancellationToken)
     {
-        // 1. Check profile privacy (FR-PRF-05, OpenAPI /profiles/{userId}/courses)
-        Result<PublicProfileDto> profileResult = await profileContract
-            .GetPublicProfile(request.TargetUserId, cancellationToken)
-            .ConfigureAwait(false);
+        int page = request.Page <= 0 ? 1 : request.Page;
+        int pageSize = request.PageSize <= 0 ? 12 : Math.Min(request.PageSize, 50);
 
-        if (profileResult.IsFailure)
+        bool isOwner = request.ViewerUserId.HasValue && request.ViewerUserId.Value == request.UserId;
+
+        // Check user's profile privacy setting: showCourseList
+        string ownerDisplayName = "User";
+        string? ownerAvatarUrl = null;
+
+        if (profileContract != null)
         {
-            return profileResult.Error;
+            Result<PublicProfileDto> profileResult = await profileContract.GetPublicProfile(request.UserId, cancellationToken).ConfigureAwait(false);
+            if (profileResult.IsFailure)
+            {
+                return Result.Failure<PagedResult<CourseCardDto>>(new Error("PROFILE_NOT_FOUND", "Không tìm thấy hồ sơ người dùng."));
+            }
+
+            if (!isOwner && !profileResult.Value.ShowCourseList)
+            {
+                // Hidden by profile privacy setting: return empty
+                return Result.Success(new PagedResult<CourseCardDto>([], page, pageSize, 0));
+            }
+
+            if (!string.IsNullOrWhiteSpace(profileResult.Value.DisplayName))
+            {
+                ownerDisplayName = profileResult.Value.DisplayName;
+                ownerAvatarUrl = profileResult.Value.AvatarUrl;
+            }
         }
 
-        PublicProfileDto profile = profileResult.Value;
-        bool isSelf = request.ViewerUserId.HasValue && request.ViewerUserId.Value == request.TargetUserId;
-        if (!profile.ShowCourseList && !isSelf)
-        {
-            return Error.NotFound("Danh sách khóa học của người dùng đã bị ẩn.");
-        }
-
-        int page = Math.Max(1, request.Page);
-        int pageSize = Math.Clamp(request.PageSize, 1, 50);
-        int skip = (page - 1) * pageSize;
-
-        // Public profile only returns PUBLIC courses owned by target user (NEVER Only Me / Hidden / Deleted)
-        IReadOnlyList<Entities.Course> courses = await courseRepository
-            .ListPublicCoursesByOwnerAsync(request.TargetUserId, skip, pageSize, cancellationToken)
+        PagedResult<CourseEntity> pagedCourses = await courseRepository
+            .ListProfileCoursesPagedAsync(request.UserId, page, pageSize, cancellationToken)
             .ConfigureAwait(false);
 
-        int totalCount = await courseRepository
-            .CountPublicCoursesByOwnerAsync(request.TargetUserId, cancellationToken)
-            .ConfigureAwait(false);
+        List<CourseCardDto> cards = [];
 
-        UserRefDto ownerRef = new(profile.UserId, profile.DisplayName, profile.AvatarUrl);
-
-        List<CourseCardDto> items = new(courses.Count);
-        foreach (Entities.Course course in courses)
+        foreach (CourseEntity c in pagedCourses.Items)
         {
+            // For non-owner, never show non-public or hidden/deleted courses
+            if (!isOwner && (c.AccessMode != CourseAccessMode.Public || c.IsHidden || c.IsDeleted))
+            {
+                continue;
+            }
+
             string? coverUrl = null;
-            if (!string.IsNullOrWhiteSpace(course.CoverStorageKey) && fileStorage is not null)
+            if (!string.IsNullOrEmpty(c.CoverStorageKey) && fileStorage != null)
             {
                 try
                 {
-                    coverUrl = await fileStorage.CreateDownloadUrl(course.CoverStorageKey, CoverUrlTtl, ct: cancellationToken).ConfigureAwait(false);
+                    coverUrl = await fileStorage.CreateDownloadUrl(c.CoverStorageKey, CoverUrlTtl, null, cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
-                    logger?.LogWarning(ex, "Failed to create cover URL for {CourseId}", course.Id);
+                    logger?.LogWarning(ex, "Failed to create presigned download URL for course cover: {StorageKey}", c.CoverStorageKey);
                 }
             }
 
-            int learnerCount = await courseRepository.CountActiveLearnersAsync(course.Id, cancellationToken).ConfigureAwait(false);
-            int nominationCount = await courseRepository.CountActiveNominationsAsync(course.Id, cancellationToken).ConfigureAwait(false);
+            int learnerCount = await courseRepository.GetLearnerCountAsync(c.Id, cancellationToken).ConfigureAwait(false);
+            int nominationCount = await courseRepository.GetNominationCountAsync(c.Id, cancellationToken).ConfigureAwait(false);
 
-            items.Add(new CourseCardDto(
-                course.Id,
-                course.Name,
-                coverUrl,
-                ownerRef,
-                course.AccessMode.ToString().ToUpperInvariant(),
-                course.Status.ToString().ToUpperInvariant(),
-                course.Tags.Select(static t => t.Tag).ToList(),
-                learnerCount,
+            cards.Add(new CourseCardDto(
+                Id: c.Id,
+                Name: c.Name,
+                CoverUrl: coverUrl,
+                Owner: new UserRefDto(c.OwnerUserId, ownerDisplayName, ownerAvatarUrl),
+                AccessMode: c.AccessMode.ToString().ToUpperInvariant(),
+                Status: c.Status.ToString().ToUpperInvariant(),
+                Tags: c.Tags.Select(t => t.Tag).ToArray(),
+                LearnerCount: learnerCount,
                 RatingAvg: null,
                 RatingCount: 0,
                 NominationCount: nominationCount,
                 ProgressPercent: null));
         }
 
-        return new Page<CourseCardDto>(items, totalCount, page, pageSize);
+        PagedResult<CourseCardDto> result = new(
+            Items: cards,
+            Page: pagedCourses.Page,
+            PageSize: pagedCourses.PageSize,
+            TotalItems: pagedCourses.TotalItems);
+
+        return Result.Success(result);
     }
 }

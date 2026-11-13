@@ -1,56 +1,42 @@
 using BrainMemo.Course.Contracts.Events;
-using BrainMemo.Course.Domain.Entities;
+using CourseEntity = BrainMemo.Course.Domain.Entities.Course;
 
 namespace BrainMemo.Course.Application.Common;
 
 public static class CourseEventFactory
 {
-    public static CourseUpserted CreateUpsertedEvent(
-        Course course,
-        IReadOnlyList<string> changedFields,
-        DateTimeOffset utcNow)
+    public static CourseUpserted CreateUpsertedEvent(CourseEntity course, DateTimeOffset now)
     {
-        ArgumentNullException.ThrowIfNull(course);
-        ArgumentNullException.ThrowIfNull(changedFields);
+        bool isEligible = course.IsEligible();
 
-        bool eligible = course.IsEligible();
-
-        if (eligible)
+        if (isEligible)
         {
             return new CourseUpserted(
                 EventId: Guid.NewGuid(),
-                OccurredAt: utcNow,
+                OccurredAt: now,
                 CourseId: course.Id,
-                Revision: course.Revision,
                 Eligible: true,
-                ChangedFields: changedFields,
-                OwnerUserId: course.OwnerUserId,
+                Revision: course.Revision,
                 Name: course.Name,
                 Description: course.Description,
-                CoverStorageKey: course.CoverStorageKey,
                 AccessMode: course.AccessMode.ToString().ToUpperInvariant(),
                 Status: course.Status.ToString().ToUpperInvariant(),
-                Tags: course.Tags.Select(static t => t.Tag).ToList(),
-                CreatedAt: course.CreatedAt,
-                UpdatedAt: course.UpdatedAt);
+                Tags: course.Tags.Select(t => t.Tag).ToArray(),
+                OwnerUserId: course.OwnerUserId);
         }
 
-        // When eligible = false: MUST NOT contain name, description or any content (D18, acceptance criteria)
+        // RULE D18: When eligible is false, do NOT include content (Name, Description, Tags, etc.)
         return new CourseUpserted(
             EventId: Guid.NewGuid(),
-            OccurredAt: utcNow,
+            OccurredAt: now,
             CourseId: course.Id,
-            Revision: course.Revision,
             Eligible: false,
-            ChangedFields: changedFields,
-            OwnerUserId: null,
+            Revision: course.Revision,
             Name: null,
             Description: null,
-            CoverStorageKey: null,
             AccessMode: null,
             Status: null,
             Tags: null,
-            CreatedAt: null,
-            UpdatedAt: null);
+            OwnerUserId: null);
     }
 }

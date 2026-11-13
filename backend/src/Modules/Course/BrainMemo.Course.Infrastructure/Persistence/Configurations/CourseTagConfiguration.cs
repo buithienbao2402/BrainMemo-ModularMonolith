@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace BrainMemo.Course.Infrastructure.Persistence.Configurations;
 
-internal sealed class CourseTagConfiguration : IEntityTypeConfiguration<CourseTag>
+public sealed class CourseTagConfiguration : IEntityTypeConfiguration<CourseTag>
 {
     public void Configure(EntityTypeBuilder<CourseTag> builder)
     {
@@ -14,12 +14,11 @@ internal sealed class CourseTagConfiguration : IEntityTypeConfiguration<CourseTa
 
         builder.Property(t => t.CourseId)
             .HasColumnName("course_id")
-            .IsRequired();
+            .ValueGeneratedNever();
 
         builder.Property(t => t.Tag)
             .HasColumnName("tag")
-            .HasMaxLength(Domain.Entities.Course.MaxTagLength)
-            .UseCollation("utf8mb4_0900_as_ci")
+            .HasMaxLength(50)
             .IsRequired();
 
         builder.HasIndex(t => new { t.Tag, t.CourseId })

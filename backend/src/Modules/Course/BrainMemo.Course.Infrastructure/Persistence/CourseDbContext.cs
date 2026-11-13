@@ -1,18 +1,20 @@
 using BrainMemo.BuildingBlocks.Infrastructure.Outbox;
 using BrainMemo.Course.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using CourseEntity = BrainMemo.Course.Domain.Entities.Course;
 
 namespace BrainMemo.Course.Infrastructure.Persistence;
 
-/// <summary>
-/// EF Core database context exclusively owning the <c>crs_*</c> Course tables (DEC-04, REPO_STRUCTURE §2 rule 4).
-/// </summary>
-public sealed class CourseDbContext(DbContextOptions<CourseDbContext> options)
-    : DbContext(options)
+public class CourseDbContext : DbContext
 {
     public static readonly MySqlServerVersion DefaultMySqlServerVersion = new(new Version(8, 0, 36));
 
-    public DbSet<Domain.Entities.Course> Courses => Set<Domain.Entities.Course>();
+    public CourseDbContext(DbContextOptions<CourseDbContext> options)
+        : base(options)
+    {
+    }
+
+    public DbSet<CourseEntity> Courses => Set<CourseEntity>();
     public DbSet<CourseTag> CourseTags => Set<CourseTag>();
     public DbSet<Enrollment> Enrollments => Set<Enrollment>();
     public DbSet<EnrollmentRequest> EnrollmentRequests => Set<EnrollmentRequest>();
@@ -23,16 +25,9 @@ public sealed class CourseDbContext(DbContextOptions<CourseDbContext> options)
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
-
-        modelBuilder
-            .HasCharSet("utf8mb4")
-            .UseCollation("utf8mb4_0900_ai_ci");
+        base.OnModelCreating(modelBuilder);
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(CourseDbContext).Assembly);
-
-        // Configure shared table-agnostic outbox table for crs_*
-        modelBuilder.ConfigureOutboxMessage("crs_outbox_event", "ix_crs_outbox_publish");
-
-        base.OnModelCreating(modelBuilder);
+        modelBuilder.ConfigureOutboxMessage("crs_outbox_event");
     }
 }

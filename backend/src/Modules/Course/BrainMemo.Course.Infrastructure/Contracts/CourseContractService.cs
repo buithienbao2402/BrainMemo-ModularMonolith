@@ -11,419 +11,253 @@ using BrainMemo.Course.Domain.Enums;
 using BrainMemo.SharedKernel.Pagination;
 using BrainMemo.SharedKernel.Results;
 using BrainMemo.SharedKernel.Time;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
+using CourseEntity = BrainMemo.Course.Domain.Entities.Course;
 
 namespace BrainMemo.Course.Infrastructure.Contracts;
 
 public sealed class CourseContractService(
     ICourseRepository courseRepository,
-    Persistence.CourseDbContext dbContext,
-    IClock clock,
     IOutboxWriter outboxWriter,
-    IFileStorage? fileStorage = null,
-    ILogger<CourseContractService>? logger = null) : ICourseContract
+    IClock clock,
+    IFileStorage? fileStorage = null) : ICourseContract
 {
     private static readonly TimeSpan CoverUrlTtl = TimeSpan.FromMinutes(15);
 
-    public Result<CourseAccessDto> GetCourseAccess(
-        Guid courseId,
-        Guid? viewerUserId,
-        AccessPurpose purpose = AccessPurpose.Normal)
+    public Result<CourseAccessDto> GetCourseAccess(Guid courseId, Guid? viewerUserId, AccessPurpose purpose = AccessPurpose.Normal)
     {
-        Domain.Entities.Course? course = dbContext.Courses
-            .AsNoTracking()
-            .FirstOrDefault(c => c.Id == courseId);
-
+        CourseEntity? course = courseRepository.GetByIdWithTagsAsync(courseId).GetAwaiter().GetResult();
         Enrollment? enrollment = null;
-        if (viewerUserId.HasValue && course is not null)
+
+        if (viewerUserId.HasValue)
         {
-            enrollment = dbContext.Enrollments
-                .AsNoTracking()
-                .FirstOrDefault(e => e.CourseId == courseId && e.UserId == viewerUserId.Value);
+            enrollment = courseRepository.GetEnrollmentAsync(courseId, viewerUserId.Value).GetAwaiter().GetResult();
         }
 
-        CourseAccessDto dto = CourseAccessEvaluator.EvaluateCourseAccess(
-            course,
-            viewerUserId,
-            enrollment,
-            purpose);
-
-        return dto;
+        CourseAccessDto access = CourseAccessEvaluator.EvaluateCourseAccess(course, viewerUserId, enrollment, purpose);
+        return Result.Success(access);
     }
 
-    public Result<ChapterAccessResult> CheckChapterAccess(
-        Guid courseId,
-        Guid chapterId,
-        Guid? viewerUserId)
+    public Result<ChapterAccessResult> CheckChapterAccess(Guid courseId, Guid chapterId, Guid? viewerUserId)
     {
         Result<CourseAccessDto> courseAccessResult = GetCourseAccess(courseId, viewerUserId);
         if (courseAccessResult.IsFailure)
         {
-            return new ChapterAccessResult(false, false, "COURSE_DENIED");
+            return Result.Failure<ChapterAccessResult>(courseAccessResult.Error);
         }
 
-        ChapterAccess? chapterAccess = dbContext.ChapterAccesses
-            .AsNoTracking()
-            .FirstOrDefault(a => a.ChapterId == chapterId);
+        CourseAccessDto courseAccess = courseAccessResult.Value;
+        ChapterAccess? chapterAccess = courseRepository.GetChapterAccessAsync(chapterId).GetAwaiter().GetResult();
+        ChapterUnlock? unlock = null;
 
-        ChapterUnlock? chapterUnlock = null;
         if (viewerUserId.HasValue)
         {
-            chapterUnlock = dbContext.ChapterUnlocks
-                .AsNoTracking()
-                .FirstOrDefault(u => u.ChapterId == chapterId && u.UserId == viewerUserId.Value);
+            unlock = courseRepository.GetChapterUnlockAsync(chapterId, viewerUserId.Value).GetAwaiter().GetResult();
         }
 
-        ChapterAccessResult result = CourseAccessEvaluator.EvaluateChapterAccess(
-            courseAccessResult.Value,
-            chapterAccess,
-            chapterUnlock);
-
-        return result;
+        ChapterAccessResult result = CourseAccessEvaluator.EvaluateChapterAccess(chapterAccess, courseAccess, unlock);
+        return Result.Success(result);
     }
 
-    public Result<IReadOnlyList<CourseSummaryDto>> GetCourseSummaries(
-        IReadOnlyList<Guid> courseIds,
-        Guid? viewerUserId)
+    public Result<IReadOnlyList<CourseSummaryDto>> GetCourseSummaries(IReadOnlyList<Guid> courseIds, Guid? viewerUserId)
     {
         if (courseIds.Count == 0)
         {
             return Result.Success<IReadOnlyList<CourseSummaryDto>>([]);
         }
 
-        List<Domain.Entities.Course> courses = dbContext.Courses
-            .Include(static c => c.Tags)
-            .AsNoTracking()
-            .Where(c => courseIds.Contains(c.Id))
-            .ToList();
+        IReadOnlyList<CourseEntity> courses = courseRepository.GetSummariesAsync(courseIds).GetAwaiter().GetResult();
+        Dictionary<Guid, CourseEntity> courseMap = courses.ToDictionary(c => c.Id);
+        List<CourseSummaryDto> summaries = [];
 
-        List<Enrollment> enrollments = viewerUserId.HasValue
-            ? dbContext.Enrollments
-                .AsNoTracking()
-                .Where(e => courseIds.Contains(e.CourseId) && e.UserId == viewerUserId.Value)
-                .ToList()
-            : [];
-
-        Dictionary<Guid, Enrollment> enrollmentMap = enrollments.ToDictionary(static e => e.CourseId);
-
-        List<CourseSummaryDto> result = new(courses.Count);
-        foreach (Domain.Entities.Course course in courses)
+        foreach (Guid id in courseIds)
         {
-            enrollmentMap.TryGetValue(course.Id, out Enrollment? enrollment);
+            if (!courseMap.TryGetValue(id, out CourseEntity? course))
+            {
+                continue;
+            }
+
+            Enrollment? enrollment = null;
+            if (viewerUserId.HasValue)
+            {
+                enrollment = courseRepository.GetEnrollmentAsync(course.Id, viewerUserId.Value).GetAwaiter().GetResult();
+            }
+
             CourseAccessDto access = CourseAccessEvaluator.EvaluateCourseAccess(course, viewerUserId, enrollment);
 
-            if (access.CanViewInfo)
+            if (!access.CanViewInfo)
             {
-                result.Add(new CourseSummaryDto(
-                    course.Id,
-                    course.Name,
-                    course.Description,
-                    course.CoverStorageKey,
-                    course.OwnerUserId,
-                    course.AccessMode.ToString().ToUpperInvariant(),
-                    course.Status.ToString().ToUpperInvariant(),
-                    Visible: true,
-                    course.Tags.Select(static t => t.Tag).ToList(),
-                    course.CreatedAt,
-                    course.UpdatedAt));
-            }
-            else
-            {
-                // visible = false khi không xem được, KHÔNG kèm nội dung (contracts/course.md)
-                result.Add(new CourseSummaryDto(
-                    course.Id,
+                // Visible=false khi không xem được, KHÔNG kèm nội dung per contract spec
+                summaries.Add(new CourseSummaryDto(
+                    Id: course.Id,
                     Name: null,
                     Description: null,
                     CoverUrl: null,
-                    course.OwnerUserId,
-                    course.AccessMode.ToString().ToUpperInvariant(),
-                    course.Status.ToString().ToUpperInvariant(),
+                    OwnerUserId: course.OwnerUserId,
+                    AccessMode: course.AccessMode.ToString().ToUpperInvariant(),
+                    Status: course.Status.ToString().ToUpperInvariant(),
                     Visible: false,
-                    Tags: [],
-                    course.CreatedAt,
-                    course.UpdatedAt));
-            }
-        }
-
-        return Result.Success<IReadOnlyList<CourseSummaryDto>>(result);
-    }
-
-    public Result<Page<CourseSummaryDto>> ListUserCourses(
-        Guid userId,
-        UserCourseRelation relation,
-        CourseAudience audience,
-        Guid? afterId,
-        int limit)
-    {
-        int take = Math.Clamp(limit, 1, 50);
-
-        IQueryable<Domain.Entities.Course> query = dbContext.Courses
-            .Include(static c => c.Tags)
-            .AsNoTracking();
-
-        if (audience == CourseAudience.Public)
-        {
-            // Only Me, Hidden, Deleted are strictly prohibited from public audience (FR-PRF-06, DEC-16, D18)
-            query = query.Where(c => c.OwnerUserId == userId
-                && c.AccessMode == CourseAccessMode.Public
-                && c.HiddenAt == null
-                && c.DeletedAt == null);
-        }
-        else
-        {
-            // Self audience
-            if (relation == UserCourseRelation.Owned)
-            {
-                query = query.Where(c => c.OwnerUserId == userId && c.DeletedAt == null);
+                    Tags: null));
             }
             else
             {
-                IQueryable<Guid> enrolledIds = dbContext.Enrollments
-                    .Where(e => e.UserId == userId && e.Status == EnrollmentStatus.Active)
-                    .Select(static e => e.CourseId);
+                string? coverUrl = null;
+                if (!string.IsNullOrEmpty(course.CoverStorageKey) && fileStorage != null)
+                {
+                    try
+                    {
+                        coverUrl = fileStorage.CreateDownloadUrl(course.CoverStorageKey, CoverUrlTtl).GetAwaiter().GetResult();
+                    }
+                    catch
+                    {
+                        // Ignore storage error
+                    }
+                }
 
-                query = query.Where(c => enrolledIds.Contains(c.Id) && c.DeletedAt == null);
+                summaries.Add(new CourseSummaryDto(
+                    Id: course.Id,
+                    Name: course.Name,
+                    Description: course.Description,
+                    CoverUrl: coverUrl,
+                    OwnerUserId: course.OwnerUserId,
+                    AccessMode: course.AccessMode.ToString().ToUpperInvariant(),
+                    Status: course.Status.ToString().ToUpperInvariant(),
+                    Visible: true,
+                    Tags: course.Tags.Select(t => t.Tag).ToArray()));
             }
         }
 
-        if (afterId.HasValue)
-        {
-            query = query.Where(c => c.Id.CompareTo(afterId.Value) > 0);
-        }
+        return Result.Success<IReadOnlyList<CourseSummaryDto>>(summaries);
+    }
 
-        int totalCount = query.Count();
-        List<Domain.Entities.Course> courses = query
-            .OrderBy(static c => c.Id)
-            .Take(take)
-            .ToList();
+    public Result<Page<CourseSummaryDto>> ListUserCourses(Guid userId, UserCourseRelation relation, CourseAudience audience, Guid? afterId, int limit)
+    {
+        Page<CourseEntity> page = courseRepository.ListUserCoursesAsync(userId, relation, audience, afterId, limit).GetAwaiter().GetResult();
 
-        List<CourseSummaryDto> items = courses.Select(static c => new CourseSummaryDto(
-            c.Id,
-            c.Name,
-            c.Description,
-            c.CoverStorageKey,
-            c.OwnerUserId,
-            c.AccessMode.ToString().ToUpperInvariant(),
-            c.Status.ToString().ToUpperInvariant(),
+        List<CourseSummaryDto> dtos = page.Items.Select(c => new CourseSummaryDto(
+            Id: c.Id,
+            Name: c.Name,
+            Description: c.Description,
+            CoverUrl: null,
+            OwnerUserId: c.OwnerUserId,
+            AccessMode: c.AccessMode.ToString().ToUpperInvariant(),
+            Status: c.Status.ToString().ToUpperInvariant(),
             Visible: true,
-            c.Tags.Select(static t => t.Tag).ToList(),
-            c.CreatedAt,
-            c.UpdatedAt)).ToList();
+            Tags: c.Tags.Select(t => t.Tag).ToArray())).ToList();
 
-        return new Page<CourseSummaryDto>(items, totalCount, 1, take);
+        return Result.Success(new Page<CourseSummaryDto>(dtos, page.AfterId, page.HasMore));
     }
 
     public Result<ReportTargetDto> ResolveReportTarget(Guid courseId, Guid reporterUserId)
     {
-        Domain.Entities.Course? course = dbContext.Courses
-            .AsNoTracking()
-            .FirstOrDefault(c => c.Id == courseId);
+        CourseEntity? course = courseRepository.GetByIdAsync(courseId).GetAwaiter().GetResult();
 
+        // contracts/course.md: Only Me → NOT_FOUND
         if (course is null || course.AccessMode == CourseAccessMode.OnlyMe)
         {
-            // Only Me -> NOT_FOUND (contracts/course.md)
-            return Error.NotFound("Không tìm thấy khóa học.");
+            return Result.Failure<ReportTargetDto>(new Error("NOT_FOUND", "Không tìm thấy khóa học để báo cáo."));
         }
 
-        return new ReportTargetDto(
-            course.Id,
-            course.OwnerUserId,
-            course.Name,
-            course.AccessMode.ToString().ToUpperInvariant(),
-            course.Status.ToString().ToUpperInvariant());
+        return Result.Success(new ReportTargetDto(
+            CourseId: course.Id,
+            CourseName: course.Name,
+            OwnerUserId: course.OwnerUserId,
+            AccessMode: course.AccessMode.ToString().ToUpperInvariant(),
+            CanBeReported: true));
     }
 
     public Result HideCourse(Guid courseId, Guid sanctionId, Guid actorAdminId)
     {
-        DateTimeOffset utcNow = clock.UtcNow;
-
-        Domain.Entities.Course? course = dbContext.Courses
-            .Include(static c => c.Tags)
-            .FirstOrDefault(c => c.Id == courseId);
-
+        CourseEntity? course = courseRepository.GetByIdWithTagsAsync(courseId).GetAwaiter().GetResult();
         if (course is null)
         {
-            return Error.NotFound("Không tìm thấy khóa học.");
+            return Result.Failure(new Error("NOT_FOUND", "Khóa học không tồn tại."));
         }
 
-        Result hideResult = course.Hide(sanctionId, utcNow);
+        DateTimeOffset now = clock.UtcNow;
+        Result hideResult = course.Hide(sanctionId, now);
         if (hideResult.IsFailure)
         {
-            return hideResult.Error;
+            return hideResult;
         }
 
-        CourseUpserted upserted = CourseEventFactory.CreateUpsertedEvent(course, ["hidden_at"], utcNow);
-        outboxWriter.WriteAsync("Course", course.Id, upserted).GetAwaiter().GetResult();
+        outboxWriter.WriteAsync(course.Id, CourseEventFactory.CreateUpsertedEvent(course, now)).GetAwaiter().GetResult();
+        courseRepository.SaveChangesAsync().GetAwaiter().GetResult();
 
-        dbContext.SaveChanges();
         return Result.Success();
     }
 
     public Result RestoreCourse(Guid courseId, Guid sanctionId, ActorKind actor)
     {
-        DateTimeOffset utcNow = clock.UtcNow;
-
-        Domain.Entities.Course? course = dbContext.Courses
-            .Include(static c => c.Tags)
-            .FirstOrDefault(c => c.Id == courseId);
-
+        CourseEntity? course = courseRepository.GetByIdWithTagsAsync(courseId).GetAwaiter().GetResult();
         if (course is null)
         {
-            return Error.NotFound("Không tìm thấy khóa học.");
+            return Result.Failure(new Error("NOT_FOUND", "Khóa học không tồn tại."));
         }
 
-        Result restoreResult = course.Restore(sanctionId);
+        DateTimeOffset now = clock.UtcNow;
+        Result restoreResult = course.Restore(sanctionId, now);
         if (restoreResult.IsFailure)
         {
-            return restoreResult.Error;
+            return restoreResult;
         }
 
-        CourseUpserted upserted = CourseEventFactory.CreateUpsertedEvent(course, ["hidden_at"], utcNow);
-        outboxWriter.WriteAsync("Course", course.Id, upserted).GetAwaiter().GetResult();
+        outboxWriter.WriteAsync(course.Id, CourseEventFactory.CreateUpsertedEvent(course, now)).GetAwaiter().GetResult();
+        courseRepository.SaveChangesAsync().GetAwaiter().GetResult();
 
-        dbContext.SaveChanges();
         return Result.Success();
     }
 
     public Result<string> PermanentlyDeleteCourse(Guid courseId, Guid actorAdminId)
     {
-        Domain.Entities.Course? course = dbContext.Courses
-            .FirstOrDefault(c => c.Id == courseId);
-
+        CourseEntity? course = courseRepository.GetByIdAsync(courseId).GetAwaiter().GetResult();
         if (course is null)
         {
-            return Error.NotFound("Không tìm thấy khóa học.");
+            return Result.Failure<string>(new Error("NOT_FOUND", "Khóa học không tồn tại."));
         }
 
         if (!course.IsDeleted && !course.IsHidden)
         {
-            return new Error("INVALID_STATE", "Khóa học phải ở trạng thái Tạm ẩn hoặc Đã xóa mới có thể xóa vĩnh viễn.");
+            return Result.Failure<string>(new Error("INVALID_STATE", "Chỉ có thể xóa vĩnh viễn khóa học đã bị xóa mềm hoặc tạm ẩn."));
         }
 
+        DateTimeOffset now = clock.UtcNow;
         string courseName = course.Name;
-        string? coverKey = course.CoverStorageKey;
 
-        dbContext.Courses.Remove(course);
+        outboxWriter.WriteAsync(course.Id, new CoursePermanentlyDeleted(
+            EventId: Guid.NewGuid(),
+            OccurredAt: now,
+            CourseId: course.Id,
+            CourseName: course.Name,
+            OwnerUserId: course.OwnerUserId,
+            ActorAdminId: actorAdminId)).GetAwaiter().GetResult();
 
-        CoursePermanentlyDeleted deletedEvent = new(
-            Guid.NewGuid(),
-            clock.UtcNow,
-            courseId,
-            coverKey);
-
-        outboxWriter.WriteAsync("Course", courseId, deletedEvent).GetAwaiter().GetResult();
-        dbContext.SaveChanges();
+        courseRepository.DeletePermanentlyAsync(course).GetAwaiter().GetResult();
+        courseRepository.SaveChangesAsync().GetAwaiter().GetResult();
 
         return Result.Success(courseName);
     }
 
     public Result<Page<Guid>> ListActiveLearnerIds(Guid courseId, Guid? afterId, int limit)
     {
-        int take = Math.Clamp(limit, 1, 50);
-
-        IQueryable<Enrollment> query = dbContext.Enrollments
-            .AsNoTracking()
-            .Where(e => e.CourseId == courseId && e.Status == EnrollmentStatus.Active);
-
-        if (afterId.HasValue)
-        {
-            query = query.Where(e => e.UserId.CompareTo(afterId.Value) > 0);
-        }
-
-        int total = query.Count();
-        List<Guid> ids = query
-            .OrderBy(static e => e.UserId)
-            .Take(take)
-            .Select(static e => e.UserId)
-            .ToList();
-
-        return new Page<Guid>(ids, total, 1, take);
+        Page<Guid> page = courseRepository.ListActiveLearnerIdsAsync(courseId, afterId, limit).GetAwaiter().GetResult();
+        return Result.Success(page);
     }
 
     public Result<Page<CourseSnapshotDto>> ListCourseSnapshots(Guid? afterId, int limit)
     {
-        int take = Math.Clamp(limit, 1, 50);
-
-        IQueryable<Domain.Entities.Course> query = dbContext.Courses
-            .Include(static c => c.Tags)
-            .AsNoTracking()
-            .Where(static c => (c.AccessMode == CourseAccessMode.Public || c.AccessMode == CourseAccessMode.Private)
-                && c.HiddenAt == null
-                && c.DeletedAt == null);
-
-        if (afterId.HasValue)
-        {
-            query = query.Where(c => c.Id.CompareTo(afterId.Value) > 0);
-        }
-
-        int total = query.Count();
-        List<Domain.Entities.Course> courses = query
-            .OrderBy(static c => c.Id)
-            .Take(take)
-            .ToList();
-
-        List<CourseSnapshotDto> items = courses.Select(static c => new CourseSnapshotDto(
-            c.Id,
-            c.OwnerUserId,
-            c.Name,
-            c.Description,
-            c.CoverStorageKey,
-            c.AccessMode.ToString().ToUpperInvariant(),
-            c.Status.ToString().ToUpperInvariant(),
-            c.Tags.Select(static t => t.Tag).ToList(),
-            c.CreatedAt,
-            c.UpdatedAt,
-            c.Revision)).ToList();
-
-        return new Page<CourseSnapshotDto>(items, total, 1, take);
+        Page<CourseSnapshotDto> page = courseRepository.ListCourseSnapshotsAsync(afterId, limit).GetAwaiter().GetResult();
+        return Result.Success(page);
     }
 
     public Result<Page<EnrollmentFactDto>> ListEnrollmentFacts(DateTimeOffset? after, int limit)
     {
-        int take = Math.Clamp(limit, 1, 50);
-
-        IQueryable<Enrollment> query = dbContext.Enrollments
-            .AsNoTracking()
-            .Where(static e => e.Status == EnrollmentStatus.Active && e.FirstEnrolledAt != null);
-
-        if (after.HasValue)
-        {
-            query = query.Where(e => e.FirstEnrolledAt > after.Value);
-        }
-
-        int total = query.Count();
-        List<EnrollmentFactDto> facts = query
-            .OrderBy(static e => e.FirstEnrolledAt)
-            .Take(take)
-            .Select(static e => new EnrollmentFactDto(e.CourseId, e.UserId, e.FirstEnrolledAt!.Value))
-            .ToList();
-
-        return new Page<EnrollmentFactDto>(facts, total, 1, take);
+        Page<EnrollmentFactDto> page = courseRepository.ListEnrollmentFactsAsync(after, limit).GetAwaiter().GetResult();
+        return Result.Success(page);
     }
 
     public Result<Page<NominationFactDto>> ListNominationFacts(DateTimeOffset? after, int limit)
     {
-        int take = Math.Clamp(limit, 1, 50);
-
-        IQueryable<Nomination> query = dbContext.Nominations.AsNoTracking();
-
-        if (after.HasValue)
-        {
-            query = query.Where(n => n.NominatedAt > after.Value);
-        }
-
-        int total = query.Count();
-        List<NominationFactDto> facts = query
-            .OrderBy(static n => n.NominatedAt)
-            .Take(take)
-            .Select(static n => new NominationFactDto(
-                n.CourseId,
-                n.UserId,
-                n.WithdrawnAt == null ? "NOMINATED" : "WITHDRAWN",
-                n.WithdrawnAt ?? n.NominatedAt))
-            .ToList();
-
-        return new Page<NominationFactDto>(facts, total, 1, take);
+        Page<NominationFactDto> page = courseRepository.ListNominationFactsAsync(after, limit).GetAwaiter().GetResult();
+        return Result.Success(page);
     }
 }
