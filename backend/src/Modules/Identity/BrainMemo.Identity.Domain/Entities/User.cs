@@ -229,6 +229,26 @@ public sealed class User : AggregateRoot
         return created;
     }
 
+    public int InvalidateTokens(UserTokenPurpose purpose, DateTimeOffset utcNow)
+    {
+        int count = 0;
+        foreach (UserToken token in _tokens)
+        {
+            if (token.Purpose == purpose && token.ConsumedAt is null)
+            {
+                token.Invalidate(utcNow);
+                count++;
+            }
+        }
+
+        if (count > 0)
+        {
+            UpdatedAt = utcNow;
+        }
+
+        return count;
+    }
+
     public Result<RefreshSession> IssueRefreshSession(
         Guid sessionId,
         byte[] tokenHash,

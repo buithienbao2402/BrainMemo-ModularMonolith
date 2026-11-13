@@ -95,5 +95,13 @@ public sealed class UserToken : Entity
         ConsumedAt = utcNow;
         return Result.Success();
     }
+
+    public void Invalidate(DateTimeOffset utcNow)
+    {
+        if (ConsumedAt is null)
+        {
+            ConsumedAt = utcNow;
+        }
+    }
 }
 

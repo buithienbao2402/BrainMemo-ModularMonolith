@@ -410,6 +410,13 @@ public sealed class RegisterAndVerifyEmailTests
             DateTimeOffset utcNow,
             CancellationToken ct = default)
             => Task.FromResult(false);
+
+        public Task InvalidateUserTokensAsync(
+            Guid userId,
+            UserTokenPurpose purpose,
+            DateTimeOffset utcNow,
+            CancellationToken ct = default)
+            => Task.CompletedTask;
     }
 
     private sealed class NoOpUnitOfWork : IUnitOfWork

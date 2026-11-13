@@ -599,5 +599,16 @@ public sealed class LoginRefreshLogoutSessionTests
 
             return Task.FromResult(session.Revoke(reason, utcNow).IsSuccess);
         }
+
+        public Task InvalidateUserTokensAsync(
+            Guid userId,
+            UserTokenPurpose purpose,
+            DateTimeOffset utcNow,
+            CancellationToken ct = default)
+        {
+            User? user = Users.FirstOrDefault(u => u.Id == userId);
+            user?.InvalidateTokens(purpose, utcNow);
+            return Task.CompletedTask;
+        }
     }
 }

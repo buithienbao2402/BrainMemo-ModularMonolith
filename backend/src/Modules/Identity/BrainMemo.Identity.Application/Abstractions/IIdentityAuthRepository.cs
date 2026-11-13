@@ -61,4 +61,10 @@ public interface IIdentityAuthRepository
         SessionRevokeReason reason,
         DateTimeOffset utcNow,
         CancellationToken ct = default);
+
+    Task InvalidateUserTokensAsync(
+        Guid userId,
+        UserTokenPurpose purpose,
+        DateTimeOffset utcNow,
+        CancellationToken ct = default);
 }

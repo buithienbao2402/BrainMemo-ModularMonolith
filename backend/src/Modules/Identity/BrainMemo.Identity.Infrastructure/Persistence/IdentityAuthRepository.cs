@@ -114,6 +114,14 @@ internal sealed class IdentityAuthRepository(IdentityDbContext dbContext) : IIde
             }
         }
 
+        foreach (UserToken token in user.Tokens)
+        {
+            if (dbContext.Entry(token).State == EntityState.Detached)
+            {
+                await dbContext.UserTokens.AddAsync(token, ct).ConfigureAwait(false);
+            }
+        }
+
         await dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
         return Result.Success();
     }
@@ -323,6 +331,42 @@ internal sealed class IdentityAuthRepository(IdentityDbContext dbContext) : IIde
 
         await dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
         return true;
+    }
+
+    public async Task InvalidateUserTokensAsync(
+        Guid userId,
+        UserTokenPurpose purpose,
+        DateTimeOffset utcNow,
+        CancellationToken ct = default)
+    {
+        if (dbContext.Database.IsRelational())
+        {
+            byte[] userIdBytes = userId.ToByteArray(true);
+            string purposeDb = purpose.ToDatabaseValue();
+            DateTime utcNowDt = utcNow.UtcDateTime;
+
+            await dbContext.Database
+                .ExecuteSqlInterpolatedAsync(
+                    $"UPDATE idn_user_token SET consumed_at = {utcNowDt} WHERE user_id = {userIdBytes} AND purpose = {purposeDb} AND consumed_at IS NULL",
+                    ct)
+                .ConfigureAwait(false);
+            return;
+        }
+
+        List<UserToken> tokens = await dbContext.UserTokens
+            .Where(t => t.UserId == userId && t.Purpose == purpose && t.ConsumedAt == null)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+
+        foreach (UserToken token in tokens)
+        {
+            token.Invalidate(utcNow);
+        }
+
+        if (tokens.Count > 0)
+        {
+            await dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
+        }
     }
 
     private static bool IsEmailDuplicateKeyException(DbUpdateException ex)
