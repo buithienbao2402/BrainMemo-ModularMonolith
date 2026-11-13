@@ -5,6 +5,7 @@ using BrainMemo.Profile.Contracts;
 using BrainMemo.Profile.Contracts.Dtos;
 using BrainMemo.Profile.Domain.Entities;
 using BrainMemo.SharedKernel.Results;
+using BrainMemo.SharedKernel.Time;
 using Microsoft.Extensions.Logging;
 
 namespace BrainMemo.Profile.Infrastructure.Contracts;
@@ -13,6 +14,7 @@ public sealed class ProfileContractService(
     IProfileRepository profileRepository,
     IIdentityContract identityContract,
     IFileStorage? fileStorage = null,
+    IClock? clock = null,
     ILogger<ProfileContractService>? logger = null) : IProfileContract
 {
     private static readonly TimeSpan AvatarUrlTtl = TimeSpan.FromHours(1);
@@ -23,18 +25,61 @@ public sealed class ProfileContractService(
             .FindByUserIdAsync(userId, ct)
             .ConfigureAwait(false);
 
+        DateTimeOffset utcNow = clock?.UtcNow ?? DateTimeOffset.UtcNow;
+        DateTimeOffset joinedAt = utcNow;
+
         if (profile is null)
         {
-            return Error.NotFound("Không tìm thấy hồ sơ người dùng.");
+            // Self-heal: ensure user exists in Identity before creating default profile
+            Result<IReadOnlyList<UserSummaryDto>> summaryResult = await identityContract
+                .GetUserSummary([userId], ct)
+                .ConfigureAwait(false);
+
+            if (summaryResult.IsFailure || summaryResult.Value.Count == 0)
+            {
+                return Error.NotFound("Không tìm thấy hồ sơ người dùng.");
+            }
+
+            joinedAt = summaryResult.Value[0].CreatedAt;
+
+            Result<UserProfile> createResult = UserProfile.CreateDefault(userId, utcNow);
+            if (createResult.IsFailure)
+            {
+                return createResult.Error;
+            }
+
+            profile = createResult.Value;
+            Result addResult = await profileRepository
+                .AddAsync(profile, ct)
+                .ConfigureAwait(false);
+
+            if (addResult.IsFailure)
+            {
+                profile = await profileRepository
+                    .FindByUserIdAsync(userId, ct)
+                    .ConfigureAwait(false);
+
+                if (profile is null)
+                {
+                    return new Error("INTERNAL_SERVER_ERROR", "Không thể khởi tạo hồ sơ người dùng.");
+                }
+            }
         }
+        else
+        {
+            Result<IReadOnlyList<UserSummaryDto>> summaryResult = await identityContract
+                .GetUserSummary([userId], ct)
+                .ConfigureAwait(false);
 
-        Result<IReadOnlyList<UserSummaryDto>> summaryResult = await identityContract
-            .GetUserSummary([userId], ct)
-            .ConfigureAwait(false);
-
-        DateTimeOffset joinedAt = summaryResult.IsSuccess && summaryResult.Value.Count > 0
-            ? summaryResult.Value[0].CreatedAt
-            : profile.CreatedAt;
+            if (summaryResult.IsSuccess && summaryResult.Value.Count > 0)
+            {
+                joinedAt = summaryResult.Value[0].CreatedAt;
+            }
+            else
+            {
+                joinedAt = profile.CreatedAt;
+            }
+        }
 
         string? avatarUrl = null;
         if (!string.IsNullOrWhiteSpace(profile.AvatarStorageKey) && fileStorage is not null)

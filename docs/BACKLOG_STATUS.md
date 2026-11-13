@@ -25,7 +25,7 @@
 | T-S1-FE-01 | FE-01 + FE-02 | DONE | Antigravity (FE) | feat/T-S1-FE-01-auth-account-ui | **Auth & Account UI (Batched):** SCR-AUTH-01..06 + SCR-COM-03 + sessions, guards, 100% tests pass (PR #9 merged) |
 | T-S1-INT-01 | INT-01 | DONE | Antigravity (INT) | feat/T-S1-INT-01-e2e-auth-flow | Tích hợp S1 + e2e Playwright: Đăng ký → Xác minh Mailpit → Đăng nhập → Đổi MK → Đăng xuất (100% tests pass) |
 | **S2 – Profile, Files, Course** | | | | | |
-| T-S2-BE-01 | BE-01 | TODO | – | – | Profile hoàn chỉnh + Upload Avatar S3/R2 + `GetPublicProfile` |
+| T-S2-BE-01 | BE-01 | DONE | Antigravity (BE) | feat/T-S2-BE-01-profile-avatar | Profile hoàn chỉnh + Upload Avatar S3/R2 + GetPublicProfile (21/21 tests pass) |
 | T-S2-BE-02 | BE-02..04 | TODO | – | – | **Course Module Toàn diện (Batched):** Domain & migration `crs_*`, CRUD khóa học, tags, bìa ảnh, Outbox, Phân quyền `GetCourseAccess` 3.5.8.1, Danh sách khóa của tôi / hồ sơ / public |
 | T-S2-FE-01 | FE-01 + FE-02 | TODO | – | – | **FE Profile & Course Management (Batched):** SCR-PRF-01, 02 + SCR-CRS-01, 02, 03 |
 | T-S2-INT-01 | INT-01 | TODO | – | – | Tích hợp S2 + e2e |
