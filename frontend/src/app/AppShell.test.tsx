@@ -118,7 +118,7 @@ describe('App Shell (SCR-COM-01, SCR-COM-02, SCR-COM-03, Guards, Theme)', () => 
   it('redirects unauthenticated RequireAuth to /login?next= and renders SCR-COM-02 for unknown routes', async () => {
     const firstRender = renderAppAt('/me/courses');
     await waitFor(() => {
-      expect(screen.getByText('SCR-AUTH-01')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Đăng nhập' })).toBeInTheDocument();
     });
     firstRender.unmount();
 

@@ -14,4 +14,3 @@ export function useRateLimit(): RateLimitContextValue {
   }
   return ctx;
 }
-

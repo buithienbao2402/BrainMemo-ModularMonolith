@@ -6,4 +6,3 @@ export function clampPageSize(pageSize: number): number {
   }
   return Math.min(Math.floor(pageSize), MAX_PAGE_SIZE);
 }
-

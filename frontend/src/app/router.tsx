@@ -1,4 +1,12 @@
 import { createBrowserRouter, type RouteObject } from 'react-router-dom';
+import {
+  ForgotPasswordPage,
+  LoginPage,
+  RegisterPage,
+  ResetPasswordPage,
+  SecuritySettingsPage,
+  VerifyEmailPage,
+} from '@/features/identity';
 import { RequireAdmin, RequireAuth, RequireVerifiedEmail } from './guards';
 import { AdminLayout, AppLayout, PublicLayout } from './layouts';
 import { HomeShellPage, LockedAccountPage, NotFoundPage, RouteStubPage } from './pages';
@@ -32,26 +40,11 @@ export const appRoutes: RouteObject[] = [
               />
             ),
           },
-          {
-            path: '/login',
-            element: (
-              <RouteStubPage
-                screenCode="SCR-AUTH-01"
-                title="Đăng nhập"
-                description="Khung route đăng nhập sẵn sàng kết nối Identity API."
-              />
-            ),
-          },
-          {
-            path: '/register',
-            element: (
-              <RouteStubPage
-                screenCode="SCR-AUTH-02"
-                title="Đăng ký tài khoản"
-                description="Khung route đăng ký sẵn sàng kết nối Identity API."
-              />
-            ),
-          },
+          { path: '/login', element: <LoginPage /> },
+          { path: '/register', element: <RegisterPage /> },
+          { path: '/forgot-password', element: <ForgotPasswordPage /> },
+          { path: '/reset-password', element: <ResetPasswordPage /> },
+          { path: '/verify-email', element: <VerifyEmailPage /> },
           { path: '/locked', element: <LockedAccountPage /> },
           { path: '/404', element: <NotFoundPage /> },
           { path: '*', element: <NotFoundPage /> },
@@ -94,16 +87,7 @@ export const appRoutes: RouteObject[] = [
               />
             ),
           },
-          {
-            path: '/settings/security',
-            element: (
-              <RouteStubPage
-                screenCode="SCR-AUTH-05"
-                title="Cài đặt & Bảo mật tài khoản"
-                description="Quản lý hồ sơ, giao diện Sáng/Tối và phiên đăng nhập."
-              />
-            ),
-          },
+          { path: '/settings/security', element: <SecuritySettingsPage /> },
           {
             path: '/courses/new',
             element: (

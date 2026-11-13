@@ -14,7 +14,7 @@ import {
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, NavLink, Outlet } from 'react-router-dom';
-import brandLogoSm from '@/assets/figma/brand-logo-sm.svg';
+import brainMemoIcon from '@/assets/brand/brain-memo-icon.png';
 import { useAuth } from '@/shared/hooks';
 import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/ui';
@@ -50,8 +50,14 @@ function AdminSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           onClick={onNavigate}
           className="inline-flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
         >
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-orange/15 border border-brand-orange/30">
-            <img src={brandLogoSm} alt="" width={22} height={16} className="block" />
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg">
+            <img
+              src={brainMemoIcon}
+              alt=""
+              width={32}
+              height={32}
+              className="h-8 w-8 object-contain"
+            />
           </span>
           <span className="font-serif text-base font-bold text-foreground">{t('brand.name')}</span>
         </Link>

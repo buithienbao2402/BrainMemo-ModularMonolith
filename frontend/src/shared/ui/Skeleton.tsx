@@ -38,4 +38,3 @@ export function PageSkeleton({ lines = 3, label }: PageSkeletonProps) {
     </div>
   );
 }
-

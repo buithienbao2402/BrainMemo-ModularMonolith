@@ -3,7 +3,8 @@ import * as React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { setMockPersonaCookie } from '@mocks/handlers';
-import brandLogoLg from '@/assets/figma/brand-logo-lg.svg';
+import brainMemoIcon from '@/assets/brand/brain-memo-icon.png';
+import defaultCourseCover from '@/assets/courses';
 import { useAuth } from '@/shared/hooks';
 import { cn } from '@/shared/lib/utils';
 import { Button, EmptyState, ErrorState, PageSkeleton, Pagination } from '@/shared/ui';
@@ -40,7 +41,13 @@ export function HomeShellPage() {
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-2xl space-y-4">
             <span className="inline-flex items-center gap-2 rounded-full border border-brand-orange/30 bg-brand-orange/10 px-3.5 py-1 text-xs font-semibold uppercase tracking-wide text-brand-orange">
-              <img src={brandLogoLg} alt="" width={24} height={24} className="h-5 w-5" />
+              <img
+                src={brainMemoIcon}
+                alt=""
+                width={24}
+                height={24}
+                className="h-5 w-5 object-contain"
+              />
               <span>{t('homeShell.heroBadge')}</span>
             </span>
             <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground sm:text-4xl">
@@ -229,15 +236,23 @@ export function HomeShellPage() {
       <section className="grid gap-4 sm:grid-cols-2">
         <Link
           to="/courses"
-          className="flex items-center justify-between rounded-xl border border-border bg-card p-5 transition-colors hover:border-brand-orange/40"
+          className="flex items-center gap-4 rounded-xl border border-border bg-card p-4 transition-colors hover:border-brand-orange/40 overflow-hidden group"
         >
-          <div>
+          <img
+            src={defaultCourseCover}
+            alt="Ảnh bìa khóa học mặc định"
+            className="h-20 w-28 rounded-lg object-cover transition-transform group-hover:scale-105 border border-border"
+          />
+          <div className="flex-1">
+            <span className="text-[11px] font-semibold text-brand-orange uppercase tracking-wider">
+              Ảnh bìa mặc định
+            </span>
             <p className="text-sm font-semibold text-foreground">{t('nav.explore')}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Khung đường dẫn /courses sẵn sàng cho Sprint 1–2.
+              Khám phá danh mục các khóa học trực tuyến BrainMemo.
             </p>
           </div>
-          <BookOpen className="h-5 w-5 text-brand-orange" aria-hidden="true" />
+          <BookOpen className="h-5 w-5 text-brand-orange shrink-0 mr-1" aria-hidden="true" />
         </Link>
         <Link
           to="/admin"
