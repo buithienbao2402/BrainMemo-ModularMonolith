@@ -3,7 +3,7 @@ using BrainMemo.Profile.Api.Requests;
 using BrainMemo.Profile.Application.Commands.UpdateMyProfile;
 using BrainMemo.Profile.Application.DTOs;
 using BrainMemo.Profile.Application.Queries.GetMyProfile;
-using BrainMemo.Profile.Contracts;
+using BrainMemo.Profile.Application.Queries.GetPublicProfile;
 using BrainMemo.Profile.Contracts.Dtos;
 using BrainMemo.SharedKernel.Results;
 using MediatR;
@@ -15,9 +15,7 @@ namespace BrainMemo.Profile.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/profiles")]
-public sealed class ProfilesController(
-    ISender sender,
-    IProfileContract profileContract) : ControllerBase
+public sealed class ProfilesController(ISender sender) : ControllerBase
 {
     /// <summary>
     /// Gets current authenticated user's profile with self-healing support (FR-PRF-01..04).
@@ -90,8 +88,8 @@ public sealed class ProfilesController(
         [FromRoute] Guid userId,
         CancellationToken ct)
     {
-        Result<PublicProfileDto> result = await profileContract
-            .GetPublicProfile(userId, ct)
+        Result<PublicProfileDto> result = await sender
+            .Send(new GetPublicProfileQuery(userId), ct)
             .ConfigureAwait(false);
 
         if (result.IsFailure)

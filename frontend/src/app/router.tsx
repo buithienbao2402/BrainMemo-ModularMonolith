@@ -7,6 +7,15 @@ import {
   SecuritySettingsPage,
   VerifyEmailPage,
 } from '@/features/identity';
+import {
+  PublicProfilePage,
+  EditProfilePage,
+} from '@/features/profile';
+import {
+  CourseDetailPage,
+  CourseFormPage,
+  MyCoursesPage,
+} from '@/features/course';
 import { RequireAdmin, RequireAuth, RequireVerifiedEmail } from './guards';
 import { AdminLayout, AppLayout, PublicLayout } from './layouts';
 import { HomeShellPage, LockedAccountPage, NotFoundPage, RouteStubPage } from './pages';
@@ -24,21 +33,19 @@ export const appRoutes: RouteObject[] = [
             path: '/courses',
             element: (
               <RouteStubPage
-                screenCode="SCR-CRS-01"
+                screenCode="SCR-DSC-02"
                 title="Khám phá khóa học"
-                description="Danh mục khóa học công khai đang được hoàn thiện ở Sprint tiếp theo."
+                description="Danh mục khóa học công khai và bộ lọc tìm kiếm đang được tích hợp."
               />
             ),
           },
           {
+            path: '/courses/:courseId',
+            element: <CourseDetailPage />,
+          },
+          {
             path: '/users/:userId',
-            element: (
-              <RouteStubPage
-                screenCode="SCR-PRF-01"
-                title="Hồ sơ công khai"
-                description="Trang thông tin tác giả và danh sách khóa học công khai."
-              />
-            ),
+            element: <PublicProfilePage />,
           },
           { path: '/login', element: <LoginPage /> },
           { path: '/register', element: <RegisterPage /> },
@@ -59,19 +66,13 @@ export const appRoutes: RouteObject[] = [
         children: [
           {
             path: '/me/courses',
-            element: (
-              <RouteStubPage
-                screenCode="SCR-CRS-02"
-                title="Khóa học của tôi"
-                description="Không gian quản lý khóa học đã tham gia và đã tạo."
-              />
-            ),
+            element: <MyCoursesPage />,
           },
           {
             path: '/me/bookmarks',
             element: (
               <RouteStubPage
-                screenCode="SCR-PRF-02"
+                screenCode="SCR-LRN-07"
                 title="Khóa học đã lưu (Bookmark)"
                 description="Danh sách khóa học được bạn đánh dấu."
               />
@@ -87,18 +88,19 @@ export const appRoutes: RouteObject[] = [
               />
             ),
           },
+          { path: '/settings/profile', element: <EditProfilePage /> },
           { path: '/settings/security', element: <SecuritySettingsPage /> },
           {
             path: '/courses/new',
             element: (
               <RequireVerifiedEmail>
-                <RouteStubPage
-                  screenCode="SCR-CRS-03"
-                  title="Tạo khóa học mới"
-                  description="Trình khởi tạo khóa học dành cho tác giả đã xác minh email."
-                />
+                <CourseFormPage />
               </RequireVerifiedEmail>
             ),
+          },
+          {
+            path: '/courses/:courseId/edit',
+            element: <CourseFormPage />,
           },
         ],
       },

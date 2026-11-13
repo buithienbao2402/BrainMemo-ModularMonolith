@@ -7,7 +7,7 @@ using BrainMemo.Profile.Application.Commands.UpdateMyProfile;
 using BrainMemo.Profile.Application.DTOs;
 using BrainMemo.Profile.Application.EventHandlers;
 using BrainMemo.Profile.Application.Queries.GetMyProfile;
-using BrainMemo.Profile.Contracts;
+using BrainMemo.Profile.Application.Queries.GetPublicProfile;
 using BrainMemo.Profile.Contracts.Dtos;
 using BrainMemo.Profile.Contracts.Events;
 using BrainMemo.Profile.Domain.Entities;
@@ -118,6 +118,7 @@ public sealed class ProfileApplicationTests
     {
         public Dictionary<string, FileHead> Files { get; } = [];
         public List<string> CommittedFiles { get; } = [];
+        public List<(string Key, TimeSpan Ttl)> RequestedDownloadUrls { get; } = [];
 
         public Task<PresignedUpload> CreateUploadUrl(string tmpKey, string contentType, long maxBytes, TimeSpan ttl, CancellationToken ct = default) =>
             throw new NotImplementedException();
@@ -134,8 +135,11 @@ public sealed class ProfileApplicationTests
             return Task.FromResult(finalKey);
         }
 
-        public Task<string> CreateDownloadUrl(string key, TimeSpan ttl, string? downloadName = null, CancellationToken ct = default) =>
-            Task.FromResult($"https://cdn.brainmemo.local/{key}?token=signature");
+        public Task<string> CreateDownloadUrl(string key, TimeSpan ttl, string? downloadName = null, CancellationToken ct = default)
+        {
+            RequestedDownloadUrls.Add((key, ttl));
+            return Task.FromResult($"https://cdn.brainmemo.local/{key}?token=signature");
+        }
 
         public Task Delete(string key, CancellationToken ct = default) => Task.CompletedTask;
 
@@ -190,6 +194,7 @@ public sealed class ProfileApplicationTests
         Assert.Equal(profile.DisplayName, result.Value.DisplayName);
         Assert.Equal(joined, result.Value.JoinedAt);
         Assert.NotNull(result.Value.AvatarUrl);
+        Assert.Contains(storage.RequestedDownloadUrls, u => u.Key == "avatars/u1/pic.png" && u.Ttl == TimeSpan.FromHours(1));
     }
 
     [Fact]
@@ -254,28 +259,342 @@ public sealed class ProfileApplicationTests
     }
 
     [Fact]
-    public async Task ProfileContractService_GetPublicProfile_ShouldReturnPublicDto()
+    public async Task UpdateMyProfileCommandHandler_WithValidAvatarUploadKey_ShouldCommitFileAndGeneratePresignedUrl()
     {
         InMemoryProfileRepository repo = new();
         FakeIdentityContract identity = new();
+        FakeEventBus bus = new();
+        FakeClock clock = new(DateTimeOffset.UtcNow);
         FakeFileStorage storage = new();
 
         Guid userId = Guid.NewGuid();
-        DateTimeOffset joined = DateTimeOffset.UtcNow.AddDays(-30);
+        identity.Users[userId] = new UserSummaryDto(userId, AccountStatuses.Active, clock.UtcNow, "avatar@brainmemo.vn");
+        UserProfile profile = UserProfile.CreateDefault(userId, clock.UtcNow).Value;
+        await repo.AddAsync(profile);
+
+        string uploadKey = $"tmp/{userId:D}/my-avatar.png";
+        storage.Files[uploadKey] = new FileHead(1024 * 1024, "image/png"); // 1 MB
+
+        UpdateMyProfileCommandHandler handler = new(repo, identity, bus, clock, storage, NullLogger<UpdateMyProfileCommandHandler>.Instance);
+
+        UpdateMyProfileCommand command = new(
+            userId,
+            "Người dùng Avatar",
+            "Bio avatar",
+            true,
+            "LIGHT",
+            uploadKey,
+            false);
+
+        Result<ProfileDto> result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(result.Value.AvatarUrl);
+        Assert.Single(storage.CommittedFiles);
+
+        string committedKey = storage.CommittedFiles[0];
+        Assert.StartsWith($"avatars/{userId:D}/", committedKey);
+        Assert.EndsWith(".png", committedKey);
+
+        UserProfile? updated = await repo.FindByUserIdAsync(userId);
+        Assert.NotNull(updated);
+        Assert.Equal(committedKey, updated.AvatarStorageKey);
+
+        Assert.Single(bus.PublishedEvents);
+        ProfileUpdated evt = Assert.IsType<ProfileUpdated>(bus.PublishedEvents[0]);
+        Assert.Equal(userId, evt.UserId);
+        Assert.Equal(committedKey, evt.AvatarStorageKey);
+
+        // Verify presigned URL TTL is 1 hour per DEC-06
+        Assert.Contains(storage.RequestedDownloadUrls, u => u.Key == committedKey && u.Ttl == TimeSpan.FromHours(1));
+    }
+
+    [Fact]
+    public async Task UpdateMyProfileCommandHandler_WithFileTooLarge_ShouldFailWithFileTooLargeError()
+    {
+        InMemoryProfileRepository repo = new();
+        FakeIdentityContract identity = new();
+        FakeEventBus bus = new();
+        FakeClock clock = new(DateTimeOffset.UtcNow);
+        FakeFileStorage storage = new();
+
+        Guid userId = Guid.NewGuid();
+        identity.Users[userId] = new UserSummaryDto(userId, AccountStatuses.Active, clock.UtcNow, "avatar@brainmemo.vn");
+        UserProfile profile = UserProfile.CreateDefault(userId, clock.UtcNow).Value;
+        await repo.AddAsync(profile);
+
+        string uploadKey = $"tmp/{userId:D}/huge-avatar.jpg";
+        long oversizedBytes = (5L * 1024L * 1024L) + 100L; // > 5 MB
+        storage.Files[uploadKey] = new FileHead(oversizedBytes, "image/jpeg");
+
+        UpdateMyProfileCommandHandler handler = new(repo, identity, bus, clock, storage, NullLogger<UpdateMyProfileCommandHandler>.Instance);
+
+        UpdateMyProfileCommand command = new(
+            userId,
+            "User Name",
+            null,
+            true,
+            "LIGHT",
+            uploadKey,
+            false);
+
+        Result<ProfileDto> result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorCodes.FileTooLarge, result.Error.Code);
+        Assert.Empty(storage.CommittedFiles);
+        Assert.Empty(bus.PublishedEvents);
+
+        UserProfile? notUpdated = await repo.FindByUserIdAsync(userId);
+        Assert.NotNull(notUpdated);
+        Assert.Null(notUpdated.AvatarStorageKey);
+    }
+
+    [Fact]
+    public async Task UpdateMyProfileCommandHandler_WithInvalidFileExtension_ShouldFailWithFileTypeNotAllowedError()
+    {
+        InMemoryProfileRepository repo = new();
+        FakeIdentityContract identity = new();
+        FakeEventBus bus = new();
+        FakeClock clock = new(DateTimeOffset.UtcNow);
+        FakeFileStorage storage = new();
+
+        Guid userId = Guid.NewGuid();
+        identity.Users[userId] = new UserSummaryDto(userId, AccountStatuses.Active, clock.UtcNow, "avatar@brainmemo.vn");
+        UserProfile profile = UserProfile.CreateDefault(userId, clock.UtcNow).Value;
+        await repo.AddAsync(profile);
+
+        string uploadKey = $"tmp/{userId:D}/script.sh";
+        storage.Files[uploadKey] = new FileHead(1024, "application/x-sh");
+
+        UpdateMyProfileCommandHandler handler = new(repo, identity, bus, clock, storage, NullLogger<UpdateMyProfileCommandHandler>.Instance);
+
+        UpdateMyProfileCommand command = new(
+            userId,
+            "User Name",
+            null,
+            true,
+            "LIGHT",
+            uploadKey,
+            false);
+
+        Result<ProfileDto> result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorCodes.FileTypeNotAllowed, result.Error.Code);
+        Assert.Empty(storage.CommittedFiles);
+    }
+
+    [Fact]
+    public async Task UpdateMyProfileCommandHandler_WithMismatchedUserIdInUploadKey_ShouldFailWithForbidden()
+    {
+        InMemoryProfileRepository repo = new();
+        FakeIdentityContract identity = new();
+        FakeEventBus bus = new();
+        FakeClock clock = new(DateTimeOffset.UtcNow);
+        FakeFileStorage storage = new();
+
+        Guid userId = Guid.NewGuid();
+        Guid otherUserId = Guid.NewGuid();
+        identity.Users[userId] = new UserSummaryDto(userId, AccountStatuses.Active, clock.UtcNow, "avatar@brainmemo.vn");
+        UserProfile profile = UserProfile.CreateDefault(userId, clock.UtcNow).Value;
+        await repo.AddAsync(profile);
+
+        string uploadKey = $"tmp/{otherUserId:D}/stolen-avatar.png";
+        storage.Files[uploadKey] = new FileHead(1024, "image/png");
+
+        UpdateMyProfileCommandHandler handler = new(repo, identity, bus, clock, storage, NullLogger<UpdateMyProfileCommandHandler>.Instance);
+
+        UpdateMyProfileCommand command = new(
+            userId,
+            "User Name",
+            null,
+            true,
+            "LIGHT",
+            uploadKey,
+            false);
+
+        Result<ProfileDto> result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorCodes.Forbidden, result.Error.Code);
+        Assert.Empty(storage.CommittedFiles);
+    }
+
+    [Fact]
+    public async Task UpdateMyProfileCommandHandler_WithFileNotFoundInStorage_ShouldFailWithNotFound()
+    {
+        InMemoryProfileRepository repo = new();
+        FakeIdentityContract identity = new();
+        FakeEventBus bus = new();
+        FakeClock clock = new(DateTimeOffset.UtcNow);
+        FakeFileStorage storage = new();
+
+        Guid userId = Guid.NewGuid();
+        identity.Users[userId] = new UserSummaryDto(userId, AccountStatuses.Active, clock.UtcNow, "avatar@brainmemo.vn");
+        UserProfile profile = UserProfile.CreateDefault(userId, clock.UtcNow).Value;
+        await repo.AddAsync(profile);
+
+        string uploadKey = $"tmp/{userId:D}/nonexistent.png";
+        // Do not add to storage.Files -> Head returns null
+
+        UpdateMyProfileCommandHandler handler = new(repo, identity, bus, clock, storage, NullLogger<UpdateMyProfileCommandHandler>.Instance);
+
+        UpdateMyProfileCommand command = new(
+            userId,
+            "User Name",
+            null,
+            true,
+            "LIGHT",
+            uploadKey,
+            false);
+
+        Result<ProfileDto> result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorCodes.NotFound, result.Error.Code);
+        Assert.Empty(storage.CommittedFiles);
+    }
+
+    [Fact]
+    public async Task UpdateMyProfileCommandHandler_WithRemoveAvatar_ShouldClearAvatarStorageKey()
+    {
+        InMemoryProfileRepository repo = new();
+        FakeIdentityContract identity = new();
+        FakeEventBus bus = new();
+        FakeClock clock = new(DateTimeOffset.UtcNow);
+
+        Guid userId = Guid.NewGuid();
+        identity.Users[userId] = new UserSummaryDto(userId, AccountStatuses.Active, clock.UtcNow, "remove@brainmemo.vn");
+        UserProfile profile = UserProfile.CreateDefault(userId, clock.UtcNow).Value;
+        profile.UpdateAvatar($"avatars/{userId:D}/existing.png", clock.UtcNow);
+        await repo.AddAsync(profile);
+
+        UpdateMyProfileCommandHandler handler = new(repo, identity, bus, clock, null, NullLogger<UpdateMyProfileCommandHandler>.Instance);
+
+        UpdateMyProfileCommand command = new(
+            userId,
+            "User Name",
+            null,
+            true,
+            "LIGHT",
+            null,
+            RemoveAvatar: true);
+
+        Result<ProfileDto> result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Null(result.Value.AvatarUrl);
+
+        UserProfile? updated = await repo.FindByUserIdAsync(userId);
+        Assert.NotNull(updated);
+        Assert.Null(updated.AvatarStorageKey);
+
+        Assert.Single(bus.PublishedEvents);
+        ProfileUpdated evt = Assert.IsType<ProfileUpdated>(bus.PublishedEvents[0]);
+        Assert.Equal(userId, evt.UserId);
+        Assert.Null(evt.AvatarStorageKey);
+    }
+
+    [Fact]
+    public async Task GetPublicProfileQueryHandler_WithExistingProfile_ShouldReturnPublicDto()
+    {
+        InMemoryProfileRepository repo = new();
+        FakeIdentityContract identity = new();
+        FakeClock clock = new(DateTimeOffset.UtcNow);
+        FakeFileStorage storage = new();
+
+        Guid userId = Guid.NewGuid();
+        DateTimeOffset joined = clock.UtcNow.AddDays(-30);
         identity.Users[userId] = new UserSummaryDto(userId, AccountStatuses.Active, joined, "pub@brainmemo.vn");
 
         UserProfile profile = UserProfile.CreateDefault(userId, joined).Value;
         profile.Update("Hồ sơ công khai", "Bio test", true, UiTheme.Light, joined);
+        profile.UpdateAvatar("avatars/pub/avatar.png", joined);
         await repo.AddAsync(profile);
 
-        ProfileContractService contract = new(repo, identity, storage, NullLogger<ProfileContractService>.Instance);
+        ProfileContractService contract = new(repo, identity, storage, clock, NullLogger<ProfileContractService>.Instance);
+        GetPublicProfileQueryHandler handler = new(contract);
 
-        Result<PublicProfileDto> result = await contract.GetPublicProfile(userId);
+        Result<PublicProfileDto> result = await handler.Handle(new GetPublicProfileQuery(userId), CancellationToken.None);
 
         Assert.True(result.IsSuccess);
         Assert.Equal(userId, result.Value.UserId);
         Assert.Equal("Hồ sơ công khai", result.Value.DisplayName);
         Assert.Equal("Bio test", result.Value.Bio);
+        Assert.Equal(joined, result.Value.JoinedAt);
+        Assert.NotNull(result.Value.AvatarUrl);
+        Assert.True(result.Value.ShowCourseList);
+        Assert.Contains(storage.RequestedDownloadUrls, u => u.Key == "avatars/pub/avatar.png" && u.Ttl == TimeSpan.FromHours(1));
+    }
+
+    [Fact]
+    public async Task GetPublicProfileQueryHandler_WithMissingProfile_ShouldSelfHealIfUserExistsInIdentity()
+    {
+        InMemoryProfileRepository repo = new();
+        FakeIdentityContract identity = new();
+        FakeClock clock = new(DateTimeOffset.UtcNow);
+
+        Guid userId = Guid.NewGuid();
+        DateTimeOffset joined = clock.UtcNow.AddDays(-14);
+        identity.Users[userId] = new UserSummaryDto(userId, AccountStatuses.Active, joined, "pubheal@brainmemo.vn");
+
+        ProfileContractService contract = new(repo, identity, null, clock, NullLogger<ProfileContractService>.Instance);
+        GetPublicProfileQueryHandler handler = new(contract);
+
+        Result<PublicProfileDto> result = await handler.Handle(new GetPublicProfileQuery(userId), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(userId, result.Value.UserId);
+        Assert.StartsWith("Người dùng ", result.Value.DisplayName);
+        Assert.Equal(joined, result.Value.JoinedAt);
+        Assert.True(result.Value.ShowCourseList);
+
+        UserProfile? saved = await repo.FindByUserIdAsync(userId);
+        Assert.NotNull(saved);
+        Assert.Equal(result.Value.DisplayName, saved.DisplayName);
+    }
+
+    [Fact]
+    public async Task GetPublicProfileQueryHandler_WhenUserDoesNotExist_ShouldReturnNotFound()
+    {
+        InMemoryProfileRepository repo = new();
+        FakeIdentityContract identity = new();
+        FakeClock clock = new(DateTimeOffset.UtcNow);
+
+        Guid nonExistentUserId = Guid.NewGuid();
+
+        ProfileContractService contract = new(repo, identity, null, clock, NullLogger<ProfileContractService>.Instance);
+        GetPublicProfileQueryHandler handler = new(contract);
+
+        Result<PublicProfileDto> result = await handler.Handle(new GetPublicProfileQuery(nonExistentUserId), CancellationToken.None);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorCodes.NotFound, result.Error.Code);
+
+        UserProfile? notCreated = await repo.FindByUserIdAsync(nonExistentUserId);
+        Assert.Null(notCreated);
+    }
+
+    [Fact]
+    public async Task ProfileContractService_GetPublicProfile_ShouldSelfHealAndReturnDto()
+    {
+        InMemoryProfileRepository repo = new();
+        FakeIdentityContract identity = new();
+        FakeFileStorage storage = new();
+        FakeClock clock = new(DateTimeOffset.UtcNow);
+
+        Guid userId = Guid.NewGuid();
+        DateTimeOffset joined = clock.UtcNow.AddDays(-20);
+        identity.Users[userId] = new UserSummaryDto(userId, AccountStatuses.Active, joined, "contractpub@brainmemo.vn");
+
+        ProfileContractService contract = new(repo, identity, storage, clock, NullLogger<ProfileContractService>.Instance);
+
+        Result<PublicProfileDto> result = await contract.GetPublicProfile(userId);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(userId, result.Value.UserId);
+        Assert.StartsWith("Người dùng ", result.Value.DisplayName);
         Assert.Equal(joined, result.Value.JoinedAt);
     }
 
@@ -285,16 +604,17 @@ public sealed class ProfileApplicationTests
         InMemoryProfileRepository repo = new();
         FakeIdentityContract identity = new();
         FakeFileStorage storage = new();
+        FakeClock clock = new(DateTimeOffset.UtcNow);
 
         Guid u1 = Guid.NewGuid();
         Guid u2 = Guid.NewGuid();
 
-        UserProfile p1 = UserProfile.Create(u1, "User One", "avatars/u1.png", null, true, UiTheme.Light, DateTimeOffset.UtcNow).Value;
-        UserProfile p2 = UserProfile.Create(u2, "User Two", null, null, true, UiTheme.Light, DateTimeOffset.UtcNow).Value;
+        UserProfile p1 = UserProfile.Create(u1, "User One", "avatars/u1.png", null, true, UiTheme.Light, clock.UtcNow).Value;
+        UserProfile p2 = UserProfile.Create(u2, "User Two", null, null, true, UiTheme.Light, clock.UtcNow).Value;
         await repo.AddAsync(p1);
         await repo.AddAsync(p2);
 
-        ProfileContractService contract = new(repo, identity, storage, NullLogger<ProfileContractService>.Instance);
+        ProfileContractService contract = new(repo, identity, storage, clock, NullLogger<ProfileContractService>.Instance);
 
         Result<IReadOnlyList<DisplayInfoDto>> result = await contract.GetDisplayInfo([u1, u2]);
 
@@ -302,5 +622,6 @@ public sealed class ProfileApplicationTests
         Assert.Equal(2, result.Value.Count);
         Assert.Contains(result.Value, x => x.UserId == u1 && x.AvatarUrl != null);
         Assert.Contains(result.Value, x => x.UserId == u2 && x.AvatarUrl == null);
+        Assert.Contains(storage.RequestedDownloadUrls, u => u.Key == "avatars/u1.png" && u.Ttl == TimeSpan.FromHours(1));
     }
 }
