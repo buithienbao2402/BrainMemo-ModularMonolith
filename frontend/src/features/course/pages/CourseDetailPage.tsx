@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import {
   Users,
   Star,
@@ -8,11 +7,7 @@ import {
   BookOpen,
   Edit,
   Settings,
-  Share2,
-  Calendar,
   Lock,
-  Globe,
-  EyeOff,
   CheckCircle2,
   Clock,
   ArrowRight,
@@ -44,7 +39,6 @@ import {
 import { CourseAccessBadge, CourseStatusBadge } from '../components/CourseBadges';
 
 export function CourseDetailPage() {
-  const { t } = useTranslation();
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
@@ -404,11 +398,11 @@ export function CourseDetailPage() {
                   <div className="p-4 rounded-xl bg-muted/50 space-y-1">
                     <p className="text-xs text-muted-foreground font-medium">Trạng thái phát hành</p>
                     <p className="font-semibold text-foreground">
-                      {course.status === 'PUBLISHED'
-                        ? 'Đã xuất bản (Sẵn sàng học tập)'
-                        : course.status === 'DRAFT'
-                          ? 'Bản nháp (Đang biên soạn)'
-                          : 'Lưu trữ'}
+                      {course.status === 'COMPLETED'
+                        ? 'Hoàn thành (Đầy đủ chương trình)'
+                        : course.status === 'UPDATING'
+                          ? 'Đang cập nhật (Nội dung tiếp tục bổ sung)'
+                          : 'Tạm ngưng'}
                     </p>
                   </div>
                 </div>

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Users, Star, BookOpen } from 'lucide-react';
+import { Users, Star } from 'lucide-react';
 import type { CourseCard } from '../api/courseApi';
 import { CourseAccessBadge, CourseStatusBadge } from './CourseBadges';
 

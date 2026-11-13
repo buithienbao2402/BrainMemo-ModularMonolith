@@ -1,4 +1,4 @@
-import { Lock, Globe, EyeOff, FileText, CheckCircle2, Archive } from 'lucide-react';
+import { Lock, Globe, EyeOff, FileText, CheckCircle2, Archive, Clock } from 'lucide-react';
 
 interface AccessBadgeProps {
   mode?: 'PUBLIC' | 'PRIVATE' | 'ONLY_ME' | string;
@@ -40,12 +40,39 @@ export function CourseAccessBadge({ mode = 'PUBLIC', className = '' }: AccessBad
 }
 
 interface StatusBadgeProps {
-  status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | string;
+  status?: 'UPDATING' | 'COMPLETED' | 'PAUSED' | 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | string;
   className?: string;
 }
 
-export function CourseStatusBadge({ status = 'DRAFT', className = '' }: StatusBadgeProps) {
+export function CourseStatusBadge({ status = 'UPDATING', className = '' }: StatusBadgeProps) {
   switch (status) {
+    case 'UPDATING':
+      return (
+        <span
+          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-sky-500/10 text-sky-600 dark:text-sky-400 ${className}`}
+        >
+          <Clock className="h-3 w-3" />
+          <span>Đang cập nhật</span>
+        </span>
+      );
+    case 'COMPLETED':
+      return (
+        <span
+          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ${className}`}
+        >
+          <CheckCircle2 className="h-3 w-3" />
+          <span>Hoàn thành</span>
+        </span>
+      );
+    case 'PAUSED':
+      return (
+        <span
+          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 ${className}`}
+        >
+          <Archive className="h-3 w-3" />
+          <span>Tạm ngưng</span>
+        </span>
+      );
     case 'DRAFT':
       return (
         <span

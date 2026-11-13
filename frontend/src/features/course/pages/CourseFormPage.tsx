@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useTranslation } from 'react-i18next';
 import {
   Save,
   Trash2,
@@ -12,7 +11,7 @@ import {
   Globe,
   Lock,
   EyeOff,
-  FileText,
+  Clock,
   CheckCircle2,
   Archive,
 } from 'lucide-react';
@@ -43,7 +42,6 @@ import { CourseCoverUpload } from '../components/CourseCoverUpload';
 import { TagInput } from '../components/TagInput';
 
 export function CourseFormPage() {
-  const { t } = useTranslation();
   const { courseId } = useParams<{ courseId: string }>();
   const isEditMode = Boolean(courseId);
   const navigate = useNavigate();
@@ -78,7 +76,7 @@ export function CourseFormPage() {
       name: '',
       description: '',
       accessMode: 'PUBLIC',
-      status: 'DRAFT',
+      status: 'UPDATING',
       tags: [],
       coverUploadKey: undefined,
       removeCover: false,
@@ -96,7 +94,7 @@ export function CourseFormPage() {
         name: existingCourse.name || '',
         description: existingCourse.description || '',
         accessMode: (existingCourse.accessMode as any) || 'PUBLIC',
-        status: (existingCourse.status as any) || 'DRAFT',
+        status: (existingCourse.status as any) || 'UPDATING',
         tags: existingCourse.tags || [],
         coverUploadKey: undefined,
         removeCover: false,
@@ -428,41 +426,41 @@ export function CourseFormPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <button
                 type="button"
-                onClick={() => setValue('status', 'DRAFT', { shouldDirty: true })}
+                onClick={() => setValue('status', 'UPDATING', { shouldDirty: true })}
                 className={`flex items-center gap-2.5 p-3.5 rounded-xl border text-sm font-medium transition-all ${
-                  currentStatus === 'DRAFT'
-                    ? 'border-primary bg-primary/10 text-primary font-semibold'
+                  currentStatus === 'UPDATING'
+                    ? 'border-sky-500 bg-sky-500/10 text-sky-600 dark:text-sky-400 font-semibold'
                     : 'border-border bg-card text-muted-foreground hover:bg-muted'
                 }`}
               >
-                <FileText className="h-4 w-4" />
-                <span>Bản nháp (Draft)</span>
+                <Clock className="h-4 w-4" />
+                <span>Đang cập nhật</span>
               </button>
 
               <button
                 type="button"
-                onClick={() => setValue('status', 'PUBLISHED', { shouldDirty: true })}
+                onClick={() => setValue('status', 'COMPLETED', { shouldDirty: true })}
                 className={`flex items-center gap-2.5 p-3.5 rounded-xl border text-sm font-medium transition-all ${
-                  currentStatus === 'PUBLISHED'
-                    ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 font-semibold'
+                  currentStatus === 'COMPLETED'
+                    ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold'
                     : 'border-border bg-card text-muted-foreground hover:bg-muted'
                 }`}
               >
                 <CheckCircle2 className="h-4 w-4" />
-                <span>Xuất bản (Published)</span>
+                <span>Hoàn thành</span>
               </button>
 
               <button
                 type="button"
-                onClick={() => setValue('status', 'ARCHIVED', { shouldDirty: true })}
+                onClick={() => setValue('status', 'PAUSED', { shouldDirty: true })}
                 className={`flex items-center gap-2.5 p-3.5 rounded-xl border text-sm font-medium transition-all ${
-                  currentStatus === 'ARCHIVED'
-                    ? 'border-destructive bg-destructive/10 text-destructive font-semibold'
+                  currentStatus === 'PAUSED'
+                    ? 'border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold'
                     : 'border-border bg-card text-muted-foreground hover:bg-muted'
                 }`}
               >
                 <Archive className="h-4 w-4" />
-                <span>Lưu trữ (Archived)</span>
+                <span>Tạm ngưng</span>
               </button>
             </div>
           </div>

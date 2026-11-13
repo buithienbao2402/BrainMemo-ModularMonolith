@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { BookOpen, GraduationCap, MailQuestion, Plus, CheckCircle2 } from 'lucide-react';
 import {
   Button,
@@ -15,12 +14,10 @@ import {
   useMyInvitationsQuery,
   useAcceptInvitationMutation,
   type MyCoursesRelation,
-  type CourseCard,
 } from '../api/courseApi';
 import { CourseCardItem } from '../components/CourseCardItem';
 
 export function MyCoursesPage() {
-  const { t } = useTranslation();
   const { pushToast } = useToast();
 
   const [activeTab, setActiveTab] = useState<'owned' | 'enrolled' | 'invitations'>('owned');
@@ -33,6 +30,7 @@ export function MyCoursesPage() {
     data: coursesData,
     isLoading: isCoursesLoading,
     isError: isCoursesError,
+    error: coursesError,
     refetch: refetchCourses,
   } = useMyCoursesQuery({
     relation: currentRelation,
@@ -44,6 +42,7 @@ export function MyCoursesPage() {
     data: invitationsData,
     isLoading: isInvitationsLoading,
     isError: isInvitationsError,
+    error: invitationsError,
     refetch: refetchInvitations,
   } = useMyInvitationsQuery();
 
@@ -69,8 +68,7 @@ export function MyCoursesPage() {
   };
 
   const items = coursesData?.items || [];
-  const total = coursesData?.meta?.totalCount ?? items.length;
-  const totalPages = Math.ceil(total / pageSize) || 1;
+  const total = coursesData?.meta?.totalItems ?? items.length;
   const invitations = invitationsData || [];
 
   return (
@@ -86,7 +84,7 @@ export function MyCoursesPage() {
           </p>
         </div>
 
-        <Button asChild size="default" className="self-start sm:self-auto shadow-sm">
+        <Button asChild size="md" className="self-start sm:self-auto shadow-sm">
           <Link to="/courses/new">
             <Plus className="h-4 w-4 mr-1.5" />
             <span>Tạo khóa học mới</span>
@@ -164,9 +162,8 @@ export function MyCoursesPage() {
           ) : isInvitationsError ? (
             <ErrorState
               title="Không thể tải danh sách lời mời"
-              description="Đã xảy ra lỗi khi kiểm tra lời mời tham gia khóa học."
-              actionLabel="Thử lại"
-              onAction={() => refetchInvitations()}
+              error={invitationsError}
+              onRetry={() => refetchInvitations()}
             />
           ) : invitations.length === 0 ? (
             <EmptyState
@@ -225,9 +222,8 @@ export function MyCoursesPage() {
           ) : isCoursesError ? (
             <ErrorState
               title="Không thể tải danh sách khóa học"
-              description="Đã có lỗi xảy ra khi kết nối máy chủ. Vui lòng kiểm tra lại."
-              actionLabel="Thử lại"
-              onAction={() => refetchCourses()}
+              error={coursesError}
+              onRetry={() => refetchCourses()}
             />
           ) : items.length === 0 ? (
             <EmptyState
@@ -241,10 +237,17 @@ export function MyCoursesPage() {
                   ? 'Hãy bắt đầu chia sẻ kiến thức bằng cách tạo khóa học trực tuyến đầu tiên của bạn.'
                   : 'Khám phá hàng trăm khóa học hấp dẫn trên BrainMemo và bắt đầu hành trình học tập ngay hôm nay.'
               }
-              actionLabel={
-                activeTab === 'owned' ? 'Tạo khóa học ngay' : 'Khám phá danh mục khóa học'
+              action={
+                activeTab === 'owned' ? (
+                  <Link to="/courses/new">
+                    <Button size="sm">Tạo khóa học ngay</Button>
+                  </Link>
+                ) : (
+                  <Link to="/courses">
+                    <Button size="sm">Khám phá danh mục khóa học</Button>
+                  </Link>
+                )
               }
-              actionTo={activeTab === 'owned' ? '/courses/new' : '/courses'}
             />
           ) : (
             <div className="space-y-8">
@@ -258,11 +261,11 @@ export function MyCoursesPage() {
                 ))}
               </div>
 
-              {totalPages > 1 && (
+              {total > pageSize && (
                 <Pagination
                   page={page}
-                  totalPages={totalPages}
-                  totalCount={total}
+                  pageSize={pageSize}
+                  totalItems={total}
                   onPageChange={setPage}
                 />
               )}

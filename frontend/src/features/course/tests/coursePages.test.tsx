@@ -81,7 +81,7 @@ describe('Course Pages (SCR-CRS-01..03)', () => {
       await waitFor(() => {
         expect(screen.getByText('Không tìm thấy khóa học')).toBeInTheDocument();
       });
-      expect(screen.getByText(/Khóa học không tồn tại/i)).toBeInTheDocument();
+      expect(screen.getByText('Khóa học không tồn tại hoặc đã bị xóa.')).toBeInTheDocument();
     });
 
     it('allows toggling nominate button', async () => {
@@ -158,9 +158,8 @@ describe('Course Pages (SCR-CRS-01..03)', () => {
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: 'Chỉnh sửa khóa học' })).toBeInTheDocument();
+        expect(screen.getByLabelText(/Tên khóa học/i)).toHaveValue('Khóa học do tôi biên soạn');
       });
-
-      expect(screen.getByLabelText(/Tên khóa học/i)).toHaveValue('Khóa học do tôi biên soạn');
 
       const deleteBtn = screen.getByRole('button', { name: /Xóa khóa học/i });
       await user.click(deleteBtn);

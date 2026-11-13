@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useTranslation } from 'react-i18next';
-import { Save, User, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Save, User, AlertCircle } from 'lucide-react';
 import { useToast } from '@/shared/ui';
 import { Button, Input, Skeleton } from '@/shared/ui';
 import { useMyProfileQuery, useUpdateMyProfileMutation } from '../api/profileApi';
@@ -13,7 +12,6 @@ import {
 import { AvatarUpload } from '../components/AvatarUpload';
 
 export function EditProfilePage() {
-  const { t } = useTranslation();
   const { pushToast } = useToast();
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -32,7 +30,7 @@ export function EditProfilePage() {
     setValue,
     watch,
     reset,
-    formState: { errors, isDirty, isSubmitting },
+    formState: { errors, isSubmitting },
   } = useForm<UpdateProfileFormValues>({
     resolver: zodResolver(updateProfileSchema),
     defaultValues: {

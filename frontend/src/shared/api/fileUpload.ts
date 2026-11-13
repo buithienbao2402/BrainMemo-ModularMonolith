@@ -1,4 +1,5 @@
-import { apiClient, unwrapApi, type components } from './client';
+import { apiClient, unwrapApi } from './client';
+import type { components } from './schema';
 import { ApiProblemError } from './errors';
 
 export type UploadPurpose =
@@ -38,38 +39,29 @@ export async function uploadFileToStorage({
   // 1. Client-side pre-validation
   if (isImagePurpose) {
     if (file.size > MAX_IMAGE_SIZE_BYTES) {
-      throw new ApiProblemError(
-        {
-          title: 'Kích thước tệp quá lớn',
-          status: 400,
-          code: 'FILE_TOO_LARGE',
-          detail: 'Kích thước ảnh không được vượt quá 5 MB.',
-        },
-        400
-      );
-    }
-
-    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-      throw new ApiProblemError(
-        {
-          title: 'Định dạng tệp không được hỗ trợ',
-          status: 400,
-          code: 'FILE_TYPE_NOT_ALLOWED',
-          detail: 'Chỉ hỗ trợ tệp ảnh định dạng JPEG, PNG hoặc WebP.',
-        },
-        400
-      );
-    }
-  } else if (file.size > MAX_FILE_SIZE_BYTES) {
-    throw new ApiProblemError(
-      {
+      throw new ApiProblemError({
         title: 'Kích thước tệp quá lớn',
         status: 400,
         code: 'FILE_TOO_LARGE',
-        detail: 'Kích thước tệp đính kèm không được vượt quá 20 MB.',
-      },
-      400
-    );
+        detail: 'Kích thước ảnh không được vượt quá 5 MB.',
+      });
+    }
+
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      throw new ApiProblemError({
+        title: 'Định dạng tệp không được hỗ trợ',
+        status: 400,
+        code: 'FILE_TYPE_NOT_ALLOWED',
+        detail: 'Chỉ hỗ trợ tệp ảnh định dạng JPEG, PNG hoặc WebP.',
+      });
+    }
+  } else if (file.size > MAX_FILE_SIZE_BYTES) {
+    throw new ApiProblemError({
+      title: 'Kích thước tệp quá lớn',
+      status: 400,
+      code: 'FILE_TOO_LARGE',
+      detail: 'Kích thước tệp đính kèm không được vượt quá 20 MB.',
+    });
   }
 
   // 2. Request presigned upload URL
@@ -86,15 +78,12 @@ export async function uploadFileToStorage({
   );
 
   if (!uploadUrlData.uploadUrl || !uploadUrlData.uploadKey) {
-    throw new ApiProblemError(
-      {
-        title: 'Lỗi cấp quyền tải lên',
-        status: 500,
-        code: 'PRESIGNED_URL_GENERATION_FAILED',
-        detail: 'Máy chủ không thể tạo liên kết tải lên an toàn.',
-      },
-      500
-    );
+    throw new ApiProblemError({
+      title: 'Lỗi cấp quyền tải lên',
+      status: 500,
+      code: 'PRESIGNED_URL_GENERATION_FAILED',
+      detail: 'Máy chủ không thể tạo liên kết tải lên an toàn.',
+    });
   }
 
   // 3. Direct upload to S3/R2 with progress
@@ -127,30 +116,24 @@ export async function uploadFileToStorage({
         resolve();
       } else {
         reject(
-          new ApiProblemError(
-            {
-              title: 'Tải tệp lên bộ lưu trữ thất bại',
-              status: xhr.status || 500,
-              code: 'STORAGE_UPLOAD_FAILED',
-              detail: `Máy chủ lưu trữ phản hồi mã ${xhr.status}.`,
-            },
-            xhr.status || 500
-          )
+          new ApiProblemError({
+            title: 'Tải tệp lên bộ lưu trữ thất bại',
+            status: xhr.status || 500,
+            code: 'STORAGE_UPLOAD_FAILED',
+            detail: `Máy chủ lưu trữ phản hồi mã ${xhr.status}.`,
+          })
         );
       }
     };
 
     xhr.onerror = () => {
       reject(
-        new ApiProblemError(
-          {
-            title: 'Lỗi mạng khi tải tệp',
-            status: 0,
-            code: 'NETWORK_ERROR',
-            detail: 'Không thể kết nối đến máy chủ lưu trữ tệp.',
-          },
-          0
-        )
+        new ApiProblemError({
+          title: 'Lỗi mạng khi tải tệp',
+          status: 0,
+          code: 'NETWORK_ERROR',
+          detail: 'Không thể kết nối đến máy chủ lưu trữ tệp.',
+        })
       );
     };
 

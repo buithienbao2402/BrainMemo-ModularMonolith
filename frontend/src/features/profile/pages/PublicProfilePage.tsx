@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import {
   Calendar,
   BookOpen,
@@ -24,7 +23,6 @@ import {
 } from '../api/profileApi';
 
 export function PublicProfilePage() {
-  const { t } = useTranslation();
   const { userId } = useParams<{ userId: string }>();
   const { user: currentUser } = useAuth();
 
@@ -46,6 +44,7 @@ export function PublicProfilePage() {
     data: coursesData,
     isLoading: isCoursesLoading,
     isError: isCoursesError,
+    error: coursesError,
     refetch: refetchCourses,
   } = useProfileCoursesQuery(userId || '', {
     relation,
@@ -118,8 +117,7 @@ export function PublicProfilePage() {
   }
 
   const items = coursesData?.items || [];
-  const total = coursesData?.meta?.totalCount ?? items.length;
-  const totalPages = Math.ceil(total / pageSize) || 1;
+  const total = coursesData?.meta?.totalItems ?? items.length;
   const canViewCourses = profile.showCourseList || isOwnProfile;
 
   return (
@@ -262,9 +260,8 @@ export function PublicProfilePage() {
         ) : isCoursesError ? (
           <ErrorState
             title="Không thể tải danh sách khóa học"
-            description="Đã xảy ra lỗi khi tải danh sách khóa học của người dùng."
-            actionLabel="Thử lại"
-            onAction={() => refetchCourses()}
+            error={coursesError}
+            onRetry={() => refetchCourses()}
           />
         ) : items.length === 0 ? (
           <EmptyState
@@ -282,8 +279,13 @@ export function PublicProfilePage() {
                     ? 'Bạn chưa hoàn thành khóa học nào.'
                     : 'Người dùng chưa có khóa học hoàn thành.'
             }
-            actionLabel={isOwnProfile && relation === 'OWNED' ? 'Tạo khóa học đầu tiên' : undefined}
-            actionTo={isOwnProfile && relation === 'OWNED' ? '/courses/new' : undefined}
+            action={
+              isOwnProfile && relation === 'OWNED' ? (
+                <Link to="/courses/new">
+                  <Button size="sm">Tạo khóa học đầu tiên</Button>
+                </Link>
+              ) : undefined
+            }
           />
         ) : (
           <div className="space-y-6">
@@ -349,11 +351,11 @@ export function PublicProfilePage() {
               ))}
             </div>
 
-            {totalPages > 1 && (
+            {total > pageSize && (
               <Pagination
                 page={page}
-                totalPages={totalPages}
-                totalCount={total}
+                pageSize={pageSize}
+                totalItems={total}
                 onPageChange={setPage}
               />
             )}

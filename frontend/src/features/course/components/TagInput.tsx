@@ -1,6 +1,5 @@
 import { useState, type KeyboardEvent } from 'react';
-import { X, Plus } from 'lucide-react';
-import { Button } from '@/shared/ui';
+import { X } from 'lucide-react';
 
 interface TagInputProps {
   tags: string[];
