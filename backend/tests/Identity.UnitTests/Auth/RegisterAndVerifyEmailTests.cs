@@ -359,6 +359,64 @@ public sealed class RegisterAndVerifyEmailTests
 
         public Task<User?> FindUserByIdAsync(Guid userId, CancellationToken ct = default)
             => Task.FromResult(Users.FirstOrDefault(u => u.Id == userId));
+
+        public Task<User?> FindUserByEmailAsync(string normalizedEmail, CancellationToken ct = default)
+            => Task.FromResult(Users.FirstOrDefault(u => u.Email == normalizedEmail));
+
+        public Task<bool> IsUserAdminAsync(Guid userId, CancellationToken ct = default)
+            => Task.FromResult(false);
+
+        public Task<Result> SaveUserAsync(User user, CancellationToken ct = default)
+            => Task.FromResult(Result.Success());
+
+        public Task<RefreshSession?> FindSessionByTokenHashAsync(byte[] tokenHash, CancellationToken ct = default)
+            => Task.FromResult(Users.SelectMany(u => u.RefreshSessions).FirstOrDefault(s => s.TokenHash.AsSpan().SequenceEqual(tokenHash)));
+
+        public Task<bool> TryRotateSessionAsync(
+            byte[] oldTokenHash,
+            byte[] newTokenHash,
+            DateTimeOffset newExpiresAt,
+            DateTimeOffset utcNow,
+            CancellationToken ct = default)
+            => Task.FromResult(false);
+
+        public Task<bool> RevokeSessionByTokenHashAsync(
+            byte[] tokenHash,
+            SessionRevokeReason reason,
+            DateTimeOffset utcNow,
+            CancellationToken ct = default)
+            => Task.FromResult(false);
+
+        public Task<int> RevokeAllUserSessionsAsync(
+            Guid userId,
+            SessionRevokeReason reason,
+            DateTimeOffset utcNow,
+            CancellationToken ct = default)
+            => Task.FromResult(0);
+
+        public Task<IReadOnlyList<RefreshSession>> GetActiveSessionsForUserAsync(
+            Guid userId,
+            DateTimeOffset utcNow,
+            CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<RefreshSession>>([]);
+
+        public Task<RefreshSession?> FindSessionByIdAsync(Guid sessionId, CancellationToken ct = default)
+            => Task.FromResult<RefreshSession?>(null);
+
+        public Task<bool> RevokeSessionByIdAsync(
+            Guid sessionId,
+            Guid userId,
+            SessionRevokeReason reason,
+            DateTimeOffset utcNow,
+            CancellationToken ct = default)
+            => Task.FromResult(false);
+
+        public Task InvalidateUserTokensAsync(
+            Guid userId,
+            UserTokenPurpose purpose,
+            DateTimeOffset utcNow,
+            CancellationToken ct = default)
+            => Task.CompletedTask;
     }
 
     private sealed class NoOpUnitOfWork : IUnitOfWork

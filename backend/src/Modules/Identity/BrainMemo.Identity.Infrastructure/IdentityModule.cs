@@ -32,6 +32,7 @@ public sealed class IdentityModule : IModule
 
         services.Configure<IdentityOptions>(configuration.GetSection(IdentityOptions.SectionName));
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<IdentityOptions>, IdentityOptionsValidator>());
+        services.Configure<IdentityJwtOptions>(configuration.GetSection(IdentityJwtOptions.SectionName));
 
         string? connectionString = configuration.GetConnectionString("Default");
         string resolvedConnectionString = string.IsNullOrWhiteSpace(connectionString)
@@ -50,5 +51,6 @@ public sealed class IdentityModule : IModule
         services.AddScoped<IIdentityContract, IdentityContractService>();
         services.TryAddSingleton<IPasswordHasher, BCryptPasswordHasher>();
         services.TryAddSingleton<ITokenCryptoService, Sha256TokenCryptoService>();
+        services.TryAddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
     }
 }
