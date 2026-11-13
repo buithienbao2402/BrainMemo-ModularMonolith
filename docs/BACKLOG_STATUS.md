@@ -23,7 +23,7 @@
 | T-S1-BE-03 | BE-03 + BE-04 | DONE | Antigravity (BE) | feat/T-S1-BE-04-password-flows-me | **Auth, Session & Password Lifecycle (Batched):** Login/Refresh/Logout/Sessions + Forgot/Reset/ChangePassword + `GET /auth/me`, Middleware `AccountStatusMiddleware`, 100% tests pass (PR #7, #8 merged) |
 | T-S1-BE-04 | BE-05 + BE-06 | DONE | Antigravity (BE) | feat/T-S1-BE-04-notification-profile | **Skeletons & Handlers (Notification + Profile - Batched):** Bảng `prf_user_profile`, `IProfileContract`, `GET/PUT /profiles/me`, `ntf_*`, Mailpit SMTP sender, 3 email handlers, in-app notifications & announcements, 100% tests pass (PR #10 merged) |
 | T-S1-FE-01 | FE-01 + FE-02 | DONE | Antigravity (FE) | feat/T-S1-FE-01-auth-account-ui | **Auth & Account UI (Batched):** SCR-AUTH-01..06 + SCR-COM-03 + sessions, guards, 100% tests pass (PR #9 merged) |
-| T-S1-INT-01 | INT-01 | REVIEW | Antigravity (INT) | feat/T-S1-INT-01-e2e-auth-flow | Tích hợp S1 + e2e Playwright: Đăng ký → Xác minh Mailpit → Đăng nhập → Đổi MK → Đăng xuất (100% tests pass) |
+| T-S1-INT-01 | INT-01 | DONE | Antigravity (INT) | feat/T-S1-INT-01-e2e-auth-flow | Tích hợp S1 + e2e Playwright: Đăng ký → Xác minh Mailpit → Đăng nhập → Đổi MK → Đăng xuất (100% tests pass) |
 | **S2 – Profile, Files, Course** | | | | | |
 | T-S2-BE-01 | BE-01 | TODO | – | – | Profile hoàn chỉnh + Upload Avatar S3/R2 + `GetPublicProfile` |
 | T-S2-BE-02 | BE-02..04 | TODO | – | – | **Course Module Toàn diện (Batched):** Domain & migration `crs_*`, CRUD khóa học, tags, bìa ảnh, Outbox, Phân quyền `GetCourseAccess` 3.5.8.1, Danh sách khóa của tôi / hồ sơ / public |
