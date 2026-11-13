@@ -33,4 +33,3 @@ export function subscribeAccessToken(listener: TokenListener): () => void {
     listeners.delete(listener);
   };
 }
-

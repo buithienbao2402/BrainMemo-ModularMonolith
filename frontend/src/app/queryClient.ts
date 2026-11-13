@@ -23,4 +23,3 @@ export function createAppQueryClient(options?: { disableRetry?: boolean }): Quer
     },
   });
 }
-
