@@ -2,6 +2,8 @@
 
 Dự án: **BrainMemo LMS** – Modular Monolith (C# ASP.NET Core) + React/TypeScript + MySQL + R2. Nhiều AI (Claude, ChatGPT, Antigravity, …) làm chung một monorepo với vai trò **BE / FE / INT**. Bạn chỉ làm **đúng một task** mỗi lượt.
 
+> **Quy ước Task Batching:** Danh sách task trong `docs/BACKLOG.md` và `docs/BACKLOG_STATUS.md` đã được tối ưu hóa theo phương pháp **Batching Tasks** (gộp các task con có liên quan chặt chẽ thành 1 Batched Task hoàn chỉnh). Mỗi lượt agent giải quyết **đúng 1 Batched Task** (1 mã task, 1 branch `feat/<task-id>-<slug>`, 1 PR, 1 handoff note), hoàn thành trọn vẹn tiêu chí "Hoàn thành khi" mà không phải xé vụn quy trình.
+
 ## 1. Quy trình mỗi lượt
 1. Nhận prompt từ người điều phối: có **mã task** (ví dụ `T-S2-BE-03`) và (nếu FE) ảnh PNG màn hình.
 2. Đọc theo bảng §2. **Không đọc/sửa thứ ngoài phạm vi task.**

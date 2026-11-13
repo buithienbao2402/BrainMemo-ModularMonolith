@@ -6,6 +6,12 @@
     <ProjectReference Include="..\..\Modules\Identity\BrainMemo.Identity.Api\BrainMemo.Identity.Api.csproj" />
     <ProjectReference Include="..\..\Modules\Identity\BrainMemo.Identity.Contracts\BrainMemo.Identity.Contracts.csproj" />
     <ProjectReference Include="..\..\Modules\Identity\BrainMemo.Identity.Infrastructure\BrainMemo.Identity.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Profile\BrainMemo.Profile.Api\BrainMemo.Profile.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Profile\BrainMemo.Profile.Contracts\BrainMemo.Profile.Contracts.csproj" />
+    <ProjectReference Include="..\..\Modules\Profile\BrainMemo.Profile.Infrastructure\BrainMemo.Profile.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Notification\BrainMemo.Notification.Api\BrainMemo.Notification.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Notification\BrainMemo.Notification.Contracts\BrainMemo.Notification.Contracts.csproj" />
+    <ProjectReference Include="..\..\Modules\Notification\BrainMemo.Notification.Infrastructure\BrainMemo.Notification.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

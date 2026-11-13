@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\BrainMemo.BuildingBlocks.Abstractions\BrainMemo.BuildingBlocks.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BrainMemo.BuildingBlocks.Infrastructure\BrainMemo.BuildingBlocks.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BrainMemo.SharedKernel\BrainMemo.SharedKernel.csproj" />
+    <ProjectReference Include="..\BrainMemo.Notification.Application\BrainMemo.Notification.Application.csproj" />
+    <ProjectReference Include="..\BrainMemo.Notification.Contracts\BrainMemo.Notification.Contracts.csproj" />
+    <ProjectReference Include="..\BrainMemo.Notification.Domain\BrainMemo.Notification.Domain.csproj" />
+    <ProjectReference Include="..\..\Identity\BrainMemo.Identity.Contracts\BrainMemo.Identity.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Notification.UnitTests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
+  </ItemGroup>
+</Project>
