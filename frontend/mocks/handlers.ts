@@ -507,6 +507,69 @@ export let mockResources: Record<string, MockResourceItem[]> = JSON.parse(
   JSON.stringify(initialMockResources)
 );
 
+export function getStoredChapters(): Record<string, MockChapterItem[]> {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const stored = window.localStorage.getItem('bm_mock_chapters');
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch {}
+  }
+  return mockChapters;
+}
+
+export function saveStoredChapters(chapters: Record<string, MockChapterItem[]>): void {
+  mockChapters = chapters;
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      window.localStorage.setItem('bm_mock_chapters', JSON.stringify(chapters));
+    } catch {}
+  }
+}
+
+export function getStoredVersions(): Record<string, MockVersionItem[]> {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const stored = window.localStorage.getItem('bm_mock_versions');
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch {}
+  }
+  return mockVersions;
+}
+
+export function saveStoredVersions(versions: Record<string, MockVersionItem[]>): void {
+  mockVersions = versions;
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      window.localStorage.setItem('bm_mock_versions', JSON.stringify(versions));
+    } catch {}
+  }
+}
+
+export function getStoredResources(): Record<string, MockResourceItem[]> {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const stored = window.localStorage.getItem('bm_mock_resources');
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch {}
+  }
+  return mockResources;
+}
+
+export function saveStoredResources(resources: Record<string, MockResourceItem[]>): void {
+  mockResources = resources;
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      window.localStorage.setItem('bm_mock_resources', JSON.stringify(resources));
+    } catch {}
+  }
+}
+
 export function resetMockCourses(): void {
   mockCourses = [...initialMockCourses];
   mockChapters = JSON.parse(JSON.stringify(initialMockChapters));
@@ -516,6 +579,9 @@ export function resetMockCourses(): void {
     try {
       window.localStorage.removeItem('bm_mock_courses');
       window.localStorage.removeItem('bm_mock_profiles');
+      window.localStorage.removeItem('bm_mock_chapters');
+      window.localStorage.removeItem('bm_mock_versions');
+      window.localStorage.removeItem('bm_mock_resources');
     } catch {
       // ignore
     }
@@ -1373,6 +1439,7 @@ export const handlers = [
   // S3 Content & Chapter Drafting (T-S3-FE-01)
   // ==========================================
   http.get('*/api/v1/courses/:courseId/chapters', ({ params }) => {
+    mockChapters = getStoredChapters();
     const courseId = String(params.courseId);
     const list = mockChapters[courseId] || [];
     return HttpResponse.json(
@@ -1390,6 +1457,8 @@ export const handlers = [
   }),
 
   http.post('*/api/v1/courses/:courseId/chapters', async ({ params, request }) => {
+    mockChapters = getStoredChapters();
+    mockVersions = getStoredVersions();
     const courseId = String(params.courseId);
     const body = (await request.json().catch(() => ({}))) as {
       title?: string;
@@ -1434,11 +1503,14 @@ export const handlers = [
         restoredFromVersionNo: null,
       },
     ];
+    saveStoredChapters(mockChapters);
+    saveStoredVersions(mockVersions);
 
     return HttpResponse.json(newChapter, { status: 201 });
   }),
 
   http.put('*/api/v1/courses/:courseId/chapters/order', async ({ params, request }) => {
+    mockChapters = getStoredChapters();
     const courseId = String(params.courseId);
     const body = (await request.json().catch(() => ({}))) as { chapterIds?: string[] };
     const list = mockChapters[courseId] || [];
@@ -1453,12 +1525,14 @@ export const handlers = [
         }
       });
       list.sort((a, b) => a.position - b.position);
+      saveStoredChapters(mockChapters);
     }
 
     return new HttpResponse(null, { status: 204 });
   }),
 
   http.get('*/api/v1/courses/:courseId/chapters/:chapterId', ({ params }) => {
+    mockChapters = getStoredChapters();
     const courseId = String(params.courseId);
     const chapterId = String(params.chapterId);
     const list = mockChapters[courseId] || [];
@@ -1477,6 +1551,8 @@ export const handlers = [
   }),
 
   http.put('*/api/v1/courses/:courseId/chapters/:chapterId', async ({ params, request }) => {
+    mockChapters = getStoredChapters();
+    mockVersions = getStoredVersions();
     const courseId = String(params.courseId);
     const chapterId = String(params.chapterId);
     const body = (await request.json().catch(() => ({}))) as {
@@ -1523,11 +1599,14 @@ export const handlers = [
       publishedAt: null,
       restoredFromVersionNo: null,
     });
+    saveStoredChapters(mockChapters);
+    saveStoredVersions(mockVersions);
 
     return HttpResponse.json(chapter, { status: 200 });
   }),
 
   http.delete('*/api/v1/courses/:courseId/chapters/:chapterId', ({ params }) => {
+    mockChapters = getStoredChapters();
     const courseId = String(params.courseId);
     const chapterId = String(params.chapterId);
     const list = mockChapters[courseId] || [];
@@ -1535,11 +1614,13 @@ export const handlers = [
 
     if (idx !== -1) {
       list.splice(idx, 1);
+      saveStoredChapters(mockChapters);
     }
     return new HttpResponse(null, { status: 204 });
   }),
 
   http.post('*/api/v1/courses/:courseId/chapters/:chapterId/publish', ({ params }) => {
+    mockChapters = getStoredChapters();
     const courseId = String(params.courseId);
     const chapterId = String(params.chapterId);
     const list = mockChapters[courseId] || [];
@@ -1556,11 +1637,13 @@ export const handlers = [
     chapter.status = 'PUBLISHED';
     chapter.publishedVersionNo = chapter.lastVersionNo;
     chapter.hasUnpublishedChanges = false;
+    saveStoredChapters(mockChapters);
 
     return HttpResponse.json(chapter, { status: 200 });
   }),
 
   http.get('*/api/v1/courses/:courseId/chapters/:chapterId/versions', ({ params }) => {
+    mockVersions = getStoredVersions();
     const chapterId = String(params.chapterId);
     const versions = mockVersions[chapterId] || [
       {
@@ -1576,6 +1659,8 @@ export const handlers = [
   http.post(
     '*/api/v1/courses/:courseId/chapters/:chapterId/versions/:versionNo/restore',
     ({ params }) => {
+      mockChapters = getStoredChapters();
+      mockVersions = getStoredVersions();
       const courseId = String(params.courseId);
       const chapterId = String(params.chapterId);
       const versionNo = Number(params.versionNo);
@@ -1603,18 +1688,22 @@ export const handlers = [
         publishedAt: null,
         restoredFromVersionNo: versionNo,
       });
+      saveStoredChapters(mockChapters);
+      saveStoredVersions(mockVersions);
 
       return HttpResponse.json(chapter, { status: 200 });
     }
   ),
 
   http.get('*/api/v1/courses/:courseId/resources', ({ params }) => {
+    mockResources = getStoredResources();
     const courseId = String(params.courseId);
     const list = mockResources[courseId] || [];
     return HttpResponse.json(list, { status: 200 });
   }),
 
   http.post('*/api/v1/courses/:courseId/resources', async ({ params, request }) => {
+    mockResources = getStoredResources();
     const courseId = String(params.courseId);
     const body = (await request.json().catch(() => ({}))) as {
       uploadKey?: string;
@@ -1652,10 +1741,12 @@ export const handlers = [
     };
 
     mockResources[courseId].push(newRes);
+    saveStoredResources(mockResources);
     return HttpResponse.json(newRes, { status: 201 });
   }),
 
   http.delete('*/api/v1/courses/:courseId/resources/:id', ({ params }) => {
+    mockResources = getStoredResources();
     const courseId = String(params.courseId);
     const resId = String(params.id);
 
@@ -1673,6 +1764,7 @@ export const handlers = [
     const idx = list.findIndex((r) => r.id === resId);
     if (idx !== -1) {
       list.splice(idx, 1);
+      saveStoredResources(mockResources);
     }
 
     return new HttpResponse(null, { status: 204 });
