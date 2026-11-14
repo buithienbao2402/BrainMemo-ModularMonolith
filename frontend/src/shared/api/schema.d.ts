@@ -2357,6 +2357,7 @@ export interface components {
             /** Format: email */
             email: string;
             password: string;
+            displayName?: string;
         };
         CurrentUser: {
             /** Format: uuid */

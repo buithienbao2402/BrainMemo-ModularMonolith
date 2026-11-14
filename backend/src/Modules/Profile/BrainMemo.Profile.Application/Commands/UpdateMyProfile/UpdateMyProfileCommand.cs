@@ -5,9 +5,9 @@ namespace BrainMemo.Profile.Application.Commands.UpdateMyProfile;
 
 public sealed record UpdateMyProfileCommand(
     Guid UserId,
-    string DisplayName,
+    string? DisplayName,
     string? Bio,
-    bool ShowCourseList,
-    string UiTheme,
+    bool? ShowCourseList,
+    string? UiTheme,
     string? AvatarUploadKey,
     bool? RemoveAvatar) : ICommand<ProfileDto>;

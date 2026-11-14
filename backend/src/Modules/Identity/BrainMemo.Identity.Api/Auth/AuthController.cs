@@ -45,7 +45,7 @@ public sealed class AuthController(
         CancellationToken ct)
     {
         Result result = await sender
-            .Send(new RegisterCommand(request.Email, request.Password), ct)
+            .Send(new RegisterCommand(request.Email, request.Password, request.DisplayName), ct)
             .ConfigureAwait(false);
 
         return result.IsSuccess

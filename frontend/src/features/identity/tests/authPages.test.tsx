@@ -130,6 +130,7 @@ describe('Auth Pages (SCR-AUTH-01..05)', () => {
         expect(screen.getByRole('heading', { name: 'Đăng ký tài khoản' })).toBeInTheDocument();
       });
 
+      expect(screen.getByLabelText('Họ và tên')).toBeInTheDocument();
       expect(screen.getByLabelText('Địa chỉ email')).toBeInTheDocument();
       expect(screen.getByLabelText('Mật khẩu')).toBeInTheDocument();
       expect(screen.getByLabelText('Xác nhận mật khẩu')).toBeInTheDocument();
@@ -148,6 +149,7 @@ describe('Auth Pages (SCR-AUTH-01..05)', () => {
         expect(screen.getByRole('heading', { name: 'Đăng ký tài khoản' })).toBeInTheDocument();
       });
 
+      await user.type(screen.getByLabelText('Họ và tên'), 'Nguyễn Văn A');
       await user.type(screen.getByLabelText('Địa chỉ email'), 'test@brainmemo.vn');
       await user.type(screen.getByLabelText('Mật khẩu'), 'short');
       await user.type(screen.getByLabelText('Xác nhận mật khẩu'), 'different');
@@ -167,6 +169,7 @@ describe('Auth Pages (SCR-AUTH-01..05)', () => {
         expect(screen.getByRole('heading', { name: 'Đăng ký tài khoản' })).toBeInTheDocument();
       });
 
+      await user.type(screen.getByLabelText('Họ và tên'), 'Nguyễn Văn A');
       await user.type(screen.getByLabelText('Địa chỉ email'), 'existing@brainmemo.vn');
       await user.type(screen.getByLabelText('Mật khẩu'), 'ValidPassword123!');
       await user.type(screen.getByLabelText('Xác nhận mật khẩu'), 'ValidPassword123!');
@@ -189,6 +192,7 @@ describe('Auth Pages (SCR-AUTH-01..05)', () => {
         expect(screen.getByRole('heading', { name: 'Đăng ký tài khoản' })).toBeInTheDocument();
       });
 
+      await user.type(screen.getByLabelText('Họ và tên'), 'Học viên mới');
       await user.type(screen.getByLabelText('Địa chỉ email'), 'new.student@brainmemo.vn');
       await user.type(screen.getByLabelText('Mật khẩu'), 'ValidPassword123!');
       await user.type(screen.getByLabelText('Xác nhận mật khẩu'), 'ValidPassword123!');

@@ -58,7 +58,7 @@ paths:
     delete: {tags: [Admin], operationId: revokeAdmin, summary: 'Thu hồi role Admin (LAST_ADMIN 409)', parameters: [{$ref: '#/components/parameters/UserId'}], responses: {'204': {description: OK}}}
 components:
   schemas:
-    CredentialsRequest: {type: object, required: [email, password], properties: {email: {type: string, format: email}, password: {type: string, minLength: 8}}}
+    CredentialsRequest: {type: object, required: [email, password], properties: {email: {type: string, format: email}, password: {type: string, minLength: 8}, displayName: {type: string}}}
     CurrentUser: {type: object, properties: {id: {type: string, format: uuid}, email: {type: string}, emailVerified: {type: boolean}, isAdmin: {type: boolean}, accountStatus: {type: string}}}
     AuthTokens: {type: object, properties: {accessToken: {type: string}, expiresIn: {type: integer}, user: {$ref: '#/components/schemas/CurrentUser'}}}
     SessionDto: {type: object, properties: {id: {type: string, format: uuid}, userAgent: {type: string}, ipAddress: {type: string}, createdAt: {type: string, format: date-time}, lastUsedAt: {type: string, format: date-time}, isCurrent: {type: boolean}}}

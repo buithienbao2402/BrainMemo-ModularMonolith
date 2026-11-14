@@ -113,6 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       try {
         const myProfile = await unwrapApi(apiClient.GET('/profiles/me'));
+        queryClient.setQueryData(queryKeys.profile.me(), myProfile);
         setProfile(myProfile);
         syncProfileTheme(myProfile.uiTheme);
       } catch {
@@ -209,6 +210,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [loadAuthenticatedIdentity]);
 
+  const profileQuery = useQuery({
+    queryKey: queryKeys.profile.me(),
+    queryFn: () => unwrapApi(apiClient.GET('/profiles/me')),
+    enabled: status === 'authenticated',
+    staleTime: 60_000,
+    initialData: profile ?? undefined,
+  });
+
+  const effectiveProfile = profileQuery.data ?? profile;
+
+  React.useEffect(() => {
+    if (profileQuery.data?.uiTheme) {
+      syncProfileTheme(profileQuery.data.uiTheme);
+    }
+  }, [profileQuery.data?.uiTheme, syncProfileTheme]);
+
   const unreadQuery = useQuery({
     queryKey: queryKeys.notifications.unreadCount(),
     queryFn: () => unwrapApi(apiClient.GET('/notifications/unread-count')),
@@ -267,7 +284,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => ({
       status,
       user,
-      profile,
+      profile: effectiveProfile,
       unreadCount: unreadQuery.data?.count ?? 0,
       lockedAccount,
       sessionExpiredVersion,
@@ -278,9 +295,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }),
     [
       clearLockedAccount,
+      effectiveProfile,
       lockedAccount,
       logout,
-      profile,
       refreshAuthSession,
       sessionExpiredVersion,
       setAuthenticatedSession,

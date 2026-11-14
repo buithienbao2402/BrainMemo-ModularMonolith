@@ -6,7 +6,6 @@ import {
   Calendar,
   CheckCircle2,
   Lock,
-  BookOpen,
 } from 'lucide-react';
 import { useToast } from '@/shared/ui';
 import { Button, Input, Skeleton } from '@/shared/ui';
@@ -238,10 +237,17 @@ export function EditProfilePage() {
                   disabled
                   className="w-full rounded-xl border border-input bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground cursor-not-allowed"
                 />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                  <CheckCircle2 className="h-3 w-3" />
-                  <span>Đã xác minh</span>
-                </div>
+                {user?.emailVerified ? (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    <CheckCircle2 className="h-3 w-3" />
+                    <span>Đã xác minh</span>
+                  </div>
+                ) : (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-semibold text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                    <AlertCircle className="h-3 w-3" />
+                    <span>Chưa xác minh</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -270,8 +276,8 @@ export function EditProfilePage() {
               )}
             </div>
 
-            {/* Meta Information Cards (Join Date & Courses Count) */}
-            <div className="grid grid-cols-2 gap-4 pt-2">
+            {/* Meta Information Card (Join Date) */}
+            <div className="pt-2">
               <div className="rounded-xl border border-border bg-muted/40 p-3.5 flex items-center gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <Calendar className="h-4 w-4" />
@@ -279,15 +285,6 @@ export function EditProfilePage() {
                 <div>
                   <p className="text-xs text-muted-foreground">Ngày tham gia</p>
                   <p className="text-sm font-semibold text-foreground">{joinDate}</p>
-                </div>
-              </div>
-              <div className="rounded-xl border border-border bg-muted/40 p-3.5 flex items-center gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                  <BookOpen className="h-4 w-4" />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Số khóa học</p>
-                  <p className="text-sm font-semibold text-foreground">Đã ghi danh</p>
                 </div>
               </div>
             </div>

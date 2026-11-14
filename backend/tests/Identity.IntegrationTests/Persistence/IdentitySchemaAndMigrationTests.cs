@@ -125,7 +125,7 @@ public sealed class IdentitySchemaAndMigrationTests(MySqlTestDatabaseFixture fix
         }
         finally
         {
-            await fixture.DropDatabaseAsync("brainmemo_lms");
+            // Do not drop the development database
         }
     }
 }

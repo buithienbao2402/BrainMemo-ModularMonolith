@@ -3669,6 +3669,8 @@ components:
           type: boolean
         password:
           type: string
+        displayName:
+          type: string
           writeOnly: true
           nullable: true
         hasPassword:
@@ -4032,6 +4034,8 @@ components:
           type: string
           format: email
         password:
+          type: string
+        displayName:
           type: string
           minLength: 8
     CurrentUser:

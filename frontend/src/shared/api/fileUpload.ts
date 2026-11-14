@@ -91,16 +91,23 @@ export async function uploadFileToStorage({
     const xhr = new XMLHttpRequest();
     xhr.open('PUT', uploadUrlData.uploadUrl!);
 
+    let contentTypeSet = false;
+
     // Set any required presigned headers
     if (uploadUrlData.headers) {
       for (const [key, value] of Object.entries(uploadUrlData.headers)) {
         if (typeof value === 'string') {
           xhr.setRequestHeader(key, value);
+          if (key.toLowerCase() === 'content-type') {
+            contentTypeSet = true;
+          }
         }
       }
     }
 
-    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    if (!contentTypeSet) {
+      xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    }
 
     if (xhr.upload && onProgress) {
       xhr.upload.onprogress = (e) => {

@@ -8,7 +8,8 @@ namespace BrainMemo.Identity.Contracts.Events;
 public sealed record UserRegistered(
     Guid EventId,
     DateTimeOffset OccurredAt,
-    Guid UserId) : IntegrationEvent(EventId, OccurredAt);
+    Guid UserId,
+    string? DisplayName = null) : IntegrationEvent(EventId, OccurredAt);
 
 /// <summary>
 /// Emitted in-process (non-Outbox) with raw verification token held strictly in memory for Notification delivery.

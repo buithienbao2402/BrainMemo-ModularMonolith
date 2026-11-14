@@ -12,4 +12,6 @@ public sealed record CredentialsRequest
 
     [Required(ErrorMessage = "Mật khẩu không được để trống.")]
     public string? Password { get; init; }
+
+    public string? DisplayName { get; init; }
 }
