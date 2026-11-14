@@ -32,6 +32,17 @@ export const queryKeys = {
     list: (params?: Record<string, unknown>) => ['notifications', 'list', params ?? {}] as const,
     unreadCount: () => ['notifications', 'unreadCount'] as const,
   },
+  content: {
+    all: ['content'] as const,
+    chapters: (courseId: string) => ['content', 'chapters', courseId] as const,
+    chapterDraft: (courseId: string, chapterId: string) =>
+      ['content', 'chapterDraft', courseId, chapterId] as const,
+    chapterVersions: (courseId: string, chapterId: string, params?: Record<string, unknown>) =>
+      ['content', 'chapterVersions', courseId, chapterId, params ?? {}] as const,
+    resources: (courseId: string) => ['content', 'resources', courseId] as const,
+    resourceDownloadUrl: (courseId: string, resourceId: string) =>
+      ['content', 'resourceDownloadUrl', courseId, resourceId] as const,
+  },
   admin: {
     all: ['admin'] as const,
     overview: () => ['admin', 'overview'] as const,
