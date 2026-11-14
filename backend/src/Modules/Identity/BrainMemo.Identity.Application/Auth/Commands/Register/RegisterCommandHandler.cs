@@ -98,7 +98,8 @@ internal sealed class RegisterCommandHandler(
         postCommitEvents.Enqueue(new UserRegistered(
             UuidV7.NewGuid(utcNow),
             utcNow,
-            user.Id));
+            user.Id,
+            request.DisplayName));
 
         postCommitEvents.Enqueue(new EmailVerificationRequested(
             UuidV7.NewGuid(utcNow),

@@ -35,7 +35,7 @@ import {
   DialogFooter,
   useToast,
 } from '@/shared/ui';
-import { uploadFileToStorage } from '@/shared/api';
+import { uploadFileToStorage, ApiProblemError } from '@/shared/api';
 import {
   useCourseQuery,
   useCreateCourseMutation,
@@ -54,7 +54,7 @@ export function CourseFormPage() {
   const { courseId } = useParams<{ courseId: string }>();
   const isEditMode = Boolean(courseId);
   const navigate = useNavigate();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, profile: currentProfile } = useAuth();
   const { pushToast } = useToast();
 
   const [formError, setFormError] = useState<string | null>(null);
@@ -173,10 +173,19 @@ export function CourseFormPage() {
 
       setValue('coverUploadKey', uploadKey, { shouldDirty: true });
       setValue('removeCover', false, { shouldDirty: true });
-    } catch {
+    } catch (err: unknown) {
+      setCoverPreview(existingCourse?.coverUrl || null);
+      setValue('coverUploadKey', undefined, { shouldDirty: true });
+      console.error('Failed to upload course cover:', err);
+
+      const description =
+        err instanceof ApiProblemError
+          ? err.detail || err.title
+          : 'Không thể tải ảnh bìa lên hệ thống. Vui lòng thử lại.';
+
       pushToast({
         title: 'Lỗi tải ảnh bìa',
-        description: 'Không thể tải ảnh bìa lên hệ thống. Vui lòng thử lại.',
+        description,
         tone: 'error',
       });
     } finally {
@@ -278,9 +287,10 @@ export function CourseFormPage() {
     );
   }
 
-  const authorName = (currentUser?.email ? currentUser.email.split('@')[0] : null) || 'Quang Trần';
+  const authorName = currentProfile?.displayName?.trim() || currentUser?.email || 'Người dùng';
   const authorInitials = authorName
-    .split(' ')
+    .trim()
+    .split(/\s+/)
     .map((w: string) => w[0])
     .slice(-2)
     .join('')
@@ -368,9 +378,17 @@ export function CourseFormPage() {
                 </div>
                 <div className="flex items-center justify-between rounded-xl bg-muted/40 border border-border px-3 py-2">
                   <div className="flex items-center gap-2.5">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/20 text-primary font-bold text-xs">
-                      {authorInitials || 'QT'}
-                    </div>
+                    {currentProfile?.avatarUrl ? (
+                      <img
+                        src={currentProfile.avatarUrl}
+                        alt=""
+                        className="h-7 w-7 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/20 text-primary font-bold text-xs">
+                        {authorInitials || 'QT'}
+                      </div>
+                    )}
                     <span className="text-sm font-semibold text-foreground">{authorName}</span>
                   </div>
                   <span className="rounded bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">

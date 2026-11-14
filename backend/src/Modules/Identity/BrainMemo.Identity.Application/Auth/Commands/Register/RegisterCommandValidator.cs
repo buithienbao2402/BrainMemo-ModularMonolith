@@ -32,5 +32,10 @@ public sealed class RegisterCommandValidator : AbstractValidator<RegisterCommand
             .WithMessage($"Mật khẩu phải có ít nhất {MinPasswordLength} ký tự.")
             .Must(password => password!.Length <= MaxPasswordLength)
             .WithMessage($"Mật khẩu không được vượt quá {MaxPasswordLength} ký tự.");
+
+        RuleFor(x => x.DisplayName)
+            .MaximumLength(100)
+            .WithMessage("Tên hiển thị không được vượt quá 100 ký tự.")
+            .When(x => !string.IsNullOrEmpty(x.DisplayName));
     }
 }

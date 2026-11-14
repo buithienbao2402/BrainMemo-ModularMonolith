@@ -13,6 +13,7 @@ export function RegisterPage() {
   const registerMutation = useRegisterMutation();
 
   const [formData, setFormData] = React.useState<RegisterFormData>({
+    fullName: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -53,6 +54,7 @@ export function RegisterPage() {
       await registerMutation.mutateAsync({
         email: formData.email,
         password: formData.password,
+        displayName: formData.fullName,
       });
 
       setRegisteredEmail(formData.email);
@@ -116,6 +118,30 @@ export function RegisterPage() {
         ) : null}
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          <div>
+            <label htmlFor="reg-fullname" className="block text-sm font-medium text-foreground">
+              {t('auth.fullNameLabel')}
+            </label>
+            <div className="mt-1.5">
+              <Input
+                id="reg-fullname"
+                name="fullName"
+                type="text"
+                autoComplete="name"
+                value={formData.fullName}
+                onChange={(e) => handleChange('fullName', e.target.value)}
+                placeholder={t('auth.fullNamePlaceholder')}
+                hasError={Boolean(fieldErrors.fullName)}
+                disabled={registerMutation.isPending}
+              />
+            </div>
+            {fieldErrors.fullName ? (
+              <p className="mt-1 text-xs text-destructive dark:text-[#ffb4ab]">
+                {fieldErrors.fullName}
+              </p>
+            ) : null}
+          </div>
+
           <div>
             <label htmlFor="reg-email" className="block text-sm font-medium text-foreground">
               {t('auth.emailLabel')}

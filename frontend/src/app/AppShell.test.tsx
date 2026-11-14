@@ -63,7 +63,8 @@ describe('App Shell (SCR-COM-01, SCR-COM-02, SCR-COM-03, Guards, Theme)', () => 
     expect(screen.getByText('KHÁM PHÁ NGẪU NHIÊN')).toBeInTheDocument();
     expect(screen.getByText('ĐÁNH GIÁ MỚI NHẤT')).toBeInTheDocument();
     expect(screen.getByText('MỚI ĐƯỢC ĐỀ CỬ')).toBeInTheDocument();
-    expect(window.localStorage.length).toBe(0);
+    expect(window.localStorage.getItem('accessToken')).toBeNull();
+    expect(window.localStorage.getItem('bm_theme')).toBeTruthy();
   });
 
   it('boots authenticated learner via POST /auth/refresh, shows unread notifications, profile menu & logs out', async () => {

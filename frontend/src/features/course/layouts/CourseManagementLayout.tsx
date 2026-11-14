@@ -18,14 +18,15 @@ import { useAuth, useTheme } from '@/shared/hooks';
 import { cn } from '@/shared/lib/utils';
 
 export function CourseManagementLayout() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { resolvedTheme, toggleTheme } = useTheme();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  const displayName = (user?.email ? user.email.split('@')[0] : null) || 'Quang Trần';
+  const displayName = profile?.displayName?.trim() || user?.email || 'Người dùng';
   const roleName = user?.isAdmin ? 'Quản trị viên' : 'Giảng viên / Quản trị';
   const initials = displayName
-    .split(' ')
+    .trim()
+    .split(/\s+/)
     .map((w: string) => w[0])
     .slice(-2)
     .join('')
@@ -187,17 +188,33 @@ export function CourseManagementLayout() {
               className="relative flex justify-center py-1 cursor-default"
               title={`${displayName} (${roleName})`}
             >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#ffb68e] text-slate-900 font-bold text-xs shadow-sm">
-                {initials || 'QT'}
-              </div>
+              {profile?.avatarUrl ? (
+                <img
+                  src={profile.avatarUrl}
+                  alt=""
+                  className="h-9 w-9 rounded-full object-cover shadow-sm"
+                />
+              ) : (
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#ffb68e] text-slate-900 font-bold text-xs shadow-sm">
+                  {initials || 'QT'}
+                </div>
+              )}
               <span className="absolute bottom-1 right-2 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-card" />
             </div>
           ) : (
             <div className="flex items-center gap-3 px-2 py-1 cursor-default">
               <div className="relative">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#ffb68e] text-slate-900 font-bold text-xs shadow-sm">
-                  {initials || 'QT'}
-                </div>
+                {profile?.avatarUrl ? (
+                  <img
+                    src={profile.avatarUrl}
+                    alt=""
+                    className="h-9 w-9 rounded-full object-cover shadow-sm"
+                  />
+                ) : (
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#ffb68e] text-slate-900 font-bold text-xs shadow-sm">
+                    {initials || 'QT'}
+                  </div>
+                )}
                 <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-card" />
               </div>
               <div className="min-w-0 flex-1">

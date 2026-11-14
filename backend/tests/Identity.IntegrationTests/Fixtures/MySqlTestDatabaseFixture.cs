@@ -92,6 +92,12 @@ public sealed class MySqlTestDatabaseFixture : IAsyncLifetime
 
     public async Task DropDatabaseAsync(string databaseName)
     {
+        // Safety guard: never drop the shared development database
+        if (string.Equals(databaseName, "brainmemo_lms", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
         await using MySqlConnection conn = new(_adminConnectionString);
         await conn.OpenAsync().ConfigureAwait(false);
         await using MySqlCommand cmd = conn.CreateCommand();

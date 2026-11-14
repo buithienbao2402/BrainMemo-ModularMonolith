@@ -31,10 +31,20 @@ public sealed class UserRegisteredEventHandler(
         }
 
         DateTimeOffset utcNow = clock.UtcNow;
-        Result<UserProfile> createResult = UserProfile.CreateDefault(@event.UserId, utcNow);
+        Result<UserProfile> createResult = !string.IsNullOrWhiteSpace(@event.DisplayName)
+            ? UserProfile.Create(
+                @event.UserId,
+                @event.DisplayName,
+                avatarStorageKey: null,
+                bio: null,
+                showCourseList: true,
+                uiTheme: BrainMemo.Profile.Domain.Enums.UiTheme.Light,
+                utcNow)
+            : UserProfile.CreateDefault(@event.UserId, utcNow);
+
         if (createResult.IsFailure)
         {
-            logger.LogError("Failed to create default profile for user {UserId}: {Error}", @event.UserId, createResult.Error);
+            logger.LogError("Failed to create profile for user {UserId}: {Error}", @event.UserId, createResult.Error);
             return;
         }
 

@@ -7,6 +7,34 @@ import {
   type ThemePreference,
 } from './themeContext';
 
+const THEME_STORAGE_KEY = 'bm_theme';
+
+function getStoredPreference(): ThemePreference | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  try {
+    const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
+    if (stored === 'light' || stored === 'dark' || stored === 'system') {
+      return stored;
+    }
+  } catch {
+    // Non-blocking localStorage access
+  }
+  return null;
+}
+
+function persistPreference(next: ThemePreference): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  try {
+    window.localStorage.setItem(THEME_STORAGE_KEY, next);
+  } catch {
+    // Non-blocking localStorage access
+  }
+}
+
 function getSystemTheme(): ResolvedTheme {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
     return 'light';
@@ -31,7 +59,9 @@ export function ThemeProvider({
   children: React.ReactNode;
   initialPreference?: ThemePreference;
 }) {
-  const [preference, setPreferenceState] = React.useState<ThemePreference>(initialPreference);
+  const [preference, setPreferenceState] = React.useState<ThemePreference>(
+    () => getStoredPreference() ?? initialPreference
+  );
   const [systemTheme, setSystemTheme] = React.useState<ResolvedTheme>(() => getSystemTheme());
 
   React.useEffect(() => {
@@ -57,19 +87,23 @@ export function ThemeProvider({
 
   const setPreference = React.useCallback((next: ThemePreference) => {
     setPreferenceState(next);
+    persistPreference(next);
   }, []);
 
   const syncProfileTheme = React.useCallback((uiTheme?: 'LIGHT' | 'DARK' | null) => {
     if (uiTheme === 'DARK') {
       setPreferenceState('dark');
+      persistPreference('dark');
     } else if (uiTheme === 'LIGHT') {
       setPreferenceState('light');
+      persistPreference('light');
     }
   }, []);
 
   const toggleTheme = React.useCallback(() => {
     const next: ResolvedTheme = resolvedTheme === 'dark' ? 'light' : 'dark';
     setPreferenceState(next);
+    persistPreference(next);
 
     if (getAccessToken()) {
       void apiClient
