@@ -30,7 +30,7 @@
 | T-S2-FE-01 | FE-01 + FE-02 | DONE | Antigravity (FE) | feat/T-S2-FE-01-profile-course-ui | **FE Profile & Course Management (Batched):** SCR-PRF-01, 02 + SCR-CRS-01, 02, 03 (16/16 tests pass, 0 type error) |
 | T-S2-INT-01 | INT-01 | DONE | Antigravity (INT) | feat/T-S2-INT-01-course-profile-e2e | **Tích hợp S2 + e2e:** Tạo khóa học → Upload bìa & avatar → Xem hồ sơ → Đổi trạng thái Only Me (người khác 404, e2e pass 100%) |
 | **S3 – Content cơ bản** | | | | | |
-| T-S3-BE-01 | BE-01 + BE-02 | REVIEW | Antigravity (BE) | feat/T-S3-BE-01-content-drafting | **Content Domain, Resource Library & Drafting (Batched):** 15 bảng cnt_*, quản lý tài nguyên, CRUD chương, lưu nháp với khóa lạc quan (409 VERSION_CONFLICT), 7 loại Block, HTML sanitize, bảo mật snapshot không đáp án (61/61 tests pass) |
+| T-S3-BE-01 | BE-01 + BE-02 | DONE | Antigravity (BE) | feat/T-S3-BE-01-content-drafting | **Content Domain, Resource Library & Drafting (Batched):** 15 bảng cnt_*, quản lý tài nguyên, CRUD chương, lưu nháp với khóa lạc quan (409 VERSION_CONFLICT), 7 loại Block, HTML sanitize, bảo mật snapshot không đáp án (61/61 tests pass) |
 | T-S3-BE-02 | BE-03 | TODO | – | – | **Publishing, Version History & Contracts (Batched):** Đăng tải chương, lịch sử phiên bản, khôi phục, event & contracts |
 | T-S3-FE-01 | FE-01 + FE-02 | TODO | – | – | **FE Content Editor Suite (Batched):** SCR-CNT-01, 02, 03, 07 (Soạn thảo block, tài nguyên, lịch sử) |
 | T-S3-INT-01 | INT-01 | TODO | – | – | Tích hợp S3 + e2e |
