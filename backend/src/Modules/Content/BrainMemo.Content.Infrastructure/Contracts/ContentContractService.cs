@@ -111,17 +111,73 @@ public class ContentContractService(
 
     public Result<PublishedChapterContentDto> GetPublishedChapterContent(Guid chapterId)
     {
-        return Result.Failure<PublishedChapterContentDto>(new Error("NOT_IMPLEMENTED", "Publishing will be implemented in T-S3-BE-02."));
+        Chapter? chapter = contentRepository.GetChapterByIdAsync(chapterId).GetAwaiter().GetResult();
+        if (chapter is null || chapter.IsDeleted || chapter.Status != ChapterStatus.Published)
+        {
+            return Result.Failure<PublishedChapterContentDto>(new Error("CHAPTER_NOT_FOUND", "Published chapter not found."));
+        }
+
+        IReadOnlyList<PublishedBlock> blocks = contentRepository.GetPublishedBlocksByChapterIdAsync(chapterId).GetAwaiter().GetResult();
+
+        var blockRefs = blocks.OrderBy(b => b.Position)
+            .Select(b => new PublishedBlockRef(
+                b.BlockId,
+                b.ChapterId,
+                b.BlockType.ToString().ToUpperInvariant(),
+                b.Position,
+                b.ResourceId,
+                b.QuestionId,
+                b.VersionNo))
+            .ToList();
+
+        var dto = new PublishedChapterContentDto(
+            chapter.Id,
+            chapter.CourseId,
+            chapter.PublishedVersionNo ?? chapter.LastVersionNo,
+            chapter.Title,
+            chapter.Description,
+            blockRefs);
+
+        return Result.Success(dto);
     }
 
     public Result<IReadOnlyList<PublishedBlockRef>> ListPublishedBlocks(Guid? courseId, Guid? chapterId, Guid? afterId, int limit)
     {
-        return Result.Failure<IReadOnlyList<PublishedBlockRef>>(new Error("NOT_IMPLEMENTED", "Publishing will be implemented in T-S3-BE-02."));
+        int clampedLimit = Math.Clamp(limit <= 0 ? 50 : limit, 1, 50);
+        IReadOnlyList<PublishedBlock> blocks = contentRepository.ListPublishedBlocksAsync(courseId, chapterId, afterId, clampedLimit).GetAwaiter().GetResult();
+
+        var refs = blocks
+            .Select(b => new PublishedBlockRef(
+                b.BlockId,
+                b.ChapterId,
+                b.BlockType.ToString().ToUpperInvariant(),
+                b.Position,
+                b.ResourceId,
+                b.QuestionId,
+                b.VersionNo))
+            .ToList();
+
+        return Result.Success<IReadOnlyList<PublishedBlockRef>>(refs);
     }
 
     public Result<PublishedBlockRef> GetPublishedBlock(Guid blockId)
     {
-        return Result.Failure<PublishedBlockRef>(new Error("NOT_IMPLEMENTED", "Publishing will be implemented in T-S3-BE-02."));
+        PublishedBlock? block = contentRepository.GetPublishedBlockByIdAsync(blockId).GetAwaiter().GetResult();
+        if (block is null)
+        {
+            return Result.Failure<PublishedBlockRef>(new Error("BLOCK_NOT_FOUND", "Published block not found."));
+        }
+
+        var dto = new PublishedBlockRef(
+            block.BlockId,
+            block.ChapterId,
+            block.BlockType.ToString().ToUpperInvariant(),
+            block.Position,
+            block.ResourceId,
+            block.QuestionId,
+            block.VersionNo);
+
+        return Result.Success(dto);
     }
 
     public Result<IReadOnlyList<AssessableBlockDto>> GetAssessableBlocks(Guid courseId)
