@@ -1,4 +1,5 @@
 using BrainMemo.Content.Domain.Entities;
+using BrainMemo.Content.Domain.Enums;
 
 namespace BrainMemo.Content.Application.Abstractions;
 
@@ -12,8 +13,17 @@ public interface IContentRepository
     Task AddChapterVersionAsync(ChapterVersion version, CancellationToken ct = default);
     Task<ChapterVersion?> GetChapterVersionAsync(Guid chapterId, int versionNo, CancellationToken ct = default);
     Task<IReadOnlyList<ChapterVersion>> ListChapterVersionsAsync(Guid chapterId, CancellationToken ct = default);
+    Task<IReadOnlyList<ChapterVersion>> ListChapterVersionsPagedAsync(Guid chapterId, int page, int pageSize, CancellationToken ct = default);
     Task<IReadOnlyList<Block>> GetBlocksByChapterIdAsync(Guid chapterId, CancellationToken ct = default);
     Task ReplaceBlocksAsync(Guid chapterId, IReadOnlyList<Block> blocks, CancellationToken ct = default);
+    Task<IReadOnlyList<PublishedBlock>> GetPublishedBlocksByChapterIdAsync(Guid chapterId, CancellationToken ct = default);
+    Task ReplacePublishedBlocksAsync(Guid chapterId, IReadOnlyList<PublishedBlock> blocks, CancellationToken ct = default);
+    Task DeletePublishedBlocksByChapterIdAsync(Guid chapterId, CancellationToken ct = default);
+    Task<PublishedBlock?> GetPublishedBlockByIdAsync(Guid blockId, CancellationToken ct = default);
+    Task<IReadOnlyList<PublishedBlock>> ListPublishedBlocksAsync(Guid? courseId, Guid? chapterId, Guid? afterId, int limit, CancellationToken ct = default);
+    Task<Question?> GetQuestionByIdAsync(Guid questionId, CancellationToken ct = default);
+    Task<IReadOnlyList<Question>> GetQuestionsByIdsAsync(IReadOnlyList<Guid> questionIds, CancellationToken ct = default);
+    Task<int> CountReadyQuestionsAsync(Guid courseId, string? filterTag, byte? filterDifficultyCode, QuestionType? filterQuestionType, CancellationToken ct = default);
     Task SaveQuizConfigAsync(
         QuizConfig config,
         IReadOnlyList<QuizQuestion>? questions,

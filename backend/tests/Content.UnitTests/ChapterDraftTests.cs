@@ -22,6 +22,7 @@ public sealed class ChapterDraftTests
 
     private readonly FakeContentRepository _repository = new();
     private readonly FakeCourseContract _courseContract = new();
+    private readonly FakeEventBus _eventBus = new();
     private readonly HtmlSanitizer _sanitizer = new();
 
     public ChapterDraftTests()
@@ -144,7 +145,7 @@ public sealed class ChapterDraftTests
         Chapter chapter = new(Guid.NewGuid(), CourseId, "Chương cần xóa", null, 1);
         await _repository.AddChapterAsync(chapter);
 
-        DeleteChapterCommandHandler handler = new(_repository, _courseContract);
+        DeleteChapterCommandHandler handler = new(_repository, _courseContract, _eventBus);
         DeleteChapterCommand command = new(CourseId, chapter.Id, OwnerUserId);
 
         Result result = await handler.Handle(command, CancellationToken.None);
@@ -160,7 +161,7 @@ public sealed class ChapterDraftTests
         Chapter chapter = new(Guid.NewGuid(), CourseId, "Chương cần xóa", null, 1);
         await _repository.AddChapterAsync(chapter);
 
-        DeleteChapterCommandHandler handler = new(_repository, _courseContract);
+        DeleteChapterCommandHandler handler = new(_repository, _courseContract, _eventBus);
         DeleteChapterCommand command = new(CourseId, chapter.Id, OtherUserId);
 
         Result result = await handler.Handle(command, CancellationToken.None);

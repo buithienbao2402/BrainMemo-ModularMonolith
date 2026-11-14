@@ -1,15 +1,29 @@
+using BrainMemo.BuildingBlocks.Abstractions.Events;
 using BrainMemo.BuildingBlocks.Abstractions.Storage;
 using BrainMemo.Content.Application.Abstractions;
 using BrainMemo.Content.Contracts.Dtos;
 using BrainMemo.Content.Domain.Entities;
+using BrainMemo.Content.Domain.Enums;
 using BrainMemo.Course.Contracts;
 using BrainMemo.Course.Contracts.Dtos;
 using BrainMemo.Course.Contracts.Enums;
+using BrainMemo.SharedKernel.Events;
 using BrainMemo.SharedKernel.Pagination;
 using BrainMemo.SharedKernel.Results;
 using BrainMemo.SharedKernel.Time;
 
 namespace Content.UnitTests;
+
+public sealed class FakeEventBus : IEventBus
+{
+    public List<IntegrationEvent> PublishedEvents { get; } = [];
+
+    public Task Publish(IntegrationEvent @event, CancellationToken ct = default)
+    {
+        PublishedEvents.Add(@event);
+        return Task.CompletedTask;
+    }
+}
 
 public sealed class FakeSystemClock(DateTimeOffset utcNow) : IClock
 {
@@ -161,6 +175,10 @@ public sealed class FakeContentRepository : IContentRepository
     public List<QuizRandomRule> QuizRandomRules { get; } = [];
     public List<QuizPrerequisite> QuizPrerequisites { get; } = [];
     public List<AssignmentConfig> AssignmentConfigs { get; } = [];
+    public List<PublishedBlock> PublishedBlocks { get; } = [];
+    public List<Question> Questions { get; } = [];
+    public List<QuestionTag> QuestionTags { get; } = [];
+    public List<QuestionBank> QuestionBanks { get; } = [];
 
     public Task<Chapter?> GetChapterByIdAsync(Guid chapterId, CancellationToken ct = default)
     {
@@ -217,6 +235,121 @@ public sealed class FakeContentRepository : IContentRepository
             .OrderByDescending(cv => cv.VersionNo)
             .ToList();
         return Task.FromResult(list);
+    }
+
+    public Task<IReadOnlyList<ChapterVersion>> ListChapterVersionsPagedAsync(Guid chapterId, int page, int pageSize, CancellationToken ct = default)
+    {
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 20;
+
+        IReadOnlyList<ChapterVersion> list = ChapterVersions.Where(cv => cv.ChapterId == chapterId)
+            .OrderByDescending(cv => cv.VersionNo)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+        return Task.FromResult(list);
+    }
+
+    public Task<IReadOnlyList<PublishedBlock>> GetPublishedBlocksByChapterIdAsync(Guid chapterId, CancellationToken ct = default)
+    {
+        IReadOnlyList<PublishedBlock> list = PublishedBlocks
+            .Where(p => p.ChapterId == chapterId)
+            .OrderBy(p => p.Position)
+            .ToList();
+        return Task.FromResult(list);
+    }
+
+    public Task ReplacePublishedBlocksAsync(Guid chapterId, IReadOnlyList<PublishedBlock> blocks, CancellationToken ct = default)
+    {
+        PublishedBlocks.RemoveAll(p => p.ChapterId == chapterId);
+        PublishedBlocks.AddRange(blocks);
+        return Task.CompletedTask;
+    }
+
+    public Task DeletePublishedBlocksByChapterIdAsync(Guid chapterId, CancellationToken ct = default)
+    {
+        PublishedBlocks.RemoveAll(p => p.ChapterId == chapterId);
+        return Task.CompletedTask;
+    }
+
+    public Task<PublishedBlock?> GetPublishedBlockByIdAsync(Guid blockId, CancellationToken ct = default)
+    {
+        PublishedBlock? pb = PublishedBlocks.FirstOrDefault(p => p.BlockId == blockId);
+        return Task.FromResult(pb);
+    }
+
+    public Task<IReadOnlyList<PublishedBlock>> ListPublishedBlocksAsync(Guid? courseId, Guid? chapterId, Guid? afterId, int limit, CancellationToken ct = default)
+    {
+        var query = from pb in PublishedBlocks
+                    join c in Chapters on pb.ChapterId equals c.Id
+                    where !c.IsDeleted && c.Status == ChapterStatus.Published
+                    select new { pb, c };
+
+        if (courseId.HasValue)
+        {
+            query = query.Where(x => x.c.CourseId == courseId.Value);
+        }
+
+        if (chapterId.HasValue)
+        {
+            query = query.Where(x => x.pb.ChapterId == chapterId.Value);
+        }
+
+        var list = query.OrderBy(x => x.c.Position)
+                        .ThenBy(x => x.pb.Position)
+                        .Select(x => x.pb)
+                        .ToList();
+
+        if (afterId.HasValue)
+        {
+            int index = list.FindIndex(b => b.BlockId == afterId.Value);
+            if (index >= 0)
+            {
+                IReadOnlyList<PublishedBlock> paged = list.Skip(index + 1).Take(limit).ToList();
+                return Task.FromResult(paged);
+            }
+        }
+
+        IReadOnlyList<PublishedBlock> result = list.Take(limit).ToList();
+        return Task.FromResult(result);
+    }
+
+    public Task<Question?> GetQuestionByIdAsync(Guid questionId, CancellationToken ct = default)
+    {
+        Question? q = Questions.FirstOrDefault(x => x.Id == questionId);
+        return Task.FromResult(q);
+    }
+
+    public Task<IReadOnlyList<Question>> GetQuestionsByIdsAsync(IReadOnlyList<Guid> questionIds, CancellationToken ct = default)
+    {
+        IReadOnlyList<Question> list = Questions.Where(q => questionIds.Contains(q.Id)).ToList();
+        return Task.FromResult(list);
+    }
+
+    public Task<int> CountReadyQuestionsAsync(Guid courseId, string? filterTag, byte? filterDifficultyCode, QuestionType? filterQuestionType, CancellationToken ct = default)
+    {
+        var query = from q in Questions
+                    join b in QuestionBanks on q.BankId equals b.Id
+                    where b.CourseId == courseId && q.Status == QuestionStatus.Ready
+                    select q;
+
+        if (filterDifficultyCode.HasValue)
+        {
+            query = query.Where(q => q.DifficultyCode == filterDifficultyCode.Value);
+        }
+
+        if (filterQuestionType.HasValue)
+        {
+            query = query.Where(q => q.QuestionType == filterQuestionType.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(filterTag))
+        {
+            string tag = filterTag.Trim();
+            query = query.Where(q => QuestionTags.Any(t => t.QuestionId == q.Id && t.Tag == tag));
+        }
+
+        return Task.FromResult(query.Count());
     }
 
     public Task<IReadOnlyList<Block>> GetBlocksByChapterIdAsync(Guid chapterId, CancellationToken ct = default)

@@ -62,6 +62,19 @@ public class ContentRepository(ContentDbContext dbContext) : IContentRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<ChapterVersion>> ListChapterVersionsPagedAsync(Guid chapterId, int page, int pageSize, CancellationToken ct = default)
+    {
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 20;
+
+        return await dbContext.ChapterVersions
+            .Where(v => v.ChapterId == chapterId)
+            .OrderByDescending(v => v.VersionNo)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+    }
+
     public async Task<IReadOnlyList<Block>> GetBlocksByChapterIdAsync(Guid chapterId, CancellationToken ct = default)
     {
         return await dbContext.Blocks
@@ -82,6 +95,126 @@ public class ContentRepository(ContentDbContext dbContext) : IContentRepository
         }
 
         await dbContext.Blocks.AddRangeAsync(blocks, ct);
+    }
+
+    public async Task<IReadOnlyList<PublishedBlock>> GetPublishedBlocksByChapterIdAsync(Guid chapterId, CancellationToken ct = default)
+    {
+        return await dbContext.PublishedBlocks
+            .Where(p => p.ChapterId == chapterId)
+            .OrderBy(p => p.Position)
+            .ToListAsync(ct);
+    }
+
+    public async Task ReplacePublishedBlocksAsync(Guid chapterId, IReadOnlyList<PublishedBlock> blocks, CancellationToken ct = default)
+    {
+        var existing = await dbContext.PublishedBlocks
+            .Where(p => p.ChapterId == chapterId)
+            .ToListAsync(ct);
+
+        if (existing.Count > 0)
+        {
+            dbContext.PublishedBlocks.RemoveRange(existing);
+        }
+
+        await dbContext.PublishedBlocks.AddRangeAsync(blocks, ct);
+    }
+
+    public async Task DeletePublishedBlocksByChapterIdAsync(Guid chapterId, CancellationToken ct = default)
+    {
+        var existing = await dbContext.PublishedBlocks
+            .Where(p => p.ChapterId == chapterId)
+            .ToListAsync(ct);
+
+        if (existing.Count > 0)
+        {
+            dbContext.PublishedBlocks.RemoveRange(existing);
+        }
+    }
+
+    public async Task<PublishedBlock?> GetPublishedBlockByIdAsync(Guid blockId, CancellationToken ct = default)
+    {
+        return await dbContext.PublishedBlocks
+            .FirstOrDefaultAsync(p => p.BlockId == blockId, ct);
+    }
+
+    public async Task<IReadOnlyList<PublishedBlock>> ListPublishedBlocksAsync(
+        Guid? courseId,
+        Guid? chapterId,
+        Guid? afterId,
+        int limit,
+        CancellationToken ct = default)
+    {
+        var query = from pb in dbContext.PublishedBlocks
+                    join c in dbContext.Chapters on pb.ChapterId equals c.Id
+                    where c.DeletedAt == null && c.Status == ChapterStatus.Published
+                    select new { pb, c };
+
+        if (courseId.HasValue)
+        {
+            query = query.Where(x => x.c.CourseId == courseId.Value);
+        }
+
+        if (chapterId.HasValue)
+        {
+            query = query.Where(x => x.pb.ChapterId == chapterId.Value);
+        }
+
+        var list = await query.OrderBy(x => x.c.Position)
+                              .ThenBy(x => x.pb.Position)
+                              .Select(x => x.pb)
+                              .ToListAsync(ct);
+
+        if (afterId.HasValue)
+        {
+            int index = list.FindIndex(b => b.BlockId == afterId.Value);
+            if (index >= 0)
+            {
+                return list.Skip(index + 1).Take(limit).ToList();
+            }
+        }
+
+        return list.Take(limit).ToList();
+    }
+
+    public async Task<Question?> GetQuestionByIdAsync(Guid questionId, CancellationToken ct = default)
+    {
+        return await dbContext.Questions.FirstOrDefaultAsync(q => q.Id == questionId, ct);
+    }
+
+    public async Task<IReadOnlyList<Question>> GetQuestionsByIdsAsync(IReadOnlyList<Guid> questionIds, CancellationToken ct = default)
+    {
+        return await dbContext.Questions.Where(q => questionIds.Contains(q.Id)).ToListAsync(ct);
+    }
+
+    public async Task<int> CountReadyQuestionsAsync(
+        Guid courseId,
+        string? filterTag,
+        byte? filterDifficultyCode,
+        QuestionType? filterQuestionType,
+        CancellationToken ct = default)
+    {
+        var query = from q in dbContext.Questions
+                    join b in dbContext.QuestionBanks on q.BankId equals b.Id
+                    where b.CourseId == courseId && q.Status == QuestionStatus.Ready
+                    select q;
+
+        if (filterDifficultyCode.HasValue)
+        {
+            query = query.Where(q => q.DifficultyCode == filterDifficultyCode.Value);
+        }
+
+        if (filterQuestionType.HasValue)
+        {
+            query = query.Where(q => q.QuestionType == filterQuestionType.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(filterTag))
+        {
+            string tag = filterTag.Trim();
+            query = query.Where(q => dbContext.QuestionTags.Any(t => t.QuestionId == q.Id && t.Tag == tag));
+        }
+
+        return await query.CountAsync(ct);
     }
 
     public async Task SaveQuizConfigAsync(
