@@ -527,12 +527,26 @@ export function CourseDetailPage() {
                 <span>Đang cập nhật</span>
               </span>
 
-              {/* Access Mode Badge: Public */}
-              <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-500 border border-emerald-500/30">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                <span>Công khai</span>
-                <span className="text-[10px] opacity-75 font-normal">(Public)</span>
-              </span>
+              {/* Access Mode Badge */}
+              {course.accessMode === 'ONLY_ME' ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-500 border border-rose-500/30">
+                  <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                  <span>Chỉ mình tôi</span>
+                  <span className="text-[10px] opacity-75 font-normal">(Only Me)</span>
+                </span>
+              ) : course.accessMode === 'PRIVATE' ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-500 border border-amber-500/30">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                  <span>Riêng tư</span>
+                  <span className="text-[10px] opacity-75 font-normal">(Private)</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-500 border border-emerald-500/30">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  <span>Công khai</span>
+                  <span className="text-[10px] opacity-75 font-normal">(Public)</span>
+                </span>
+              )}
 
               {/* Tags */}
               <span className="px-2.5 py-0.5 rounded-full text-xs font-medium border border-border/70 text-muted-foreground bg-secondary/30">
