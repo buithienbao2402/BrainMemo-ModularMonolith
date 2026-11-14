@@ -334,13 +334,191 @@ export function saveStoredCourses(courses: MockCourseItem[]): void {
 
 export let mockCourses: MockCourseItem[] = getStoredCourses();
 
+export interface MockChapterItem {
+  id: string;
+  courseId?: string;
+  position: number;
+  title: string;
+  description: string | null;
+  status: 'DRAFT' | 'PUBLISHED';
+  accessMode: string;
+  hasUnpublishedChanges: boolean;
+  lastVersionNo: number;
+  publishedVersionNo: number | null;
+  blocks: Array<Record<string, unknown>>;
+}
+
+export interface MockVersionItem {
+  versionNo: number;
+  createdAt: string;
+  publishedAt: string | null;
+  restoredFromVersionNo: number | null;
+}
+
+export interface MockResourceItem {
+  id: string;
+  kind: 'IMAGE' | 'VIDEO' | 'AUDIO' | 'PDF' | 'ARCHIVE' | 'OTHER';
+  originalFilename: string;
+  contentType: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
+export const initialMockChapters: Record<string, MockChapterItem[]> = {
+  'my-course-1': [
+    {
+      id: 'chapter-1111-1111',
+      position: 1,
+      title: 'Chương 1: Giới thiệu kiến trúc Modular Monolith',
+      description: 'Tìm hiểu tổng quan về kiến trúc và các nguyên lý thiết kế.',
+      status: 'PUBLISHED',
+      accessMode: 'PUBLIC',
+      hasUnpublishedChanges: true,
+      lastVersionNo: 2,
+      publishedVersionNo: 1,
+      blocks: [
+        {
+          id: 'block-1111',
+          blockType: 'RICH_TEXT',
+          position: 1,
+          title: 'Tổng quan bài học',
+          body: '<p>Chào mừng bạn đến với khóa học <strong>BrainMemo Modular Monolith</strong>!</p>',
+        },
+        {
+          id: 'block-2222',
+          blockType: 'MARKDOWN',
+          position: 2,
+          title: 'Nguyên lý thiết kế',
+          body: '### Quy ước module\n- Mỗi module một DbContext\n- Không tham chiếu chéo tầng domain',
+        },
+        {
+          id: 'block-3333',
+          blockType: 'FLASHCARD',
+          position: 3,
+          title: 'Bộ thẻ nhớ ôn tập',
+          flashcards: [
+            { front: 'Modular Monolith là gì?', back: 'Hệ thống đơn khối chia ranh giới module rõ ràng qua contracts.' },
+            { front: 'DEC-05 quy định gì?', back: 'Client upload trực tiếp qua presigned URL; ảnh <= 5MB, tệp <= 20MB.' },
+          ],
+          aiReviewStatus: 'APPROVED',
+        },
+      ],
+    },
+    {
+      id: 'chapter-2222-2222',
+      position: 2,
+      title: 'Chương 2: Thiết kế CSDL & Domain Entity',
+      description: 'Chi tiết các bảng cnt_* và quy tắc persistence.',
+      status: 'DRAFT',
+      accessMode: 'PUBLIC',
+      hasUnpublishedChanges: true,
+      lastVersionNo: 1,
+      publishedVersionNo: null,
+      blocks: [
+        {
+          id: 'block-4444',
+          blockType: 'RICH_TEXT',
+          position: 1,
+          title: 'Cơ sở dữ liệu',
+          body: '<p>Quy ước bảng và EF Core migration trong BrainMemo.</p>',
+        },
+      ],
+    },
+  ],
+  'course-intro-1': [
+    {
+      id: 'chapter-intro-1',
+      position: 1,
+      title: 'Chương 1: Nhập môn kiến trúc LMS',
+      description: 'Làm quen với các thuật ngữ cốt lõi.',
+      status: 'PUBLISHED',
+      accessMode: 'PUBLIC',
+      hasUnpublishedChanges: false,
+      lastVersionNo: 1,
+      publishedVersionNo: 1,
+      blocks: [],
+    },
+  ],
+};
+
+export const initialMockVersions: Record<string, MockVersionItem[]> = {
+  'chapter-1111-1111': [
+    {
+      versionNo: 1,
+      createdAt: '2026-11-10T08:00:00Z',
+      publishedAt: null,
+      restoredFromVersionNo: null,
+    },
+    {
+      versionNo: 2,
+      createdAt: '2026-11-12T10:00:00Z',
+      publishedAt: '2026-11-12T10:30:00Z',
+      restoredFromVersionNo: null,
+    },
+  ],
+  'chapter-2222-2222': [
+    {
+      versionNo: 1,
+      createdAt: '2026-11-13T09:00:00Z',
+      publishedAt: null,
+      restoredFromVersionNo: null,
+    },
+  ],
+};
+
+export const initialMockResources: Record<string, MockResourceItem[]> = {
+  'my-course-1': [
+    {
+      id: 'res-img-01',
+      kind: 'IMAGE',
+      originalFilename: 'architecture-diagram.png',
+      contentType: 'image/png',
+      sizeBytes: 1048576,
+      createdAt: '2026-11-10T09:00:00Z',
+    },
+    {
+      id: 'res-pdf-01',
+      kind: 'PDF',
+      originalFilename: 'course-syllabus.pdf',
+      contentType: 'application/pdf',
+      sizeBytes: 2450000,
+      createdAt: '2026-11-11T14:00:00Z',
+    },
+  ],
+  'course-intro-1': [
+    {
+      id: 'res-intro-01',
+      kind: 'IMAGE',
+      originalFilename: 'welcome-banner.png',
+      contentType: 'image/png',
+      sizeBytes: 524288,
+      createdAt: '2026-11-01T08:00:00Z',
+    },
+  ],
+};
+
+export let mockChapters: Record<string, MockChapterItem[]> = JSON.parse(
+  JSON.stringify(initialMockChapters)
+);
+export let mockVersions: Record<string, MockVersionItem[]> = JSON.parse(
+  JSON.stringify(initialMockVersions)
+);
+export let mockResources: Record<string, MockResourceItem[]> = JSON.parse(
+  JSON.stringify(initialMockResources)
+);
+
 export function resetMockCourses(): void {
   mockCourses = [...initialMockCourses];
+  mockChapters = JSON.parse(JSON.stringify(initialMockChapters));
+  mockVersions = JSON.parse(JSON.stringify(initialMockVersions));
+  mockResources = JSON.parse(JSON.stringify(initialMockResources));
   if (typeof window !== 'undefined' && window.localStorage) {
     try {
       window.localStorage.removeItem('bm_mock_courses');
       window.localStorage.removeItem('bm_mock_profiles');
-    } catch {}
+    } catch {
+      // ignore
+    }
   }
 }
 
@@ -1189,5 +1367,325 @@ export const handlers = [
 
   http.delete('*/api/v1/courses/:courseId/nomination', () => {
     return new HttpResponse(null, { status: 204 });
+  }),
+
+  // ==========================================
+  // S3 Content & Chapter Drafting (T-S3-FE-01)
+  // ==========================================
+  http.get('*/api/v1/courses/:courseId/chapters', ({ params }) => {
+    const courseId = String(params.courseId);
+    const list = mockChapters[courseId] || [];
+    return HttpResponse.json(
+      list.map((c) => ({
+        id: c.id,
+        position: c.position,
+        title: c.title,
+        description: c.description,
+        status: c.status,
+        accessMode: c.accessMode,
+        hasUnpublishedChanges: c.hasUnpublishedChanges,
+      })),
+      { status: 200 }
+    );
+  }),
+
+  http.post('*/api/v1/courses/:courseId/chapters', async ({ params, request }) => {
+    const courseId = String(params.courseId);
+    const body = (await request.json().catch(() => ({}))) as {
+      title?: string;
+      description?: string;
+    };
+
+    if (!body.title?.trim()) {
+      return problemResponse(422, {
+        title: 'Dữ liệu không hợp lệ',
+        status: 422,
+        code: 'VALIDATION_ERROR',
+        errors: [{ field: 'title', message: 'Tên chương không được để trống' }],
+      });
+    }
+
+    if (!mockChapters[courseId]) {
+      mockChapters[courseId] = [];
+    }
+
+    const newPosition = mockChapters[courseId].length + 1;
+    const newId = `chapter-${Date.now()}`;
+    const newChapter: MockChapterItem = {
+      id: newId,
+      courseId,
+      position: newPosition,
+      title: body.title.trim(),
+      description: body.description?.trim() || null,
+      status: 'DRAFT',
+      accessMode: 'PUBLIC',
+      hasUnpublishedChanges: false,
+      lastVersionNo: 1,
+      publishedVersionNo: null,
+      blocks: [],
+    };
+
+    mockChapters[courseId].push(newChapter);
+    mockVersions[newId] = [
+      {
+        versionNo: 1,
+        createdAt: new Date().toISOString(),
+        publishedAt: null,
+        restoredFromVersionNo: null,
+      },
+    ];
+
+    return HttpResponse.json(newChapter, { status: 201 });
+  }),
+
+  http.put('*/api/v1/courses/:courseId/chapters/order', async ({ params, request }) => {
+    const courseId = String(params.courseId);
+    const body = (await request.json().catch(() => ({}))) as { chapterIds?: string[] };
+    const list = mockChapters[courseId] || [];
+
+    if (body.chapterIds && Array.isArray(body.chapterIds)) {
+      const orderMap = new Map<string, number>();
+      body.chapterIds.forEach((id, idx) => orderMap.set(id, idx + 1));
+
+      list.forEach((ch) => {
+        if (orderMap.has(ch.id)) {
+          ch.position = orderMap.get(ch.id)!;
+        }
+      });
+      list.sort((a, b) => a.position - b.position);
+    }
+
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.get('*/api/v1/courses/:courseId/chapters/:chapterId', ({ params }) => {
+    const courseId = String(params.courseId);
+    const chapterId = String(params.chapterId);
+    const list = mockChapters[courseId] || [];
+    const chapter = list.find((c) => c.id === chapterId);
+
+    if (!chapter) {
+      return problemResponse(404, {
+        title: 'Chương không tồn tại',
+        status: 404,
+        code: 'CHAPTER_NOT_FOUND',
+        detail: 'Không tìm thấy chương bài học được yêu cầu.',
+      });
+    }
+
+    return HttpResponse.json(chapter, { status: 200 });
+  }),
+
+  http.put('*/api/v1/courses/:courseId/chapters/:chapterId', async ({ params, request }) => {
+    const courseId = String(params.courseId);
+    const chapterId = String(params.chapterId);
+    const body = (await request.json().catch(() => ({}))) as {
+      baseVersionNo?: number;
+      title?: string;
+      description?: string;
+      blocks?: Array<Record<string, unknown>>;
+    };
+
+    const list = mockChapters[courseId] || [];
+    const chapter = list.find((c) => c.id === chapterId);
+
+    if (!chapter) {
+      return problemResponse(404, {
+        title: 'Chương không tồn tại',
+        status: 404,
+        code: 'CHAPTER_NOT_FOUND',
+        detail: 'Không tìm thấy chương bài học.',
+      });
+    }
+
+    // Optimistic locking check (FR-CNT-16)
+    if (body.baseVersionNo !== undefined && body.baseVersionNo !== chapter.lastVersionNo) {
+      return problemResponse(409, {
+        title: 'Xung đột phiên bản',
+        status: 409,
+        code: 'VERSION_CONFLICT',
+        detail: `Phiên bản của bạn (v${body.baseVersionNo}) không khớp với phiên bản mới nhất trên hệ thống (v${chapter.lastVersionNo}). Vui lòng tải lại dữ liệu mới nhất.`,
+      });
+    }
+
+    chapter.title = body.title?.trim() || chapter.title;
+    chapter.description = body.description?.trim() ?? chapter.description;
+    chapter.blocks = body.blocks || [];
+    chapter.lastVersionNo = (chapter.lastVersionNo || 1) + 1;
+    chapter.hasUnpublishedChanges = true;
+
+    if (!mockVersions[chapterId]) {
+      mockVersions[chapterId] = [];
+    }
+    mockVersions[chapterId].push({
+      versionNo: chapter.lastVersionNo,
+      createdAt: new Date().toISOString(),
+      publishedAt: null,
+      restoredFromVersionNo: null,
+    });
+
+    return HttpResponse.json(chapter, { status: 200 });
+  }),
+
+  http.delete('*/api/v1/courses/:courseId/chapters/:chapterId', ({ params }) => {
+    const courseId = String(params.courseId);
+    const chapterId = String(params.chapterId);
+    const list = mockChapters[courseId] || [];
+    const idx = list.findIndex((c) => c.id === chapterId);
+
+    if (idx !== -1) {
+      list.splice(idx, 1);
+    }
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.post('*/api/v1/courses/:courseId/chapters/:chapterId/publish', ({ params }) => {
+    const courseId = String(params.courseId);
+    const chapterId = String(params.chapterId);
+    const list = mockChapters[courseId] || [];
+    const chapter = list.find((c) => c.id === chapterId);
+
+    if (!chapter) {
+      return problemResponse(404, {
+        title: 'Chương không tồn tại',
+        status: 404,
+        code: 'CHAPTER_NOT_FOUND',
+      });
+    }
+
+    chapter.status = 'PUBLISHED';
+    chapter.publishedVersionNo = chapter.lastVersionNo;
+    chapter.hasUnpublishedChanges = false;
+
+    return HttpResponse.json(chapter, { status: 200 });
+  }),
+
+  http.get('*/api/v1/courses/:courseId/chapters/:chapterId/versions', ({ params }) => {
+    const chapterId = String(params.chapterId);
+    const versions = mockVersions[chapterId] || [
+      {
+        versionNo: 1,
+        createdAt: '2026-11-10T08:00:00Z',
+        publishedAt: null,
+        restoredFromVersionNo: null,
+      },
+    ];
+    return HttpResponse.json(versions, { status: 200 });
+  }),
+
+  http.post(
+    '*/api/v1/courses/:courseId/chapters/:chapterId/versions/:versionNo/restore',
+    ({ params }) => {
+      const courseId = String(params.courseId);
+      const chapterId = String(params.chapterId);
+      const versionNo = Number(params.versionNo);
+
+      const list = mockChapters[courseId] || [];
+      const chapter = list.find((c) => c.id === chapterId);
+
+      if (!chapter) {
+        return problemResponse(404, {
+          title: 'Chương không tồn tại',
+          status: 404,
+          code: 'CHAPTER_NOT_FOUND',
+        });
+      }
+
+      chapter.lastVersionNo = (chapter.lastVersionNo || 1) + 1;
+      chapter.hasUnpublishedChanges = true;
+
+      if (!mockVersions[chapterId]) {
+        mockVersions[chapterId] = [];
+      }
+      mockVersions[chapterId].push({
+        versionNo: chapter.lastVersionNo,
+        createdAt: new Date().toISOString(),
+        publishedAt: null,
+        restoredFromVersionNo: versionNo,
+      });
+
+      return HttpResponse.json(chapter, { status: 200 });
+    }
+  ),
+
+  http.get('*/api/v1/courses/:courseId/resources', ({ params }) => {
+    const courseId = String(params.courseId);
+    const list = mockResources[courseId] || [];
+    return HttpResponse.json(list, { status: 200 });
+  }),
+
+  http.post('*/api/v1/courses/:courseId/resources', async ({ params, request }) => {
+    const courseId = String(params.courseId);
+    const body = (await request.json().catch(() => ({}))) as {
+      uploadKey?: string;
+      originalFilename?: string;
+    };
+
+    if (!body.uploadKey || !body.originalFilename) {
+      return problemResponse(422, {
+        title: 'Dữ liệu không hợp lệ',
+        status: 422,
+        code: 'VALIDATION_ERROR',
+        detail: 'Thiếu uploadKey hoặc tên tệp gốc.',
+      });
+    }
+
+    if (!mockResources[courseId]) {
+      mockResources[courseId] = [];
+    }
+
+    const ext = body.originalFilename.split('.').pop()?.toLowerCase();
+    let kind: 'IMAGE' | 'VIDEO' | 'AUDIO' | 'PDF' | 'ARCHIVE' | 'OTHER' = 'OTHER';
+    if (['png', 'jpg', 'jpeg', 'webp'].includes(ext || '')) kind = 'IMAGE';
+    else if (['mp4', 'webm'].includes(ext || '')) kind = 'VIDEO';
+    else if (['mp3', 'wav', 'ogg'].includes(ext || '')) kind = 'AUDIO';
+    else if (['pdf'].includes(ext || '')) kind = 'PDF';
+    else if (['zip', 'rar', '7z'].includes(ext || '')) kind = 'ARCHIVE';
+
+    const newRes = {
+      id: `res-${Date.now()}`,
+      kind,
+      originalFilename: body.originalFilename,
+      contentType: kind === 'IMAGE' ? 'image/png' : 'application/octet-stream',
+      sizeBytes: 1048576,
+      createdAt: new Date().toISOString(),
+    };
+
+    mockResources[courseId].push(newRes);
+    return HttpResponse.json(newRes, { status: 201 });
+  }),
+
+  http.delete('*/api/v1/courses/:courseId/resources/:id', ({ params }) => {
+    const courseId = String(params.courseId);
+    const resId = String(params.id);
+
+    // If resource is in-use (test resource `res-in-use`), respond with 409
+    if (resId === 'res-in-use') {
+      return problemResponse(409, {
+        title: 'Tài nguyên đang được sử dụng',
+        status: 409,
+        code: 'RESOURCE_IN_USE',
+        detail: 'Không thể xóa tài nguyên này vì đang có ít nhất một khối nội dung bài học sử dụng.',
+      });
+    }
+
+    const list = mockResources[courseId] || [];
+    const idx = list.findIndex((r) => r.id === resId);
+    if (idx !== -1) {
+      list.splice(idx, 1);
+    }
+
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.get('*/api/v1/courses/:courseId/resources/:id/download-url', ({ params }) => {
+    const resId = String(params.id);
+    return HttpResponse.json(
+      {
+        url: `https://storage.mock.local/download/${resId}`,
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+      },
+      { status: 200 }
+    );
   }),
 ];

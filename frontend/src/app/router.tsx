@@ -20,6 +20,11 @@ import {
   CourseManagementLayout,
   CourseManagementHomePage,
 } from '@/features/course';
+import {
+  ChapterListPage,
+  ChapterEditorPage,
+  ResourceManagementPage,
+} from '@/features/content';
 import { RequireAdmin, RequireAuth, RequireVerifiedEmail } from './guards';
 import { AdminLayout, AppLayout, PublicLayout, SettingsLayout } from './layouts';
 import { HomeShellPage, LockedAccountPage, NotFoundPage, RouteStubPage } from './pages';
@@ -142,13 +147,7 @@ export const appRoutes: RouteObject[] = [
           },
           {
             path: '/manage/resources',
-            element: (
-              <RouteStubPage
-                screenCode="SCR-LMS-03"
-                title="Quản lý tài nguyên"
-                description="Kho tài liệu số, slide bài giảng, video và học liệu dùng chung cho các khóa học."
-              />
-            ),
+            element: <ResourceManagementPage />,
           },
           {
             path: '/courses/new',
@@ -161,6 +160,26 @@ export const appRoutes: RouteObject[] = [
           {
             path: '/courses/:courseId/edit',
             element: <CourseFormPage />,
+          },
+          {
+            path: '/courses/:courseId/manage',
+            element: <Navigate to="content" replace />,
+          },
+          {
+            path: '/courses/:courseId/manage/content',
+            element: <ChapterListPage />,
+          },
+          {
+            path: '/courses/:courseId/manage/content/:chapterId',
+            element: <ChapterEditorPage />,
+          },
+          {
+            path: '/courses/:courseId/manage/content/:chapterId/versions',
+            element: <ChapterEditorPage />,
+          },
+          {
+            path: '/courses/:courseId/manage/resources',
+            element: <ResourceManagementPage />,
           },
         ],
       },

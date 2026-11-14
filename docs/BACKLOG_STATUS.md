@@ -31,8 +31,8 @@
 | T-S2-INT-01 | INT-01 | DONE | Antigravity (INT) | feat/T-S2-INT-01-course-profile-e2e | **Tích hợp S2 + e2e:** Tạo khóa học → Upload bìa & avatar → Xem hồ sơ → Đổi trạng thái Only Me (người khác 404, e2e pass 100%) |
 | **S3 – Content cơ bản** | | | | | |
 | T-S3-BE-01 | BE-01 + BE-02 | DONE | Antigravity (BE) | feat/T-S3-BE-01-content-drafting | **Content Domain, Resource Library & Drafting (Batched):** 15 bảng cnt_*, quản lý tài nguyên, CRUD chương, lưu nháp với khóa lạc quan (409 VERSION_CONFLICT), 7 loại Block, HTML sanitize, bảo mật snapshot không đáp án (61/61 tests pass) |
-| T-S3-BE-02 | BE-03 | DONE | Antigravity (BE) | feat/T-S3-BE-02-publishing-contracts | **Publishing, Version History & Contracts (Batched):** Đăng tải chương (kiểm tra điều kiện 3.6.6.3, sinh cnt_published_block), lịch sử phiên bản (phân trang DESC), khôi phục bản nháp từ lịch sử (an toàn tham chiếu, giữ nguyên trạng thái xuất bản), event ChapterPublished/ChapterDeleted qua IEventBus, contracts truy vấn nội dung xuất bản (84/84 tests pass) |
-| T-S3-FE-01 | FE-01 + FE-02 | IN_PROGRESS | Antigravity (FE) | feat/T-S3-FE-01-content-editor-suite | **FE Content Editor Suite (Batched):** SCR-CNT-01, 02, 03, 07 (Soạn thảo block, tài nguyên, lịch sử) |
+| T-S3-BE-02 | BE-03 | DONE | Antigravity (BE) | feat/T-S3-BE-02-publishing-contracts | **Publishing, Version History & Contracts (Batched):** Đăng tải chương, lịch sử phiên bản, khôi phục, event & contracts (84/84 tests pass) |
+| T-S3-FE-01 | FE-01 + FE-02 | DONE | Antigravity (FE) | feat/T-S3-FE-01-content-editor-suite | **FE Content Editor Suite (Batched):** SCR-CNT-01, 02, 03, 07 (10 loại block, khóa lạc quan 409, quản lý tài nguyên DEC-05, lịch sử phiên bản, 17/17 tests pass) |
 | T-S3-INT-01 | INT-01 | TODO | – | – | Tích hợp S3 + e2e |
 | **S4 – Ghi danh & Learning** | | | | | |
 | T-S4-BE-01 | BE-01 + BE-02 | TODO | – | – | **Enrollment & Chapter Access Engine (Batched):** Ghi danh 5 trạng thái + Ma trận quyền 3.2.2 + Mở khóa chương passcode + Outbox |
