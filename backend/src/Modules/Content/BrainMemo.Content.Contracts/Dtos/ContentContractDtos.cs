@@ -150,6 +150,12 @@ public sealed record ChapterSummaryDto(
     string AccessMode,
     bool HasUnpublishedChanges);
 
+public sealed record ChapterVersionDto(
+    int VersionNo,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? PublishedAt,
+    int? RestoredFromVersionNo);
+
 public sealed record ChapterDetailDto(
     Guid Id,
     Guid CourseId,
