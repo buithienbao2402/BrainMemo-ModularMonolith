@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -22,6 +22,7 @@ export function EditProfilePage() {
   const { pushToast } = useToast();
   const { user } = useAuth();
   const [formError, setFormError] = useState<string | null>(null);
+  const isInitializedRef = useRef(false);
 
   const {
     data: profile,
@@ -38,7 +39,7 @@ export function EditProfilePage() {
     setValue,
     watch,
     reset,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isDirty },
   } = useForm<UpdateProfileFormValues>({
     resolver: zodResolver(updateProfileSchema),
     defaultValues: {
@@ -55,7 +56,7 @@ export function EditProfilePage() {
   const currentBio = watch('bio') || '';
 
   useEffect(() => {
-    if (profile) {
+    if (profile && (!isInitializedRef.current || !isDirty)) {
       reset({
         displayName: profile.displayName || '',
         bio: profile.bio || '',
@@ -64,19 +65,29 @@ export function EditProfilePage() {
         avatarUploadKey: undefined,
         removeAvatar: false,
       });
+      isInitializedRef.current = true;
     }
-  }, [profile, reset]);
+  }, [profile, reset, isDirty]);
 
   const onSubmit = async (values: UpdateProfileFormValues) => {
     setFormError(null);
     try {
-      await updateMutation.mutateAsync({
+      const updated = await updateMutation.mutateAsync({
         displayName: values.displayName,
         bio: values.bio,
         showCourseList: values.showCourseList,
         uiTheme: values.uiTheme,
         avatarUploadKey: values.avatarUploadKey,
         removeAvatar: values.removeAvatar,
+      });
+
+      reset({
+        displayName: updated.displayName || '',
+        bio: updated.bio || '',
+        showCourseList: updated.showCourseList ?? true,
+        uiTheme: (updated.uiTheme as 'LIGHT' | 'DARK') || 'DARK',
+        avatarUploadKey: undefined,
+        removeAvatar: false,
       });
 
       pushToast({

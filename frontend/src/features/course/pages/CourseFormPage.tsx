@@ -82,7 +82,7 @@ export function CourseFormPage() {
     setValue,
     watch,
     reset,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isDirty },
   } = useForm<CourseUpsertFormValues>({
     resolver: zodResolver(courseUpsertSchema),
     defaultValues: {
@@ -96,6 +96,7 @@ export function CourseFormPage() {
     },
   });
 
+  const isInitializedRef = useRef(false);
   const currentName = watch('name') || '';
   const currentDescription = watch('description') || '';
   const currentAccessMode = watch('accessMode');
@@ -105,7 +106,7 @@ export function CourseFormPage() {
   const descriptionRegister = register('description');
 
   useEffect(() => {
-    if (isEditMode && existingCourse) {
+    if (isEditMode && existingCourse && (!isInitializedRef.current || !isDirty)) {
       reset({
         name: existingCourse.name || '',
         description: existingCourse.description || '',
@@ -115,11 +116,12 @@ export function CourseFormPage() {
         coverUploadKey: undefined,
         removeCover: false,
       });
+      isInitializedRef.current = true;
       if (existingCourse.coverUrl) {
         setCoverPreview(existingCourse.coverUrl);
       }
     }
-  }, [isEditMode, existingCourse, reset]);
+  }, [isEditMode, existingCourse, reset, isDirty]);
 
   // Insert markdown helpers into description
   const insertMarkdown = (prefix: string, suffix: string = '') => {
