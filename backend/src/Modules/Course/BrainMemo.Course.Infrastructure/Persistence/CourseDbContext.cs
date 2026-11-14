@@ -1,5 +1,6 @@
 using BrainMemo.BuildingBlocks.Infrastructure.Outbox;
 using BrainMemo.Course.Domain.Entities;
+using BrainMemo.Course.Infrastructure.Persistence.Converters;
 using Microsoft.EntityFrameworkCore;
 using CourseEntity = BrainMemo.Course.Domain.Entities.Course;
 
@@ -21,6 +22,20 @@ public class CourseDbContext : DbContext
     public DbSet<ChapterAccess> ChapterAccesses => Set<ChapterAccess>();
     public DbSet<ChapterUnlock> ChapterUnlocks => Set<ChapterUnlock>();
     public DbSet<Nomination> Nominations => Set<Nomination>();
+
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        ArgumentNullException.ThrowIfNull(configurationBuilder);
+        base.ConfigureConventions(configurationBuilder);
+
+        configurationBuilder.Properties<Guid>()
+            .HaveColumnType("binary(16)")
+            .HaveConversion<BigEndianGuidBytesConverter>();
+
+        configurationBuilder.Properties<Guid?>()
+            .HaveColumnType("binary(16)")
+            .HaveConversion<NullableBigEndianGuidBytesConverter>();
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -1,4 +1,5 @@
 using BrainMemo.Notification.Domain.Entities;
+using BrainMemo.Notification.Infrastructure.Persistence.Converters;
 using Microsoft.EntityFrameworkCore;
 
 namespace BrainMemo.Notification.Infrastructure.Persistence;
@@ -16,6 +17,20 @@ public sealed class NotificationDbContext(DbContextOptions<NotificationDbContext
     public DbSet<NotificationItem> Notifications => Set<NotificationItem>();
 
     public DbSet<EmailDelivery> EmailDeliveries => Set<EmailDelivery>();
+
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        ArgumentNullException.ThrowIfNull(configurationBuilder);
+        base.ConfigureConventions(configurationBuilder);
+
+        configurationBuilder.Properties<Guid>()
+            .HaveColumnType("binary(16)")
+            .HaveConversion<BigEndianGuidBytesConverter>();
+
+        configurationBuilder.Properties<Guid?>()
+            .HaveColumnType("binary(16)")
+            .HaveConversion<NullableBigEndianGuidBytesConverter>();
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

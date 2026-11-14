@@ -57,19 +57,14 @@ describe('App Shell (SCR-COM-01, SCR-COM-02, SCR-COM-03, Guards, Theme)', () => 
     await user.click(themeToggle);
     expect(document.documentElement.classList.contains('dark')).toBe(!wasDark);
 
-    // Interactive 4 states showcase
-    await user.click(screen.getByRole('tab', { name: 'Loading' }));
-    expect(screen.getByRole('status', { name: 'Đang tải dữ liệu...' })).toBeInTheDocument();
-
-    await user.click(screen.getByRole('tab', { name: 'Empty' }));
-    expect(screen.getByText('Chưa có dữ liệu')).toBeInTheDocument();
-
-    await user.click(screen.getByRole('tab', { name: 'Error' }));
-    expect(screen.getByRole('alert')).toHaveTextContent('Có lỗi xảy ra');
-
-    await user.click(screen.getByRole('button', { name: 'Thử lại' }));
-    expect(screen.getByText('SCR-COM-01 Header & SubNav')).toBeInTheDocument();
-    expect(window.localStorage.length).toBe(0);
+    // Verify Figma Guest Home sections
+    expect(screen.getByText('MỚI CẬP NHẬT')).toBeInTheDocument();
+    expect(screen.getByText('BẢNG XẾP HẠNG')).toBeInTheDocument();
+    expect(screen.getByText('KHÁM PHÁ NGẪU NHIÊN')).toBeInTheDocument();
+    expect(screen.getByText('ĐÁNH GIÁ MỚI NHẤT')).toBeInTheDocument();
+    expect(screen.getByText('MỚI ĐƯỢC ĐỀ CỬ')).toBeInTheDocument();
+    expect(window.localStorage.getItem('accessToken')).toBeNull();
+    expect(window.localStorage.getItem('bm_theme')).toBeTruthy();
   });
 
   it('boots authenticated learner via POST /auth/refresh, shows unread notifications, profile menu & logs out', async () => {
@@ -96,8 +91,9 @@ describe('App Shell (SCR-COM-01, SCR-COM-02, SCR-COM-03, Guards, Theme)', () => 
     expect(document.documentElement.classList.contains('dark')).toBe(true);
     expect(screen.getByRole('link', { name: 'Tạo khóa học' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Có 3 thông báo chưa đọc' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Khóa học của tôi' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Dashboard học tập' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Quản trị' })).not.toBeInTheDocument();
+    expect(screen.getByText('TIẾP TỤC HỌC')).toBeInTheDocument();
 
     // Open profile menu & log out
     await user.click(screen.getByRole('button', { name: 'Quang Trần' }));

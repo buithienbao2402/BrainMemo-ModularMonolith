@@ -1,14 +1,27 @@
-import { createBrowserRouter, type RouteObject } from 'react-router-dom';
+import { Navigate, createBrowserRouter, type RouteObject } from 'react-router-dom';
 import {
   ForgotPasswordPage,
   LoginPage,
   RegisterPage,
   ResetPasswordPage,
   SecuritySettingsPage,
+  SessionSettingsPage,
   VerifyEmailPage,
 } from '@/features/identity';
+import {
+  PublicProfilePage,
+  EditProfilePage,
+  PrivacySettingsPage,
+  AppearanceSettingsPage,
+} from '@/features/profile';
+import {
+  CourseDetailPage,
+  CourseFormPage,
+  CourseManagementLayout,
+  CourseManagementHomePage,
+} from '@/features/course';
 import { RequireAdmin, RequireAuth, RequireVerifiedEmail } from './guards';
-import { AdminLayout, AppLayout, PublicLayout } from './layouts';
+import { AdminLayout, AppLayout, PublicLayout, SettingsLayout } from './layouts';
 import { HomeShellPage, LockedAccountPage, NotFoundPage, RouteStubPage } from './pages';
 import { RouterRootShell } from './RouterRootShell';
 
@@ -17,6 +30,10 @@ export const appRoutes: RouteObject[] = [
     element: <RouterRootShell />,
     children: [
       {
+        path: '/locked',
+        element: <LockedAccountPage />,
+      },
+      {
         element: <PublicLayout />,
         children: [
           { path: '/', element: <HomeShellPage /> },
@@ -24,28 +41,25 @@ export const appRoutes: RouteObject[] = [
             path: '/courses',
             element: (
               <RouteStubPage
-                screenCode="SCR-CRS-01"
+                screenCode="SCR-DSC-02"
                 title="Khám phá khóa học"
-                description="Danh mục khóa học công khai đang được hoàn thiện ở Sprint tiếp theo."
+                description="Danh mục khóa học công khai và bộ lọc tìm kiếm đang được tích hợp."
               />
             ),
           },
           {
+            path: '/courses/:courseId',
+            element: <CourseDetailPage />,
+          },
+          {
             path: '/users/:userId',
-            element: (
-              <RouteStubPage
-                screenCode="SCR-PRF-01"
-                title="Hồ sơ công khai"
-                description="Trang thông tin tác giả và danh sách khóa học công khai."
-              />
-            ),
+            element: <PublicProfilePage />,
           },
           { path: '/login', element: <LoginPage /> },
           { path: '/register', element: <RegisterPage /> },
           { path: '/forgot-password', element: <ForgotPasswordPage /> },
           { path: '/reset-password', element: <ResetPasswordPage /> },
           { path: '/verify-email', element: <VerifyEmailPage /> },
-          { path: '/locked', element: <LockedAccountPage /> },
           { path: '/404', element: <NotFoundPage /> },
           { path: '*', element: <NotFoundPage /> },
         ],
@@ -58,20 +72,24 @@ export const appRoutes: RouteObject[] = [
         ),
         children: [
           {
-            path: '/me/courses',
+            path: '/learning-dashboard',
             element: (
               <RouteStubPage
-                screenCode="SCR-CRS-02"
-                title="Khóa học của tôi"
-                description="Không gian quản lý khóa học đã tham gia và đã tạo."
+                screenCode="SCR-LRN-01"
+                title="Dashboard học tập"
+                description="Theo dõi tiến độ học tập, biểu đồ hoạt động và kế hoạch học tập của bạn."
               />
             ),
+          },
+          {
+            path: '/me/courses',
+            element: <Navigate to="/manage/courses" replace />,
           },
           {
             path: '/me/bookmarks',
             element: (
               <RouteStubPage
-                screenCode="SCR-PRF-02"
+                screenCode="SCR-LRN-07"
                 title="Khóa học đã lưu (Bookmark)"
                 description="Danh sách khóa học được bạn đánh dấu."
               />
@@ -87,18 +105,62 @@ export const appRoutes: RouteObject[] = [
               />
             ),
           },
-          { path: '/settings/security', element: <SecuritySettingsPage /> },
+          {
+            path: '/settings',
+            element: <SettingsLayout />,
+            children: [
+              { index: true, element: <Navigate to="/settings/profile" replace /> },
+              { path: 'profile', element: <EditProfilePage /> },
+              { path: 'security', element: <SecuritySettingsPage /> },
+              { path: 'sessions', element: <SessionSettingsPage /> },
+              { path: 'privacy', element: <PrivacySettingsPage /> },
+              { path: 'appearance', element: <AppearanceSettingsPage /> },
+            ],
+          },
+        ],
+      },
+      {
+        element: (
+          <RequireAuth>
+            <CourseManagementLayout />
+          </RequireAuth>
+        ),
+        children: [
+          {
+            path: '/manage/courses',
+            element: <CourseManagementHomePage />,
+          },
+          {
+            path: '/manage/questions',
+            element: (
+              <RouteStubPage
+                screenCode="SCR-LMS-02"
+                title="Ngân hàng câu hỏi"
+                description="Hệ thống quản lý kho câu hỏi trắc nghiệm, tự luận và flashcard đang được hoàn thiện."
+              />
+            ),
+          },
+          {
+            path: '/manage/resources',
+            element: (
+              <RouteStubPage
+                screenCode="SCR-LMS-03"
+                title="Quản lý tài nguyên"
+                description="Kho tài liệu số, slide bài giảng, video và học liệu dùng chung cho các khóa học."
+              />
+            ),
+          },
           {
             path: '/courses/new',
             element: (
               <RequireVerifiedEmail>
-                <RouteStubPage
-                  screenCode="SCR-CRS-03"
-                  title="Tạo khóa học mới"
-                  description="Trình khởi tạo khóa học dành cho tác giả đã xác minh email."
-                />
+                <CourseFormPage />
               </RequireVerifiedEmail>
             ),
+          },
+          {
+            path: '/courses/:courseId/edit',
+            element: <CourseFormPage />,
           },
         ],
       },

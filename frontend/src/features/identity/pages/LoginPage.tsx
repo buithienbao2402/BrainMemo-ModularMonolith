@@ -73,6 +73,11 @@ export function LoginPage() {
 
       await setAuthenticatedSession(tokens);
 
+      if (typeof document !== 'undefined') {
+        const persona = formData.email.includes('admin') ? 'admin' : 'user';
+        document.cookie = `bm_mock_persona=${persona}; path=/`;
+      }
+
       pushToast({
         id: 'login-success',
         title: t('auth.login'),

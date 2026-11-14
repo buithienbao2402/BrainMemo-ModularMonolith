@@ -63,8 +63,8 @@ public sealed class ProfilesController(ISender sender) : ControllerBase
             userId,
             request.DisplayName,
             request.Bio,
-            request.ShowCourseList ?? true,
-            request.UiTheme ?? "LIGHT",
+            request.ShowCourseList,
+            request.UiTheme,
             request.AvatarUploadKey,
             request.RemoveAvatar);
 

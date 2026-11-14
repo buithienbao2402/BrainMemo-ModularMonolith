@@ -123,15 +123,29 @@ internal sealed class UpdateMyProfileCommandHandler(
             profile.UpdateAvatar(permanentKey, utcNow);
         }
 
-        UiTheme theme = string.Equals(request.UiTheme, "DARK", StringComparison.OrdinalIgnoreCase)
-            ? UiTheme.Dark
-            : UiTheme.Light;
+        string effectiveDisplayName = string.IsNullOrWhiteSpace(request.DisplayName)
+            ? profile.DisplayName
+            : request.DisplayName.Trim();
+
+        string? effectiveBio = request.Bio is not null
+            ? request.Bio
+            : profile.Bio;
+
+        bool effectiveShowCourseList = request.ShowCourseList ?? profile.ShowCourseList;
+
+        UiTheme effectiveTheme = profile.UiTheme;
+        if (!string.IsNullOrWhiteSpace(request.UiTheme))
+        {
+            effectiveTheme = string.Equals(request.UiTheme, "DARK", StringComparison.OrdinalIgnoreCase)
+                ? UiTheme.Dark
+                : UiTheme.Light;
+        }
 
         Result updateResult = profile.Update(
-            request.DisplayName,
-            request.Bio,
-            request.ShowCourseList,
-            theme,
+            effectiveDisplayName,
+            effectiveBio,
+            effectiveShowCourseList,
+            effectiveTheme,
             utcNow);
 
         if (updateResult.IsFailure)

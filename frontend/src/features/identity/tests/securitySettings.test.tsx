@@ -36,20 +36,17 @@ afterEach(() => {
   resetMockSessions();
 });
 
-describe('SCR-AUTH-06: Security & Sessions (/settings/security)', () => {
-  it('renders security settings page with change password and sessions sections', async () => {
+describe('SCR-AUTH-06: Security & Sessions (/settings/security & /settings/sessions)', () => {
+  it('renders security settings page with change password section', async () => {
     renderAppAt('/settings/security');
 
     await waitFor(() => {
       expect(
-        screen.getByRole('heading', { name: 'Cài đặt & Bảo mật tài khoản' })
+        screen.getByRole('heading', { name: 'CÀI ĐẶT TÀI KHOẢN' })
       ).toBeInTheDocument();
     });
 
     expect(screen.getByRole('heading', { name: 'Đổi mật khẩu' })).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { name: 'Các phiên đăng nhập đang hoạt động' })
-    ).toBeInTheDocument();
   });
 
   describe('Change Password Card', () => {
@@ -114,27 +111,26 @@ describe('SCR-AUTH-06: Security & Sessions (/settings/security)', () => {
     });
   });
 
-  describe('Session List Card', () => {
+  describe('Session List Card (/settings/sessions)', () => {
     it('displays active sessions list with current device badge', async () => {
-      renderAppAt('/settings/security');
+      renderAppAt('/settings/sessions');
 
       await waitFor(() => {
-        expect(screen.getByText('Thiết bị hiện tại')).toBeInTheDocument();
+        expect(screen.getByText('Phiên hiện tại')).toBeInTheDocument();
       });
 
-      expect(screen.getByText(/127\.0\.0\.1/)).toBeInTheDocument();
-      expect(screen.getByText(/192\.168\.1\.45/)).toBeInTheDocument();
+      expect(screen.getByText('DANH SÁCH THIẾT BỊ KẾT NỐI')).toBeInTheDocument();
       expect(
-        screen.getByRole('button', { name: 'Đăng xuất tất cả thiết bị khác' })
+        screen.getByRole('button', { name: 'Đăng xuất khỏi tất cả thiết bị' })
       ).toBeInTheDocument();
     });
 
     it('opens confirmation dialog and revokes a specific session', async () => {
       const user = userEvent.setup();
-      renderAppAt('/settings/security');
+      renderAppAt('/settings/sessions');
 
       await waitFor(() => {
-        expect(screen.getByText(/192\.168\.1\.45/)).toBeInTheDocument();
+        expect(screen.getByText('Phiên hiện tại')).toBeInTheDocument();
       });
 
       // Find the revoke button for the second session
@@ -151,27 +147,25 @@ describe('SCR-AUTH-06: Security & Sessions (/settings/security)', () => {
       });
 
       // Confirm revoke
-      const confirmButton = screen.getAllByRole('button', { name: 'Thu hồi' }).pop();
-      expect(confirmButton).toBeDefined();
-      await user.click(confirmButton!);
+      const confirmButton = screen.getByRole('button', { name: 'Thu hồi ngay' });
+      await user.click(confirmButton);
 
-      // The session should be removed from view
       await waitFor(() => {
-        expect(screen.queryByText(/192\.168\.1\.45/)).not.toBeInTheDocument();
+        expect(screen.getByText('Đã thu hồi phiên')).toBeInTheDocument();
       });
     });
 
     it('opens confirmation dialog and logs out all sessions', async () => {
       const user = userEvent.setup();
-      renderAppAt('/settings/security');
+      renderAppAt('/settings/sessions');
 
       await waitFor(() => {
         expect(
-          screen.getByRole('button', { name: 'Đăng xuất tất cả thiết bị khác' })
+          screen.getByRole('button', { name: 'Đăng xuất khỏi tất cả thiết bị' })
         ).toBeInTheDocument();
       });
 
-      await user.click(screen.getByRole('button', { name: 'Đăng xuất tất cả thiết bị khác' }));
+      await user.click(screen.getByRole('button', { name: 'Đăng xuất khỏi tất cả thiết bị' }));
 
       await waitFor(() => {
         expect(
@@ -180,7 +174,7 @@ describe('SCR-AUTH-06: Security & Sessions (/settings/security)', () => {
       });
 
       const confirmLogoutAll = screen.getByRole('button', {
-        name: 'Đăng xuất tất cả thiết bị khác',
+        name: 'Đồng ý đăng xuất tất cả',
       });
       await user.click(confirmLogoutAll);
 

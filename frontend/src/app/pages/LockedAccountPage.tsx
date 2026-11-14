@@ -1,50 +1,98 @@
-import { Lock } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/shared/hooks';
-import { Button } from '@/shared/ui';
+import logoDark from '@/assets/brand/logo-dark.png';
+import logoLight from '@/assets/brand/logo-light.png';
+import { TemporaryLockedView } from './locked/TemporaryLockedView';
+import { PermanentLockedView } from './locked/PermanentLockedView';
 
 export function LockedAccountPage() {
-  const { t } = useTranslation();
-  const { lockedAccount, clearLockedAccount } = useAuth();
+  const { lockedAccount, clearLockedAccount, logout, user, profile } = useAuth();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
-  const lockReason = lockedAccount?.lockReason || t('errors.lockedPage.description');
-  const untilLabel = lockedAccount?.lockedUntil
-    ? new Date(lockedAccount.lockedUntil).toLocaleString('vi-VN')
-    : t('errors.lockedPage.permanent');
+  const queryType = searchParams.get('type');
+
+  // Is permanent if explicitly set or if lockedAccount exists without lockedUntil
+  const isPermanent =
+    queryType === 'perm'
+      ? true
+      : queryType === 'temp'
+        ? false
+        : !lockedAccount?.lockedUntil;
+
+  const handleLogout = async () => {
+    clearLockedAccount();
+    try {
+      await logout();
+    } catch {
+      // Ignore network errors on logout to ensure clean redirect
+    }
+    navigate('/login');
+  };
+
+  const accountCode =
+    (user as any)?.accountCode ||
+    (user?.id ? `BM-${user.id.slice(-6).toUpperCase()}` : undefined);
+  const userName = profile?.displayName || (user as any)?.name || user?.email;
 
   return (
-    <div className="mx-auto flex min-h-[70vh] max-w-xl flex-col items-center justify-center px-4 py-16">
-      <section className="w-full rounded-2xl border border-destructive/40 bg-card p-8 text-center shadow-sm">
-        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/15 text-destructive dark:text-[#ffb4ab]">
-          <Lock className="h-7 w-7" aria-hidden="true" />
+    <div className="flex min-h-screen flex-col justify-between bg-background text-foreground selection:bg-primary/20">
+      {/* Top Header & Logo Area (No site navigation header) */}
+      <header className="flex w-full flex-col items-center px-4 pt-10 text-center sm:pt-14">
+        {/* BrainMemo Brand Logo (Non-clickable, matching Figma) */}
+        <div
+          className="mb-6 flex cursor-default select-none items-center justify-center"
+          aria-label="BrainMemo"
+        >
+          <img
+            src={logoLight}
+            alt="BrainMemo"
+            className="block h-10 w-auto select-none object-contain dark:hidden sm:h-11"
+          />
+          <img
+            src={logoDark}
+            alt="BrainMemo"
+            className="hidden h-10 w-auto select-none object-contain dark:block sm:h-11"
+          />
         </div>
-        <h1 className="font-serif text-2xl font-bold text-foreground">
-          {lockedAccount?.title || t('errors.lockedPage.title')}
+
+        {/* Page Title */}
+        <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          Trung tâm thông báo hạn chế truy cập
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">{t('errors.lockedPage.description')}</p>
+      </header>
 
-        <dl className="mt-6 space-y-3 rounded-xl border border-border bg-secondary/50 p-4 text-left text-sm">
-          <div className="flex flex-col gap-1 sm:flex-row sm:justify-between">
-            <dt className="font-medium text-muted-foreground">
-              {t('errors.lockedPage.reasonLabel')}
-            </dt>
-            <dd className="font-semibold text-foreground">{lockReason}</dd>
-          </div>
-          <div className="flex flex-col gap-1 border-t border-border pt-3 sm:flex-row sm:justify-between">
-            <dt className="font-medium text-muted-foreground">
-              {t('errors.lockedPage.untilLabel')}
-            </dt>
-            <dd className="font-semibold text-destructive dark:text-[#ffb4ab]">{untilLabel}</dd>
-          </div>
-        </dl>
-
-        <div className="mt-6 flex justify-center">
-          <Button asChild variant="outline" size="pill" onClick={clearLockedAccount}>
-            <Link to="/">{t('states.backHome')}</Link>
-          </Button>
+      {/* Main Content Area: Centered Card */}
+      <main className="flex flex-1 items-center justify-center px-4 py-8">
+        <div className="w-full max-w-[480px]">
+          {isPermanent ? (
+            <PermanentLockedView
+              data={lockedAccount}
+              accountCode={accountCode}
+              userName={userName}
+              onLogout={handleLogout}
+            />
+          ) : (
+            <TemporaryLockedView
+              data={lockedAccount}
+              accountCode={accountCode}
+              userName={userName}
+              onLogout={handleLogout}
+            />
+          )}
         </div>
-      </section>
+      </main>
+
+      {/* Bottom Footer Area matching Figma */}
+      <footer className="w-full border-t border-border/40 px-6 py-5 text-xs text-muted-foreground sm:px-12">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 text-center sm:flex-row sm:text-left">
+          <p>
+            <span className="font-bold text-foreground">BrainMemo</span> • Khám phá tri thức, mở
+            mang tầm mắt
+          </p>
+          <p>© 2026 BrainMemo LMS. Tất cả các quyền được bảo lưu.</p>
+        </div>
+      </footer>
     </div>
   );
 }

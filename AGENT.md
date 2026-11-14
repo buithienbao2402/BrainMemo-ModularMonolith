@@ -41,10 +41,14 @@ Thứ tự nguồn khi xung đột: **DECISIONS > DAC_TA > THIET_KE_CSDL > schem
 
 ## 5. Luật bất biến (FE)
 1. Dữ liệu chỉ từ `shared/api` (type sinh từ OpenAPI). Cấm tự đoán endpoint/trường.
-2. Giao diện bám PNG; không có PNG thì dừng.
-3. Không lưu token vào localStorage. Text tiếng Việt. Xử lý lỗi theo `FRONTEND_SPEC.md` §4.
-4. Mọi màn hình có đủ trạng thái: loading, empty, error, success.
-5. Đáp án đúng và dữ liệu nhạy cảm không bao giờ có sẵn ở client trước thời điểm được phép.
+2. Không lưu token vào localStorage. Text tiếng Việt. Xử lý lỗi theo `FRONTEND_SPEC.md` §4.
+3. Mọi màn hình có đủ trạng thái: loading, empty, error, success.
+4. Đáp án đúng và dữ liệu nhạy cảm không bao giờ có sẵn ở client trước thời điểm được phép.
+5. Code frontend theo giao diện thiết kế trong figma
+6. Hiện đại hóa Web & Tối ưu Native: Trước khi cài thêm thư viện UI/animation/layout bên thứ 3 hoặc viết các hàm workaround phức tạp (modal, dropdown, popover, animations, responsive cards...), Agent PHẢI tra cứu chuẩn web hiện đại bằng:
+
+npx modern-web-guidance search "<tính năng>"
+npx modern-web-guidance retrieve "<guide-id>" Ưu tiên áp dụng Web Native APIs (Baseline standards như Container Queries, View Transitions, Subgrid, CSS @starting-style) thay vì đưa thêm dependencies vào package.json.
 
 ## 6. Định dạng kết quả (AI web chat không có quyền ghi repo)
 Trả về, theo thứ tự:
