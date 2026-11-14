@@ -1,4 +1,5 @@
 using BrainMemo.Content.Domain.Entities;
+using BrainMemo.Content.Infrastructure.Persistence.Converters;
 using Microsoft.EntityFrameworkCore;
 
 namespace BrainMemo.Content.Infrastructure.Persistence;
@@ -27,6 +28,20 @@ public class ContentDbContext : DbContext
     public DbSet<QuizPrerequisite> QuizPrerequisites => Set<QuizPrerequisite>();
     public DbSet<QuizException> QuizExceptions => Set<QuizException>();
     public DbSet<AssignmentConfig> AssignmentConfigs => Set<AssignmentConfig>();
+
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        ArgumentNullException.ThrowIfNull(configurationBuilder);
+        base.ConfigureConventions(configurationBuilder);
+
+        configurationBuilder.Properties<Guid>()
+            .HaveColumnType("binary(16)")
+            .HaveConversion<BigEndianGuidBytesConverter>();
+
+        configurationBuilder.Properties<Guid?>()
+            .HaveColumnType("binary(16)")
+            .HaveConversion<NullableBigEndianGuidBytesConverter>();
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

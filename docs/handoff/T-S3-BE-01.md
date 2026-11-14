@@ -5,7 +5,7 @@
 - **Mô tả:** Content Domain, Resource Library & Drafting (Batched): Domain + EF Core Migration 15 bảng `cnt_*` (không outbox per ADR-02); Quản lý tài nguyên khóa học: commit `uploadKey` qua S3/R2 storage, whitelist MIME & kích thước (DEC-05: Ảnh ≤ 5 MB, Tệp ≤ 20 MB), xóa mềm (trả 409 `RESOURCE_IN_USE` nếu đang có Block sử dụng), presigned download GET (TTL 15 phút, DEC-06); CRUD chương (`cnt_chapter`), sắp xếp thứ tự (`reorder`), lấy mục lục; Lưu nháp (`PUT /courses/{id}/chapters/{chapterId}`): Khóa lạc quan (`baseVersionNo`), trả 409 `VERSION_CONFLICT` nếu xung đột; 7 loại Block (`RICH_TEXT`, `IMAGE`, `VIDEO`, `AUDIO`, `FILE`, `MARKDOWN`, `FLASHCARD`, `QUESTION`, `ASSIGNMENT`, `QUIZ`); làm sạch HTML (`HtmlSanitizer`) chống XSS; tạo JSON snapshot (`schemaVersion=1`) bất biến chỉ chứa `questionId` (tuyệt đối KHÔNG chứa đáp án/options); Khung dịch vụ `IContentContract`.
 - **Nhánh Git:** `feat/T-S3-BE-01-content-drafting`
 - **Vai trò:** Backend Developer (BE)
-- **Tình trạng:** DONE (61/61 tests pass, build 0 warning 0 error)
+- **Tình trạng:** REVIEW (Đồng bộ toàn diện với develop, 61/61 tests pass, build 0 warning 0 error)
 
 ---
 
@@ -16,7 +16,8 @@
    - `BrainMemo.Content.Contracts`: Giao diện hợp đồng `IContentContract` (19 phương thức), DTOs, Enums, Integration Events (`ChapterPublished`, `ChapterDeleted`).
    - `BrainMemo.Content.Domain`: 15 Thực thể cốt lõi: `Chapter`, `ChapterVersion`, `Resource`, `QuestionBank`, `Question`, `QuestionOption`, `QuestionTag`, `Block`, `PublishedBlock`, `QuizConfig`, `QuizQuestion`, `QuizRandomRule`, `QuizPrerequisite`, `QuizException`, `AssignmentConfig`.
    - `BrainMemo.Content.Application`: Abstractions `IContentRepository`, `IHtmlSanitizer`, Commands & Queries CQRS (Chapters & Resources).
-   - `BrainMemo.Content.Infrastructure`: DbContext `ContentDbContext` (không Outbox per ADR-02 / 3.6.8), EF Core Configurations cho 15 bảng `cnt_*`, Repository `ContentRepository`, Contract Service `ContentContractService`, Migrations `InitialContent`.
+   - `BrainMemo.Content.Infrastructure`: DbContext `ContentDbContext` (không Outbox per ADR-02 / 3.6.8, hỗ trợ chuẩn hóa `binary(16)` big-endian RFC 4122 qua `BigEndianGuidBytesConverter` và `NullableBigEndianGuidBytesConverter` đồng bộ theo PR #17), EF Core Configurations cho 15 bảng `cnt_*`, Repository `ContentRepository`, Contract Service `ContentContractService`, Migrations `InitialContent`.
+   - `BrainMemo.Course.Contracts`: Chuẩn hóa `AccessPurpose` (`Normal = 0`, `ModerationReview = 1`) theo đúng `contracts/course.md` và luật kiểm tra kiến trúc Rule 9.
    - `BrainMemo.Content.Api`: Controllers `ChaptersController`, `ResourcesController`, DTOs.
 2. **Migration Database (`cnt_*`):**
    - Đã sinh EF Core Migration `20261113000003_InitialContent` và ModelSnapshot tương ứng theo schema chuẩn MySQL 8 (15 bảng `cnt_*`, charset utf8mb4).

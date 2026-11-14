@@ -25,8 +25,8 @@ public enum EnrollmentStatus
 
 public enum AccessPurpose
 {
-    Normal = 1,
-    ModerationReview = 2,
+    Normal = 0,
+    ModerationReview = 1,
 }
 
 public enum UserCourseRelation
