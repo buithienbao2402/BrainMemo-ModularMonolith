@@ -26,7 +26,7 @@ export function PublicProfilePage() {
   const { userId } = useParams<{ userId: string }>();
   const { user: currentUser } = useAuth();
 
-  const [relation, setRelation] = useState<ProfileCourseRelation>('OWNED');
+  const [relation, setRelation] = useState<ProfileCourseRelation>('ENROLLED');
   const [page, setPage] = useState(1);
   const pageSize = 8;
 
@@ -187,22 +187,6 @@ export function PublicProfilePage() {
             <button
               type="button"
               onClick={() => {
-                setRelation('OWNED');
-                setPage(1);
-              }}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                relation === 'OWNED'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              }`}
-            >
-              <BookOpen className="h-4 w-4" />
-              <span>Khóa học đã tạo</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
                 setRelation('ENROLLED');
                 setPage(1);
               }}
@@ -213,7 +197,7 @@ export function PublicProfilePage() {
               }`}
             >
               <GraduationCap className="h-4 w-4" />
-              <span>Đang tham gia</span>
+              <span>Đang học</span>
             </button>
 
             <button
@@ -230,6 +214,22 @@ export function PublicProfilePage() {
             >
               <CheckCircle2 className="h-4 w-4" />
               <span>Đã hoàn thành</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setRelation('OWNED');
+                setPage(1);
+              }}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                relation === 'OWNED'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              }`}
+            >
+              <BookOpen className="h-4 w-4" />
+              <span>Đã tạo</span>
             </button>
           </div>
 

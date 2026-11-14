@@ -1,23 +1,27 @@
-import { createBrowserRouter, type RouteObject } from 'react-router-dom';
+import { Navigate, createBrowserRouter, type RouteObject } from 'react-router-dom';
 import {
   ForgotPasswordPage,
   LoginPage,
   RegisterPage,
   ResetPasswordPage,
   SecuritySettingsPage,
+  SessionSettingsPage,
   VerifyEmailPage,
 } from '@/features/identity';
 import {
   PublicProfilePage,
   EditProfilePage,
+  PrivacySettingsPage,
+  AppearanceSettingsPage,
 } from '@/features/profile';
 import {
   CourseDetailPage,
   CourseFormPage,
-  MyCoursesPage,
+  CourseManagementLayout,
+  CourseManagementHomePage,
 } from '@/features/course';
 import { RequireAdmin, RequireAuth, RequireVerifiedEmail } from './guards';
-import { AdminLayout, AppLayout, PublicLayout } from './layouts';
+import { AdminLayout, AppLayout, PublicLayout, SettingsLayout } from './layouts';
 import { HomeShellPage, LockedAccountPage, NotFoundPage, RouteStubPage } from './pages';
 import { RouterRootShell } from './RouterRootShell';
 
@@ -25,6 +29,10 @@ export const appRoutes: RouteObject[] = [
   {
     element: <RouterRootShell />,
     children: [
+      {
+        path: '/locked',
+        element: <LockedAccountPage />,
+      },
       {
         element: <PublicLayout />,
         children: [
@@ -52,7 +60,6 @@ export const appRoutes: RouteObject[] = [
           { path: '/forgot-password', element: <ForgotPasswordPage /> },
           { path: '/reset-password', element: <ResetPasswordPage /> },
           { path: '/verify-email', element: <VerifyEmailPage /> },
-          { path: '/locked', element: <LockedAccountPage /> },
           { path: '/404', element: <NotFoundPage /> },
           { path: '*', element: <NotFoundPage /> },
         ],
@@ -65,8 +72,18 @@ export const appRoutes: RouteObject[] = [
         ),
         children: [
           {
+            path: '/learning-dashboard',
+            element: (
+              <RouteStubPage
+                screenCode="SCR-LRN-01"
+                title="Dashboard học tập"
+                description="Theo dõi tiến độ học tập, biểu đồ hoạt động và kế hoạch học tập của bạn."
+              />
+            ),
+          },
+          {
             path: '/me/courses',
-            element: <MyCoursesPage />,
+            element: <Navigate to="/manage/courses" replace />,
           },
           {
             path: '/me/bookmarks',
@@ -88,8 +105,51 @@ export const appRoutes: RouteObject[] = [
               />
             ),
           },
-          { path: '/settings/profile', element: <EditProfilePage /> },
-          { path: '/settings/security', element: <SecuritySettingsPage /> },
+          {
+            path: '/settings',
+            element: <SettingsLayout />,
+            children: [
+              { index: true, element: <Navigate to="/settings/profile" replace /> },
+              { path: 'profile', element: <EditProfilePage /> },
+              { path: 'security', element: <SecuritySettingsPage /> },
+              { path: 'sessions', element: <SessionSettingsPage /> },
+              { path: 'privacy', element: <PrivacySettingsPage /> },
+              { path: 'appearance', element: <AppearanceSettingsPage /> },
+            ],
+          },
+        ],
+      },
+      {
+        element: (
+          <RequireAuth>
+            <CourseManagementLayout />
+          </RequireAuth>
+        ),
+        children: [
+          {
+            path: '/manage/courses',
+            element: <CourseManagementHomePage />,
+          },
+          {
+            path: '/manage/questions',
+            element: (
+              <RouteStubPage
+                screenCode="SCR-LMS-02"
+                title="Ngân hàng câu hỏi"
+                description="Hệ thống quản lý kho câu hỏi trắc nghiệm, tự luận và flashcard đang được hoàn thiện."
+              />
+            ),
+          },
+          {
+            path: '/manage/resources',
+            element: (
+              <RouteStubPage
+                screenCode="SCR-LMS-03"
+                title="Quản lý tài nguyên"
+                description="Kho tài liệu số, slide bài giảng, video và học liệu dùng chung cho các khóa học."
+              />
+            ),
+          },
           {
             path: '/courses/new',
             element: (

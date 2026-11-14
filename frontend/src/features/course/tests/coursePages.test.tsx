@@ -177,69 +177,55 @@ describe('Course Pages (SCR-CRS-01..03)', () => {
     });
   });
 
-  describe('SCR-CRS-03: My Courses (/me/courses)', () => {
-    it('renders tabs for created courses, enrolled courses, and invitations', async () => {
+  describe('Course Management: Trang chủ Quản lý khóa học (/manage/courses)', () => {
+    it('renders course management dashboard with stats, filter chips, and sidebar action', async () => {
       setMockPersonaCookie('user');
       setAccessToken('mock-access-token-user');
 
-      renderAppAt('/me/courses');
+      renderAppAt('/manage/courses');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Khóa học của tôi' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Trang chủ Quản lý khóa học' })).toBeInTheDocument();
       });
 
-      expect(screen.getByRole('button', { name: /Khóa học đã tạo/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Đang tham gia/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Lời mời tham gia/i })).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: /Tạo khóa học mới/i })).toHaveAttribute(
-        'href',
-        '/courses/new'
-      );
+      expect(screen.getByText('TỔNG KHÓA HỌC')).toBeInTheDocument();
+
+      expect(screen.getByRole('button', { name: 'Tất cả' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Đang cập nhật' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Đã hoàn thành' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Tạm ẩn' })).toBeInTheDocument();
+
+      // Sidebar has primary "Tạo khóa học" CTA
+      expect(screen.getAllByRole('link', { name: /Tạo khóa học/i }).length).toBeGreaterThan(0);
     });
 
-    it('allows switching to enrolled courses tab and viewing active courses', async () => {
+    it('allows filtering by status in course management', async () => {
       setMockPersonaCookie('user');
       setAccessToken('mock-access-token-user');
 
       const user = userEvent.setup();
-      renderAppAt('/me/courses');
+      renderAppAt('/manage/courses');
 
       await waitFor(() => {
-        expect(screen.getByText(/Khóa học đã tạo/i)).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Trang chủ Quản lý khóa học' })).toBeInTheDocument();
       });
 
-      const enrolledTab = screen.getByRole('button', { name: /Đang tham gia/i });
-      await user.click(enrolledTab);
+      const updatingChip = screen.getByRole('button', { name: 'Đang cập nhật' });
+      await user.click(updatingChip);
 
       await waitFor(() => {
-        expect(screen.getByText(/Khóa học đang học: Kiến trúc phần mềm/i)).toBeInTheDocument();
+        expect(updatingChip).toHaveClass('bg-brand-orange');
       });
-      expect(screen.getByText('75%')).toBeInTheDocument();
     });
 
-    it('allows viewing invitations and accepting an invitation', async () => {
+    it('redirects legacy /me/courses to /manage/courses', async () => {
       setMockPersonaCookie('user');
       setAccessToken('mock-access-token-user');
 
-      const user = userEvent.setup();
       renderAppAt('/me/courses');
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /Lời mời tham gia/i })).toBeInTheDocument();
-      });
-
-      const invitationsTab = screen.getByRole('button', { name: /Lời mời tham gia/i });
-      await user.click(invitationsTab);
-
-      await waitFor(() => {
-        expect(screen.getByText(/Lập trình Cloud Native trên AWS & Azure/i)).toBeInTheDocument();
-      });
-
-      const acceptBtn = screen.getByRole('button', { name: /Chấp nhận/i });
-      await user.click(acceptBtn);
-
-      await waitFor(() => {
-        expect(screen.getByText('Chấp nhận thành công!')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Trang chủ Quản lý khóa học' })).toBeInTheDocument();
       });
     });
   });

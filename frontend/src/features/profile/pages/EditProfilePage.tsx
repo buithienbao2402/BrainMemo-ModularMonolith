@@ -1,9 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Save, User, AlertCircle } from 'lucide-react';
+import {
+  AlertCircle,
+  Calendar,
+  CheckCircle2,
+  Lock,
+  BookOpen,
+} from 'lucide-react';
 import { useToast } from '@/shared/ui';
 import { Button, Input, Skeleton } from '@/shared/ui';
+import { useAuth } from '@/shared/hooks';
 import { useMyProfileQuery, useUpdateMyProfileMutation } from '../api/profileApi';
 import {
   updateProfileSchema,
@@ -13,6 +20,7 @@ import { AvatarUpload } from '../components/AvatarUpload';
 
 export function EditProfilePage() {
   const { pushToast } = useToast();
+  const { user } = useAuth();
   const [formError, setFormError] = useState<string | null>(null);
 
   const {
@@ -43,10 +51,8 @@ export function EditProfilePage() {
     },
   });
 
-  const currentDisplayName = watch('displayName');
+  const currentDisplayName = watch('displayName') || '';
   const currentBio = watch('bio') || '';
-  const currentShowCourseList = watch('showCourseList');
-  const currentTheme = watch('uiTheme');
 
   useEffect(() => {
     if (profile) {
@@ -94,17 +100,23 @@ export function EditProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-[800px] px-4 py-8 sm:px-6 space-y-6">
-        <Skeleton className="h-10 w-48" />
-        <Skeleton className="h-32 w-full rounded-2xl" />
-        <Skeleton className="h-64 w-full rounded-2xl" />
+      <div className="space-y-6">
+        <Skeleton className="h-8 w-48" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <Skeleton className="h-48 rounded-2xl" />
+          <div className="md:col-span-2 space-y-4">
+            <Skeleton className="h-10 w-full rounded-xl" />
+            <Skeleton className="h-10 w-full rounded-xl" />
+            <Skeleton className="h-32 w-full rounded-xl" />
+          </div>
+        </div>
       </div>
     );
   }
 
   if (isError || !profile) {
     return (
-      <div className="mx-auto max-w-[800px] px-4 py-12 sm:px-6 text-center space-y-4">
+      <div className="py-12 text-center space-y-4">
         <AlertCircle className="mx-auto h-12 w-12 text-destructive" />
         <h2 className="text-xl font-bold text-foreground">Không thể tải thông tin hồ sơ</h2>
         <p className="text-sm text-muted-foreground">
@@ -117,12 +129,19 @@ export function EditProfilePage() {
     );
   }
 
+  const joinDate = profile.joinedAt
+    ? new Date(profile.joinedAt).toLocaleDateString('vi-VN')
+    : '12/09/2026';
+
   return (
-    <div className="mx-auto max-w-[800px] px-4 py-8 sm:px-6">
-      <div className="mb-6 space-y-1">
-        <h1 className="text-2xl font-bold text-foreground">Hồ sơ cá nhân</h1>
-        <p className="text-sm text-muted-foreground">
-          Quản lý thông tin công khai, giới thiệu và tùy chỉnh giao diện học tập.
+    <div className="space-y-8">
+      {/* Header section */}
+      <div className="border-b border-border pb-5">
+        <h2 className="font-serif text-2xl font-bold tracking-tight text-foreground">
+          Hồ sơ cá nhân
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Thông tin hiển thị công khai trên trang cá nhân của bạn trong cộng đồng học tập BrainMemo.
         </p>
       </div>
 
@@ -140,154 +159,147 @@ export function EditProfilePage() {
           </div>
         )}
 
-        {/* Avatar Section */}
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
-          <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
-            <User className="h-4 w-4 text-primary" />
-            <span>Ảnh đại diện</span>
-          </h2>
-          <AvatarUpload
-            currentAvatarUrl={profile.avatarUrl}
-            displayName={currentDisplayName || profile.displayName}
-            onAvatarUploaded={(uploadKey) => {
-              setValue('avatarUploadKey', uploadKey, { shouldDirty: true });
-              setValue('removeAvatar', false, { shouldDirty: true });
-            }}
-            onAvatarRemoved={() => {
-              setValue('avatarUploadKey', undefined, { shouldDirty: true });
-              setValue('removeAvatar', true, { shouldDirty: true });
-            }}
-            disabled={isSubmitting}
-          />
-        </div>
-
-        {/* Basic Details Section */}
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-6">
-          <h2 className="text-base font-semibold text-foreground">Thông tin chung</h2>
-
-          {/* Display Name */}
-          <div className="space-y-2">
-            <label htmlFor="displayName" className="text-sm font-medium text-foreground">
-              Họ và tên hiển thị <span className="text-destructive">*</span>
-            </label>
-            <Input
-              id="displayName"
-              placeholder="Nhập họ và tên hiển thị"
-              {...register('displayName')}
-              disabled={isSubmitting}
-              className={errors.displayName ? 'border-destructive' : ''}
-            />
-            {errors.displayName && (
-              <p className="text-xs text-destructive">{errors.displayName.message}</p>
-            )}
-          </div>
-
-          {/* Bio */}
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <label htmlFor="bio" className="text-sm font-medium text-foreground">
-                Giới thiệu bản thân
-              </label>
-              <span className="text-xs text-muted-foreground">
-                {currentBio.length} / 2000 ký tự
-              </span>
+        {/* 2-Column Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+          {/* Left Column: Avatar Section */}
+          <div className="md:col-span-4 flex flex-col items-center sm:items-start gap-4">
+            <label className="text-sm font-medium text-foreground">Ảnh đại diện</label>
+            <div className="w-full">
+              <AvatarUpload
+                currentAvatarUrl={profile.avatarUrl}
+                displayName={currentDisplayName || profile.displayName}
+                onAvatarUploaded={(uploadKey) => {
+                  setValue('avatarUploadKey', uploadKey, { shouldDirty: true });
+                  setValue('removeAvatar', false, { shouldDirty: true });
+                }}
+                onAvatarRemoved={() => {
+                  setValue('avatarUploadKey', undefined, { shouldDirty: true });
+                  setValue('removeAvatar', true, { shouldDirty: true });
+                }}
+                disabled={isSubmitting}
+              />
             </div>
-            <textarea
-              id="bio"
-              rows={4}
-              placeholder="Chia sẻ đôi nét về kinh nghiệm, lĩnh vực chuyên môn hoặc sở thích học tập của bạn..."
-              {...register('bio')}
-              disabled={isSubmitting}
-              className={`w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${
-                errors.bio ? 'border-destructive' : ''
-              }`}
-            />
-            {errors.bio && (
-              <p className="text-xs text-destructive">{errors.bio.message}</p>
-            )}
+            <p className="text-xs text-muted-foreground">
+              JPG hoặc PNG, dung lượng tối đa 5 MB
+            </p>
           </div>
-        </div>
 
-        {/* Settings & Privacy Section */}
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-6">
-          <h2 className="text-base font-semibold text-foreground">Quyền riêng tư & Tùy chọn</h2>
-
-          {/* Show course list toggle */}
-          <div className="flex items-center justify-between gap-4">
-            <div className="space-y-0.5">
-              <label
-                htmlFor="showCourseList"
-                className="text-sm font-medium text-foreground cursor-pointer"
-              >
-                Hiển thị danh sách khóa học trên hồ sơ công khai
-              </label>
-              <p className="text-xs text-muted-foreground">
-                Cho phép người khác xem danh sách các khóa học bạn đã tạo và đang tham gia.
-              </p>
+          {/* Right Column: Information Fields */}
+          <div className="md:col-span-8 space-y-6">
+            {/* Display Name */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label htmlFor="displayName" className="text-sm font-semibold text-foreground">
+                  Họ và tên hiển thị <span className="text-primary">*</span>
+                </label>
+                <span className="text-xs font-medium text-muted-foreground">
+                  {currentDisplayName.length}/50
+                </span>
+              </div>
+              <Input
+                id="displayName"
+                maxLength={50}
+                placeholder="Nhập họ và tên hiển thị"
+                {...register('displayName')}
+                disabled={isSubmitting}
+                className={errors.displayName ? 'border-destructive' : 'bg-background border-input text-foreground'}
+              />
+              {errors.displayName && (
+                <p className="text-xs text-destructive">{errors.displayName.message}</p>
+              )}
             </div>
-            <input
-              type="checkbox"
-              id="showCourseList"
-              checked={currentShowCourseList}
-              onChange={(e) =>
-                setValue('showCourseList', e.target.checked, { shouldDirty: true })
-              }
-              disabled={isSubmitting}
-              className="h-5 w-5 rounded border-input text-primary focus:ring-primary cursor-pointer"
-            />
-          </div>
 
-          <div className="border-t border-border pt-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">
-                Giao diện ứng dụng mặc định
-              </label>
-              <div className="grid grid-cols-2 gap-4 max-w-sm">
-                <button
-                  type="button"
-                  onClick={() => setValue('uiTheme', 'LIGHT', { shouldDirty: true })}
-                  className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-sm font-medium transition-all ${
-                    currentTheme === 'LIGHT'
-                      ? 'border-primary bg-primary/10 text-primary font-semibold'
-                      : 'border-border bg-card text-muted-foreground hover:bg-muted'
-                  }`}
-                >
-                  Giao diện sáng (Light)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setValue('uiTheme', 'DARK', { shouldDirty: true })}
-                  className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-sm font-medium transition-all ${
-                    currentTheme === 'DARK'
-                      ? 'border-primary bg-primary/10 text-primary font-semibold'
-                      : 'border-border bg-card text-muted-foreground hover:bg-muted'
-                  }`}
-                >
-                  Giao diện tối (Dark)
-                </button>
+            {/* Email (Readonly) */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-semibold text-foreground">
+                  Địa chỉ Email
+                </label>
+                <span className="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground border border-border">
+                  <Lock className="h-3 w-3" />
+                  Không thể sửa
+                </span>
+              </div>
+              <div className="relative">
+                <input
+                  type="email"
+                  value={user?.email || 'quang.tran@brainmemo.edu.vn'}
+                  disabled
+                  className="w-full rounded-xl border border-input bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground cursor-not-allowed"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  <CheckCircle2 className="h-3 w-3" />
+                  <span>Đã xác minh</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Bio */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label htmlFor="bio" className="text-sm font-semibold text-foreground">
+                  Giới thiệu bản thân
+                </label>
+                <span className="text-xs font-medium text-muted-foreground">
+                  {currentBio.length}/500
+                </span>
+              </div>
+              <textarea
+                id="bio"
+                aria-label="Giới thiệu bản thân"
+                rows={4}
+                maxLength={500}
+                placeholder="Chia sẻ đôi nét về mục tiêu học tập, sở thích và chuyên môn của bạn..."
+                {...register('bio')}
+                disabled={isSubmitting}
+                className="w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              {errors.bio && (
+                <p className="text-xs text-destructive">{errors.bio.message}</p>
+              )}
+            </div>
+
+            {/* Meta Information Cards (Join Date & Courses Count) */}
+            <div className="grid grid-cols-2 gap-4 pt-2">
+              <div className="rounded-xl border border-border bg-muted/40 p-3.5 flex items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Calendar className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Ngày tham gia</p>
+                  <p className="text-sm font-semibold text-foreground">{joinDate}</p>
+                </div>
+              </div>
+              <div className="rounded-xl border border-border bg-muted/40 p-3.5 flex items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <BookOpen className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Số khóa học</p>
+                  <p className="text-sm font-semibold text-foreground">Đã ghi danh</p>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Submit Actions */}
-        <div className="flex items-center justify-end gap-3 pt-2">
+        {/* Action Buttons */}
+        <div className="flex items-center justify-end gap-3 border-t border-border pt-6">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => reset()}
+            disabled={isSubmitting}
+            className="border-border text-foreground hover:bg-muted"
+          >
+            Hủy
+          </Button>
           <Button
             type="submit"
-            disabled={isSubmitting || updateMutation.isPending}
-            className="min-w-[140px]"
+            disabled={isSubmitting}
+            className="bg-primary hover:bg-primary/90 text-white font-semibold px-6"
           >
-            {isSubmitting || updateMutation.isPending ? (
-              <span className="flex items-center gap-2">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                <span>Đang lưu...</span>
-              </span>
-            ) : (
-              <span className="flex items-center gap-1.5">
-                <Save className="h-4 w-4" />
-                <span>Lưu thay đổi</span>
-              </span>
-            )}
+            {isSubmitting ? 'Đang lưu...' : 'Lưu thay đổi'}
           </Button>
         </div>
       </form>

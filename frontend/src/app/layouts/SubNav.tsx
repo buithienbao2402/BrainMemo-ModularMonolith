@@ -1,4 +1,4 @@
-import { BookOpen, Compass, Home, ShieldCheck } from 'lucide-react';
+import { Compass, Home, LayoutDashboard } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/shared/hooks';
@@ -17,14 +17,15 @@ export function SubNav() {
 
   const items: NavTabItem[] = [
     { to: '/', label: t('nav.home'), end: true, icon: Home },
-    { to: '/courses', label: t('nav.explore'), icon: Compass },
+    { to: '/courses', label: t('nav.explore'), end: true, icon: Compass },
   ];
 
   if (status === 'authenticated' && user) {
-    items.push({ to: '/me/courses', label: t('nav.myCourses'), icon: BookOpen });
-    if (user.isAdmin) {
-      items.push({ to: '/admin', label: t('nav.admin'), icon: ShieldCheck });
-    }
+    items.push({
+      to: '/learning-dashboard',
+      label: t('nav.learningDashboard'),
+      icon: LayoutDashboard,
+    });
   }
 
   return (

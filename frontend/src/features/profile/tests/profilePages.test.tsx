@@ -39,9 +39,9 @@ describe('Profile Pages (SCR-PRF-01 & SCR-PRF-02)', () => {
       });
 
       expect(screen.getByText(/Học viên & tác giả khóa học BrainMemo/i)).toBeInTheDocument();
-      expect(screen.getByText(/Khóa học đã tạo/i)).toBeInTheDocument();
-      expect(screen.getByText(/Đang tham gia/i)).toBeInTheDocument();
-      expect(screen.getByText(/Đã hoàn thành/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Đang học/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Đã hoàn thành/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Đã tạo/i })).toBeInTheDocument();
     });
 
     it('shows error state when profile is not found (404)', async () => {
@@ -58,14 +58,14 @@ describe('Profile Pages (SCR-PRF-01 & SCR-PRF-02)', () => {
       renderAppAt(`/users/${mockUsers.user.id}`);
 
       await waitFor(() => {
-        expect(screen.getByText('Khóa học đã tạo')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Đang học/i })).toBeInTheDocument();
       });
 
-      const enrolledTab = screen.getByRole('button', { name: /Đang tham gia/i });
-      await user.click(enrolledTab);
+      const ownedTab = screen.getByRole('button', { name: /Đã tạo/i });
+      await user.click(ownedTab);
 
       await waitFor(() => {
-        expect(enrolledTab).toHaveClass('bg-primary');
+        expect(ownedTab).toHaveClass('bg-primary');
       });
     });
   });

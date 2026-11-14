@@ -7,3 +7,5 @@ export * from './components/CourseCardItem';
 export * from './pages/CourseDetailPage';
 export * from './pages/CourseFormPage';
 export * from './pages/MyCoursesPage';
+export * from './layouts/CourseManagementLayout';
+export * from './pages/CourseManagementHomePage';
