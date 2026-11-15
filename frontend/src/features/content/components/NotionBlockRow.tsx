@@ -62,6 +62,7 @@ interface NotionBlockRowProps {
   onFocusNextBlock?: () => void;
   onFocusBlock?: (blockId: string) => void;
   onSelectThisBlock?: (blockId: string) => void;
+  onDeselectThisBlock?: (blockId: string) => void;
 }
 
 export function NotionBlockRow({
@@ -88,6 +89,7 @@ export function NotionBlockRow({
   onFocusNextBlock,
   onFocusBlock,
   onSelectThisBlock,
+  onDeselectThisBlock,
 }: NotionBlockRowProps) {
   const editableRef = useRef<HTMLDivElement>(null);
   const isInternalChangeRef = useRef(false);
@@ -317,7 +319,15 @@ export function NotionBlockRow({
             <GripVertical className="h-3.5 w-3.5" />
           </button>
 
-          <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+          <DropdownMenu
+            open={isMenuOpen}
+            onOpenChange={(open) => {
+              setIsMenuOpen(open);
+              if (!open) {
+                onDeselectThisBlock?.(block.id);
+              }
+            }}
+          >
             <DropdownMenuTrigger asChild>
               <span className="sr-only" tabIndex={-1} />
             </DropdownMenuTrigger>

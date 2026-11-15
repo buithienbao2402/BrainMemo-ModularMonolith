@@ -371,10 +371,7 @@ export function ChapterEditorPage() {
         const isClickOnBlockGrip = target.closest('[data-drag-handle="true"]');
         const isClickInsideModal = target.closest('[role="dialog"], [role="menu"]');
         if (!isClickOnBlockGrip && !isClickInsideModal) {
-          const blockEl = target.closest('[data-block-id]');
-          if (!blockEl) {
-            setSelectedBlockIds(new Set());
-          }
+          setSelectedBlockIds(new Set());
         }
       }
 
@@ -393,16 +390,23 @@ export function ChapterEditorPage() {
 
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
+
+    // RULE: Kéo chuột trên canvas chỉ kích hoạt khi kéo chuột từ bên ngoài phạm vi block!
+    // Còn kéo từ trong block thì không kích hoạt (sẽ chỉ bôi đen nội dung trong block)
+    if (target.closest('[data-block-id]')) {
+      if (!target.closest('[data-drag-handle="true"]')) {
+        setSelectedBlockIds(new Set());
+      }
+      return;
+    }
+
     if (
+      target.closest('header') ||
       target.closest('input') ||
       target.closest('textarea') ||
       target.closest('button') ||
       target.closest('[role="dialog"]') ||
-      target.closest('[role="menu"]') ||
-      target.closest('[data-no-marquee]') ||
-      (target.isContentEditable &&
-        target.innerText.trim().length > 0 &&
-        e.clientX > target.getBoundingClientRect().left + 30)
+      target.closest('[role="menu"]')
     ) {
       return;
     }
@@ -1005,7 +1009,10 @@ export function ChapterEditorPage() {
     (course as any)?.accessMode === 'ONLY_ME' || (course as any)?.visibility === 'ONLY_ME';
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
+    <div
+      onMouseDown={handleCanvasMouseDown}
+      className="min-h-screen bg-background text-foreground flex flex-col"
+    >
       {/* 1. TOP HEADER BAR */}
       <header className="sticky top-0 z-30 border-b border-border/80 bg-card/90 backdrop-blur-md px-4 sm:px-8 py-2.5 shadow-xs">
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
@@ -1213,9 +1220,20 @@ export function ChapterEditorPage() {
               onFocusBlock={(blockId) => {
                 setFocusedBlockId(blockId);
                 setFocusDirection(null);
+                setSelectedBlockIds(new Set());
               }}
               onSelectThisBlock={(blockId) => {
                 setSelectedBlockIds(new Set([blockId]));
+              }}
+              onDeselectThisBlock={(blockId) => {
+                setSelectedBlockIds((prev) => {
+                  if (prev.has(blockId)) {
+                    const next = new Set(prev);
+                    next.delete(blockId);
+                    return next;
+                  }
+                  return prev;
+                });
               }}
             />
           ))}
