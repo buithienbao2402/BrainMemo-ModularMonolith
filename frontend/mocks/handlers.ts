@@ -342,6 +342,7 @@ export interface MockChapterItem {
   description: string | null;
   status: 'DRAFT' | 'PUBLISHED';
   accessMode: string;
+  passcode?: string | null;
   hasUnpublishedChanges: boolean;
   lastVersionNo: number;
   publishedVersionNo: number | null;
@@ -353,6 +354,10 @@ export interface MockVersionItem {
   createdAt: string;
   publishedAt: string | null;
   restoredFromVersionNo: number | null;
+  title?: string;
+  description?: string;
+  blocks?: Array<Record<string, unknown>>;
+  authorName?: string;
 }
 
 export interface MockResourceItem {
@@ -373,8 +378,8 @@ export const initialMockChapters: Record<string, MockChapterItem[]> = {
       description: 'Tìm hiểu tổng quan về kiến trúc và các nguyên lý thiết kế.',
       status: 'PUBLISHED',
       accessMode: 'PUBLIC',
-      hasUnpublishedChanges: true,
-      lastVersionNo: 2,
+      hasUnpublishedChanges: false,
+      lastVersionNo: 1,
       publishedVersionNo: 1,
       blocks: [
         {
@@ -1803,6 +1808,7 @@ export const handlers = [
     chapter.description = body.description?.trim() ?? chapter.description;
     chapter.blocks = body.blocks || [];
     chapter.lastVersionNo = (chapter.lastVersionNo || 1) + 1;
+    chapter.status = 'DRAFT';
     chapter.hasUnpublishedChanges = true;
 
     if (!mockVersions[chapterId]) {
@@ -1813,6 +1819,10 @@ export const handlers = [
       createdAt: new Date().toISOString(),
       publishedAt: null,
       restoredFromVersionNo: null,
+      title: chapter.title,
+      description: chapter.description ?? undefined,
+      blocks: JSON.parse(JSON.stringify(chapter.blocks)),
+      authorName: 'Quang Trần (Bạn)',
     });
     saveStoredChapters(mockChapters);
     saveStoredVersions(mockVersions);
@@ -1859,13 +1869,43 @@ export const handlers = [
 
   http.get('*/api/v1/courses/:courseId/chapters/:chapterId/versions', ({ params }) => {
     mockVersions = getStoredVersions();
+    mockChapters = getStoredChapters();
+    const courseId = String(params.courseId);
     const chapterId = String(params.chapterId);
+    const chapter = (mockChapters[courseId] || []).find((c) => c.id === chapterId);
+
     const versions = mockVersions[chapterId] || [
       {
-        versionNo: 1,
-        createdAt: '2026-11-10T08:00:00Z',
+        versionNo: chapter?.lastVersionNo || 4,
+        createdAt: new Date().toISOString(),
         publishedAt: null,
         restoredFromVersionNo: null,
+        title: chapter?.title || 'Chương 4: Hàm & Phạm vi biến (Scope)',
+        description:
+          chapter?.description ||
+          'Nắm vững quy tắc phân định phạm vi LEGB (Local, Enclosing, Global, Built-in), lambda function và cơ chế tạo đóng kín (Closures) trong kiến trúc ngôn ngữ Python.',
+        blocks: chapter?.blocks || [],
+        authorName: 'Quang Trần (Bạn)',
+      },
+      {
+        versionNo: (chapter?.lastVersionNo || 4) - 1,
+        createdAt: new Date(Date.now() - 4 * 3600 * 1000).toISOString(),
+        publishedAt: null,
+        restoredFromVersionNo: null,
+        title: chapter?.title || 'Chương 4: Hàm & Phạm vi biến (Scope)',
+        description: 'Bản thảo ban đầu về hàm trong Python.',
+        blocks: chapter?.blocks?.slice(0, 2) || [],
+        authorName: 'Quang Trần',
+      },
+      {
+        versionNo: Math.max(1, (chapter?.lastVersionNo || 4) - 2),
+        createdAt: new Date(Date.now() - 26 * 3600 * 1000).toISOString(),
+        publishedAt: null,
+        restoredFromVersionNo: null,
+        title: chapter?.title || 'Chương 4: Hàm & Phạm vi biến',
+        description: 'Bản thảo ngày hôm qua',
+        blocks: chapter?.blocks?.slice(0, 1) || [],
+        authorName: 'Quang Trần',
       },
     ];
     return HttpResponse.json(versions, { status: 200 });
@@ -1891,7 +1931,21 @@ export const handlers = [
         });
       }
 
+      // Find the version to restore blocks from
+      const versionList = mockVersions[chapterId] || [];
+      const targetVersion = versionList.find((v) => v.versionNo === versionNo);
+      if (targetVersion?.blocks && targetVersion.blocks.length > 0) {
+        chapter.blocks = JSON.parse(JSON.stringify(targetVersion.blocks));
+      }
+      if (targetVersion?.title) {
+        chapter.title = targetVersion.title;
+      }
+      if (targetVersion?.description !== undefined) {
+        chapter.description = targetVersion.description;
+      }
+
       chapter.lastVersionNo = (chapter.lastVersionNo || 1) + 1;
+      chapter.status = 'DRAFT';
       chapter.hasUnpublishedChanges = true;
 
       if (!mockVersions[chapterId]) {
@@ -1902,6 +1956,10 @@ export const handlers = [
         createdAt: new Date().toISOString(),
         publishedAt: null,
         restoredFromVersionNo: versionNo,
+        title: chapter.title,
+        description: chapter.description ?? undefined,
+        blocks: JSON.parse(JSON.stringify(chapter.blocks)),
+        authorName: 'Quang Trần (Bạn)',
       });
       saveStoredChapters(mockChapters);
       saveStoredVersions(mockVersions);
@@ -1909,6 +1967,54 @@ export const handlers = [
       return HttpResponse.json(chapter, { status: 200 });
     }
   ),
+
+  http.get('*/api/v1/courses/:courseId/chapters/:chapterId/access', ({ params }) => {
+    mockChapters = getStoredChapters();
+    const courseId = String(params.courseId);
+    const chapterId = String(params.chapterId);
+    const list = mockChapters[courseId] || [];
+    const chapter = list.find((c) => c.id === chapterId);
+    if (!chapter) {
+      return problemResponse(404, {
+        title: 'Chương không tồn tại',
+        status: 404,
+        code: 'CHAPTER_NOT_FOUND',
+      });
+    }
+    return HttpResponse.json(
+      {
+        accessMode: chapter.accessMode || 'PUBLIC',
+        passcode: chapter.passcode || '',
+        passcodeVersion: 1,
+      },
+      { status: 200 }
+    );
+  }),
+
+  http.put('*/api/v1/courses/:courseId/chapters/:chapterId/access', async ({ params, request }) => {
+    mockChapters = getStoredChapters();
+    const courseId = String(params.courseId);
+    const chapterId = String(params.chapterId);
+    const body = (await request.json().catch(() => ({}))) as {
+      accessMode?: 'PUBLIC' | 'PROTECTED';
+      passcode?: string;
+    };
+    const list = mockChapters[courseId] || [];
+    const chapter = list.find((c) => c.id === chapterId);
+    if (!chapter) {
+      return problemResponse(404, {
+        title: 'Chương không tồn tại',
+        status: 404,
+        code: 'CHAPTER_NOT_FOUND',
+      });
+    }
+    if (body.accessMode) {
+      chapter.accessMode = body.accessMode;
+      chapter.passcode = body.passcode || null;
+      saveStoredChapters(mockChapters);
+    }
+    return new HttpResponse(null, { status: 204 });
+  }),
 
   http.get('*/api/v1/courses/:courseId/resources', ({ params }) => {
     mockResources = getStoredResources();

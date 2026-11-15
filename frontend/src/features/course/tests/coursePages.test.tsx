@@ -231,20 +231,20 @@ describe('Course Pages (SCR-CRS-01..03)', () => {
   });
 
   describe('Course Overview: Tổng quan khóa học (/courses/:courseId/manage)', () => {
-    it('renders top breadcrumb "Trang chủ / Tổng quan {courseTitle}"', async () => {
+    it('renders top breadcrumb "Trang chủ / Khóa học {courseTitle}"', async () => {
       setMockPersonaCookie('user');
       setAccessToken('mock-access-token-user');
 
       renderAppAt('/courses/my-course-1/manage');
 
       await waitFor(() => {
-        expect(screen.getByText(/Tổng quan Khóa học do tôi biên soạn/i)).toBeInTheDocument();
+        expect(screen.getByText(/Khóa học Khóa học do tôi biên soạn/i)).toBeInTheDocument();
       });
 
       const breadcrumbNav = screen.getByRole('navigation', { name: /Đường dẫn điều hướng/i });
       expect(breadcrumbNav).toBeInTheDocument();
       expect(breadcrumbNav).toHaveTextContent(/Trang chủ/);
-      expect(breadcrumbNav).toHaveTextContent(/Tổng quan Khóa học do tôi biên soạn/);
+      expect(breadcrumbNav).toHaveTextContent(/Khóa học Khóa học do tôi biên soạn/);
     });
 
     it('renders sub-navigation tabs matching Figma specification', async () => {
@@ -296,7 +296,7 @@ describe('Course Pages (SCR-CRS-01..03)', () => {
 
       const approveButtons = screen.getAllByRole('button', { name: 'Duyệt' });
       expect(approveButtons.length).toBeGreaterThan(0);
-      await user.click(approveButtons[0]);
+      await user.click(approveButtons[0]!);
 
       await waitFor(() => {
         expect(screen.getByText('Đã duyệt yêu cầu tham gia')).toBeInTheDocument();

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/shared/ui';
 import type { BlockDto } from '../api/contentApi';
+import { RichTextDocumentRenderer } from './RichTextDocumentRenderer';
 
 interface ChapterPreviewModalProps {
   isOpen: boolean;
@@ -111,12 +112,11 @@ export function ChapterPreviewModal({
                 key={block.id}
                 className="rounded-2xl border border-border bg-card p-6 sm:p-7 shadow-xs"
               >
-                {/* 1. Rich Text Block */}
+                {/* 1. Rich Text Block (Rendered from JSON AST) */}
                 {block.blockType === 'RICH_TEXT' && (
-                  <div
-                    className="prose dark:prose-invert max-w-none text-sm sm:text-base text-foreground leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: block.body || '<p class="text-muted-foreground italic">Nội dung trống</p>' }}
-                  />
+                  <div className="prose dark:prose-invert max-w-none text-sm sm:text-base text-foreground leading-relaxed">
+                    <RichTextDocumentRenderer doc={block.body} />
+                  </div>
                 )}
 
                 {/* 2. Markdown Block */}

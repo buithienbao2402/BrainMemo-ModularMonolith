@@ -1,69 +1,162 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
-  Save,
-  Send,
-  Eye,
-  History,
-  FolderOpen,
+  MoreVertical,
   AlertCircle,
-  CheckCircle2,
-  AlertTriangle,
+  History,
+  Trash2,
+  Lock,
   RotateCcw,
-  BookOpen,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   Button,
-  Input,
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
   DialogFooter,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
   Skeleton,
   ErrorState,
+  useToast,
 } from '@/shared/ui';
+import { useCourseQuery } from '@/features/course/api/courseApi';
 import {
   useChapterDraftQuery,
-  useSaveChapterDraftMutation,
-  usePublishChapterMutation,
+  useSaveChapterDraftDynamicMutation,
+  usePublishChapterDynamicMutation,
+  useCreateChapterMutation,
+  useDeleteChapterMutation,
+  useChaptersQuery,
+  useReorderChaptersMutation,
+  useSetChapterAccessMutation,
   type BlockDto,
   type BlockType,
   type ResourceDto,
 } from '../api/contentApi';
-import { BlockItem } from '../components/BlockItem';
-import { AddBlockMenu } from '../components/AddBlockMenu';
+import { NotionBlockRow } from '../components/NotionBlockRow';
+import { SlashCommandMenu, type SlashCommandItem } from '../components/SlashCommandMenu';
+import { FloatingTextFormatToolbar } from '../components/FloatingTextFormatToolbar';
 import { ResourceDrawer } from '../components/ResourceDrawer';
 import { ChapterVersionsModal } from '../components/ChapterVersionsModal';
-import { ChapterPreviewModal } from '../components/ChapterPreviewModal';
-import { UnsavedChangesDialog } from '../components/UnsavedChangesDialog';
-import { useToast } from '@/shared/ui';
-import { ApiProblemError } from '@/shared/api';
+import { DeleteChapterModal } from '../components/DeleteChapterModal';
+import { UnsavedChangesModal } from '../components/UnsavedChangesModal';
+import { ChapterAccessPanel } from '../components/ChapterAccessPanel';
+import {
+  createEmptyRichDocJson,
+  isRichDocEmpty,
+  isRichDocumentJsonString,
+  htmlToRichJson,
+} from '../lib/richTextDocument';
+import { ApiProblemError, queryKeys } from '@/shared/api';
+
+function generateBlockId(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `block-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function createEmptyTextBlock(position: number): BlockDto {
+  return {
+    id: generateBlockId(),
+    blockType: 'RICH_TEXT',
+    position,
+    title: null,
+    body: JSON.stringify(createEmptyRichDocJson()),
+    resourceId: null,
+    questionId: null,
+    aiReviewStatus: 'NOT_APPLICABLE',
+  };
+}
 
 export function ChapterEditorPage() {
   const { courseId = '', chapterId = '' } = useParams<{
     courseId: string;
     chapterId: string;
   }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { pushToast } = useToast();
+  const queryClient = useQueryClient();
 
-  // Working draft local state
+  const isNewMode = !chapterId || chapterId === 'new';
+  const afterChapterId = searchParams.get('after');
+
+  // Course query for displaying course name and checking access mode
+  const { data: course } = useCourseQuery(courseId);
+  const { data: allChapters } = useChaptersQuery(courseId);
+
+  // Working draft state
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [blocks, setBlocks] = useState<BlockDto[]>([]);
+  const [blocks, setBlocks] = useState<BlockDto[]>([createEmptyTextBlock(1)]);
   const [baseVersionNo, setBaseVersionNo] = useState<number>(1);
+  const [accessMode, setAccessMode] = useState<'PUBLIC' | 'PROTECTED'>('PUBLIC');
+  const [passcode, setPasscode] = useState<string>('');
   const [isDirty, setIsDirty] = useState(false);
+  const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
+  const [focusDirection, setFocusDirection] = useState<'FROM_TOP' | 'FROM_BOTTOM' | null>(null);
 
-  // Modals & Drawers state
+  // Multi-select blocks state & Marquee selection box
+  const [selectedBlockIds, setSelectedBlockIds] = useState<Set<string>>(new Set());
+  const [marqueeRect, setMarqueeRect] = useState<{
+    startX: number;
+    startY: number;
+    currentX: number;
+    currentY: number;
+  } | null>(null);
+  const isMarqueeDraggingRef = useRef(false);
+  const marqueeStartPosRef = useRef<{ x: number; y: number } | null>(null);
+
+  // Drag and drop block state
+  const draggedIndexRef = useRef<number | null>(null);
+  const copiedBlocksRef = useRef<BlockDto[]>([]);
+
+  // Undo / Redo history state
+  const undoStackRef = useRef<Array<{ title: string; blocks: BlockDto[] }>>([]);
+  const redoStackRef = useRef<Array<{ title: string; blocks: BlockDto[] }>>([]);
+  const isUndoRedoActionRef = useRef(false);
+
+  // Push current state into undo history
+  const pushUndoSnapshot = useCallback((newTitle: string, newBlocks: BlockDto[]) => {
+    if (isUndoRedoActionRef.current) return;
+    undoStackRef.current.push({
+      title: newTitle,
+      blocks: JSON.parse(JSON.stringify(newBlocks)),
+    });
+    if (undoStackRef.current.length > 50) {
+      undoStackRef.current.shift();
+    }
+    redoStackRef.current = [];
+  }, []);
+
+  // Floating menus & context menus state
+  const [activeTypeMenu, setActiveTypeMenu] = useState<{
+    coords: { top: number; left: number };
+    blockId: string;
+  } | null>(null);
+
+  const [activeSelection, setActiveSelection] = useState<{
+    coords: { top: number; left: number };
+    blockId: string;
+  } | null>(null);
+
+  // Modals & Panels state
+  const [isAccessPanelOpen, setIsAccessPanelOpen] = useState(false);
   const [isResourceDrawerOpen, setIsResourceDrawerOpen] = useState(false);
   const [pickerTargetBlockId, setPickerTargetBlockId] = useState<string | null>(null);
   const [isVersionsModalOpen, setIsVersionsModalOpen] = useState(false);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  // Unsaved changes warning dialog state
+  // Unsaved changes exit dialog state
   const [showUnsavedExitDialog, setShowUnsavedExitDialog] = useState(false);
   const pendingExitPathRef = useRef<string | null>(null);
 
@@ -75,182 +168,873 @@ export function ChapterEditorPage() {
   const [publishBlockedDialogOpen, setPublishBlockedDialogOpen] = useState(false);
   const [publishBlockedMessage, setPublishBlockedMessage] = useState('');
 
-  // Fetch chapter draft
+  // Chapter Draft Query (for edit mode)
   const {
     data: chapter,
-    isLoading,
-    isError,
-    error,
+    isLoading: isChapterLoading,
+    isError: isChapterError,
+    error: chapterError,
     refetch,
-  } = useChapterDraftQuery(courseId, chapterId);
+  } = useChapterDraftQuery(courseId, isNewMode ? '' : chapterId);
 
-  const { mutateAsync: saveDraft, isPending: isSaving } =
-    useSaveChapterDraftMutation(courseId, chapterId);
-  const { mutateAsync: publishChapter, isPending: isPublishing } =
-    usePublishChapterMutation(courseId, chapterId);
+  // Mutations
+  const { mutateAsync: createChapter, isPending: isCreating } = useCreateChapterMutation(courseId);
+  const { mutateAsync: saveDraft, isPending: isSaving } = useSaveChapterDraftDynamicMutation(courseId);
+  const { mutateAsync: publishChapter, isPending: isPublishing } = usePublishChapterDynamicMutation(courseId);
+  const { mutateAsync: deleteChapter, isPending: isDeleting } = useDeleteChapterMutation(courseId);
+  const { mutateAsync: reorderChapters } = useReorderChaptersMutation(courseId);
+  const { mutateAsync: setChapterAccess, isPending: isSettingAccess } = useSetChapterAccessMutation(
+    courseId,
+    isNewMode ? '' : chapterId
+  );
 
-  // Populate local working state whenever fresh server data arrives
-  useEffect(() => {
-    if (chapter) {
-      setTitle(chapter.title || '');
-      setDescription(chapter.description || '');
-      setBlocks(chapter.blocks || []);
-      setBaseVersionNo(chapter.lastVersionNo || 1);
-      setIsDirty(false);
+  // Luôn đảm bảo có ít nhất 1 khối text trống ở dưới cùng
+  const ensureTrailingEmptyTextBlock = useCallback((currentBlocks: BlockDto[]): BlockDto[] => {
+    if (currentBlocks.length === 0) {
+      return [createEmptyTextBlock(1)];
     }
-  }, [chapter]);
+    const lastBlock = currentBlocks[currentBlocks.length - 1];
+    if (!lastBlock) {
+      return [createEmptyTextBlock(1)];
+    }
+    const isLastBlockEmptyText =
+      lastBlock.blockType === 'RICH_TEXT' && isRichDocEmpty(lastBlock.body);
 
-  // Window beforeunload guard to protect uncommitted data
+    if (!isLastBlockEmptyText) {
+      // Tự động append một khối text trống ở dưới cùng
+      const nextList = [...currentBlocks, createEmptyTextBlock(currentBlocks.length + 1)];
+      return nextList.map((b, i) => ({ ...b, position: i + 1 }));
+    }
+    return currentBlocks;
+  }, []);
+
+  // Populate draft data in edit mode
+  useEffect(() => {
+    if (!isNewMode && chapter) {
+      const initTitle = chapter.title || '';
+      setTitle(initTitle);
+      const mode = ((chapter as any)?.accessMode as any) || 'PUBLIC';
+      setAccessMode(mode);
+      setPasscode((prev) => (chapter as any)?.passcode || prev || '');
+      setBaseVersionNo(chapter.lastVersionNo || 1);
+
+      let loadedBlocks: BlockDto[] = [];
+      if (chapter.blocks && chapter.blocks.length > 0) {
+        loadedBlocks = chapter.blocks;
+      } else {
+        loadedBlocks = [createEmptyTextBlock(1)];
+      }
+      const guaranteed = ensureTrailingEmptyTextBlock(loadedBlocks);
+      setBlocks(guaranteed);
+      setIsDirty(false);
+      undoStackRef.current = [{ title: initTitle, blocks: JSON.parse(JSON.stringify(guaranteed)) }];
+      redoStackRef.current = [];
+    }
+  }, [isNewMode, chapter, ensureTrailingEmptyTextBlock]);
+
+  // Window beforeunload guard
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (isDirty) {
         e.preventDefault();
-        e.returnValue = 'Bạn có thay đổi chưa lưu!';
-        return 'Bạn có thay đổi chưa lưu!';
+        e.returnValue = 'Bạn có thay đổi chưa lưu trên chương!';
+        return 'Bạn có thay đổi chưa lưu trên chương!';
       }
     };
-
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isDirty]);
 
-  // Handle safe back navigation
-  const handleSafeBack = (to: string) => {
-    if (isDirty) {
-      pendingExitPathRef.current = to;
-      setShowUnsavedExitDialog(true);
-    } else {
-      navigate(to);
-    }
-  };
-
-  const handleConfirmExit = () => {
-    setShowUnsavedExitDialog(false);
-    setIsDirty(false);
-    if (pendingExitPathRef.current) {
-      navigate(pendingExitPathRef.current);
-    }
-  };
-
-  // Block management functions
-  const handleAddBlock = (blockType: BlockType) => {
-    const newPosition = blocks.length + 1;
-    // Generate a client-side stable UUID (v7 style or crypto UUID)
-    const newId =
-      typeof crypto !== 'undefined' && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `block-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-
-    const newBlock: BlockDto = {
-      id: newId,
-      blockType,
-      position: newPosition,
-      title: null,
-      body: blockType === 'RICH_TEXT' ? '<p></p>' : blockType === 'MARKDOWN' ? '' : null,
-      resourceId: null,
-      questionId: null,
-      flashcards: blockType === 'FLASHCARD' ? [{ front: '', back: '' }] : undefined,
-      aiReviewStatus: 'NOT_APPLICABLE',
-      quizConfig:
-        blockType === 'QUIZ'
-          ? {
-              timeLimitMinutes: 45,
-              passScore: 70,
-              maxAttempts: 3,
-              resultDisplay: 'AFTER_SUBMIT',
-              shuffleQuestions: true,
-              shuffleOptions: true,
-              questions: [],
-              randomRules: [],
+  // Global Keyboard shortcuts: Undo (Ctrl+Z), Redo (Ctrl+Y / Ctrl+Shift+Z), Delete selected blocks
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // 1. Undo
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        if (undoStackRef.current.length > 1) {
+          e.preventDefault();
+          const current = undoStackRef.current.pop();
+          if (current) {
+            redoStackRef.current.push({
+              title,
+              blocks: JSON.parse(JSON.stringify(blocks)),
+            });
+            const prev = undoStackRef.current[undoStackRef.current.length - 1];
+            if (prev) {
+              isUndoRedoActionRef.current = true;
+              setTitle(prev.title);
+              setBlocks(JSON.parse(JSON.stringify(prev.blocks)));
+              setIsDirty(true);
+              setTimeout(() => {
+                isUndoRedoActionRef.current = false;
+              }, 50);
             }
-          : undefined,
-      assignmentConfig:
-        blockType === 'ASSIGNMENT'
-          ? {
-              dueAt: null,
-              maxPoints: 10,
-              maxFileSizeBytes: 10 * 1024 * 1024,
+          }
+        }
+        return;
+      }
+
+      // 2. Redo
+      if (
+        ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') ||
+        ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z')
+      ) {
+        if (redoStackRef.current.length > 0) {
+          e.preventDefault();
+          const next = redoStackRef.current.pop();
+          if (next) {
+            undoStackRef.current.push({
+              title,
+              blocks: JSON.parse(JSON.stringify(blocks)),
+            });
+            isUndoRedoActionRef.current = true;
+            setTitle(next.title);
+            setBlocks(JSON.parse(JSON.stringify(next.blocks)));
+            setIsDirty(true);
+            setTimeout(() => {
+              isUndoRedoActionRef.current = false;
+            }, 50);
+          }
+        }
+        return;
+      }
+
+      // 3. Xóa các block đã chọn bằng Delete / Backspace khi không focus ô input
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedBlockIds.size > 0) {
+        const activeTag = (document.activeElement?.tagName || '').toLowerCase();
+        const isEditingText =
+          activeTag === 'input' ||
+          activeTag === 'textarea' ||
+          document.activeElement?.getAttribute('contenteditable') === 'true';
+
+        if (!isEditingText) {
+          e.preventDefault();
+          handleDeleteSelectedBlocks();
+        }
+        return;
+      }
+
+      // 4. Copy blocks (Ctrl+C / Cmd+C)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
+        const textSelection = window.getSelection()?.toString();
+        // Chỉ copy block nếu người dùng không bôi đen text trong contenteditable
+        if (!textSelection && selectedBlockIds.size > 0) {
+          e.preventDefault();
+          const toCopy = blocks.filter((b) => selectedBlockIds.has(b.id));
+          if (toCopy.length > 0) {
+            copiedBlocksRef.current = JSON.parse(JSON.stringify(toCopy));
+            try {
+              navigator.clipboard?.writeText(
+                JSON.stringify({ type: 'BRAINMEMO_BLOCKS', blocks: toCopy })
+              );
+            } catch {
+              // Ignore clipboard restriction
             }
-          : undefined,
+            pushToast({
+              title: `Đã sao chép ${toCopy.length} khối`,
+              tone: 'default',
+            });
+          }
+        }
+        return;
+      }
+
+      // 5. Paste blocks (Ctrl+V / Cmd+V)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+        const activeTag = (document.activeElement?.tagName || '').toLowerCase();
+        const isEditingInput = activeTag === 'input' || activeTag === 'textarea';
+        if (!isEditingInput && copiedBlocksRef.current && copiedBlocksRef.current.length > 0 && selectedBlockIds.size > 0) {
+          e.preventDefault();
+          pushUndoSnapshot(title, blocks);
+
+          const cloned: BlockDto[] = copiedBlocksRef.current.map((b) => ({
+            ...b,
+            id: generateBlockId(),
+          }));
+
+          let lastSelectedIndex = -1;
+          blocks.forEach((b, idx) => {
+            if (selectedBlockIds.has(b.id)) lastSelectedIndex = idx;
+          });
+
+          const nextList = [...blocks];
+          const insertIdx = lastSelectedIndex !== -1 ? lastSelectedIndex + 1 : nextList.length - 1;
+          nextList.splice(insertIdx, 0, ...cloned);
+
+          const guaranteed = ensureTrailingEmptyTextBlock(nextList);
+          setBlocks(guaranteed);
+          setSelectedBlockIds(new Set(cloned.map((c) => c.id)));
+          setIsDirty(true);
+
+          pushToast({
+            title: `Đã dán ${cloned.length} khối`,
+            tone: 'success',
+          });
+          return;
+        }
+      }
     };
 
-    setBlocks([...blocks, newBlock]);
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [title, blocks, selectedBlockIds, pushToast, pushUndoSnapshot]);
+
+  // Marquee / Box Selection effect
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!marqueeStartPosRef.current) return;
+
+      const dx = e.clientX - marqueeStartPosRef.current.x;
+      const dy = e.clientY - marqueeStartPosRef.current.y;
+
+      if (!isMarqueeDraggingRef.current) {
+        if (Math.hypot(dx, dy) >= 6) {
+          isMarqueeDraggingRef.current = true;
+          window.getSelection()?.removeAllRanges();
+        } else {
+          return;
+        }
+      }
+
+      const selLeft = Math.min(marqueeStartPosRef.current.x, e.clientX);
+      const selTop = Math.min(marqueeStartPosRef.current.y, e.clientY);
+      const selRight = Math.max(marqueeStartPosRef.current.x, e.clientX);
+      const selBottom = Math.max(marqueeStartPosRef.current.y, e.clientY);
+
+      setMarqueeRect({
+        startX: marqueeStartPosRef.current.x,
+        startY: marqueeStartPosRef.current.y,
+        currentX: e.clientX,
+        currentY: e.clientY,
+      });
+
+      const blockElements = document.querySelectorAll<HTMLElement>('[data-block-id]');
+      const matchedIds = new Set<string>();
+
+      blockElements.forEach((el) => {
+        const rect = el.getBoundingClientRect();
+        const isOverlap = !(
+          rect.right < selLeft ||
+          rect.left > selRight ||
+          rect.bottom < selTop ||
+          rect.top > selBottom
+        );
+        if (isOverlap) {
+          const id = el.getAttribute('data-block-id');
+          if (id) matchedIds.add(id);
+        }
+      });
+
+      setSelectedBlockIds(matchedIds);
+    };
+
+    const handleMouseUp = (e: MouseEvent) => {
+      if (marqueeStartPosRef.current && !isMarqueeDraggingRef.current) {
+        const target = e.target as HTMLElement;
+        const isClickOnBlockGrip = target.closest('[data-drag-handle="true"]');
+        const isClickInsideModal = target.closest('[role="dialog"], [role="menu"]');
+        if (!isClickOnBlockGrip && !isClickInsideModal) {
+          setSelectedBlockIds(new Set());
+        }
+      }
+
+      marqueeStartPosRef.current = null;
+      isMarqueeDraggingRef.current = false;
+      setMarqueeRect(null);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [blocks]);
+
+  // Viewport auto-scrolling when dragging block near window edges
+  useEffect(() => {
+    let animationFrameId: number | null = null;
+    let scrollSpeed = 0;
+
+    const scrollLoop = () => {
+      if (scrollSpeed !== 0) {
+        window.scrollBy(0, scrollSpeed);
+        animationFrameId = requestAnimationFrame(scrollLoop);
+      } else {
+        animationFrameId = null;
+      }
+    };
+
+    const handleWindowDragOver = (e: DragEvent) => {
+      if (draggedIndexRef.current === null) return;
+      const threshold = 100;
+      const maxSpeed = 18;
+
+      if (e.clientY < threshold) {
+        const factor = (threshold - e.clientY) / threshold;
+        scrollSpeed = -Math.round(maxSpeed * factor);
+      } else if (window.innerHeight - e.clientY < threshold) {
+        const factor = (threshold - (window.innerHeight - e.clientY)) / threshold;
+        scrollSpeed = Math.round(maxSpeed * factor);
+      } else {
+        scrollSpeed = 0;
+      }
+
+      if (scrollSpeed !== 0 && animationFrameId === null) {
+        animationFrameId = requestAnimationFrame(scrollLoop);
+      }
+    };
+
+    const handleWindowDragEnd = () => {
+      scrollSpeed = 0;
+      if (animationFrameId !== null) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
+    };
+
+    window.addEventListener('dragover', handleWindowDragOver);
+    window.addEventListener('dragend', handleWindowDragEnd);
+    window.addEventListener('drop', handleWindowDragEnd);
+
+    return () => {
+      window.removeEventListener('dragover', handleWindowDragOver);
+      window.removeEventListener('dragend', handleWindowDragEnd);
+      window.removeEventListener('drop', handleWindowDragEnd);
+      if (animationFrameId !== null) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, []);
+
+  const handleCanvasMouseDown = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+
+    // RULE: Kéo chuột trên canvas chỉ kích hoạt khi kéo chuột từ bên ngoài phạm vi block!
+    // Còn kéo từ trong block thì không kích hoạt (sẽ chỉ bôi đen nội dung trong block)
+    if (target.closest('[data-block-id]')) {
+      const blockEl = target.closest('[data-block-id]');
+      const blockId = blockEl?.getAttribute('data-block-id');
+      // If clicking inside a block that is ALREADY in selectedBlockIds, do NOT deselect so user can drag the multi-block selection!
+      if (blockId && selectedBlockIds.has(blockId)) {
+        return;
+      }
+      if (!target.closest('[data-drag-handle="true"]')) {
+        setSelectedBlockIds(new Set());
+      }
+      return;
+    }
+
+    if (
+      target.closest('header') ||
+      target.closest('input') ||
+      target.closest('textarea') ||
+      target.closest('button') ||
+      target.closest('[role="dialog"]') ||
+      target.closest('[role="menu"]')
+    ) {
+      return;
+    }
+
+    marqueeStartPosRef.current = { x: e.clientX, y: e.clientY };
+    isMarqueeDraggingRef.current = false;
+  };
+
+  // Navigation exit guard
+  const handleExitToChapterList = () => {
+    if (isDirty) {
+      pendingExitPathRef.current = `/courses/${courseId}/manage/content`;
+      setShowUnsavedExitDialog(true);
+    } else {
+      navigate(`/courses/${courseId}/manage/content`);
+    }
+  };
+
+  const handleConfirmExitDiscard = () => {
+    setShowUnsavedExitDialog(false);
+    setIsDirty(false);
+    const target = pendingExitPathRef.current || `/courses/${courseId}/manage/content`;
+    navigate(target);
+  };
+
+  const handleSaveAndExit = async () => {
+    const success = await handleSaveDraft();
+    if (success) {
+      setShowUnsavedExitDialog(false);
+      const target = pendingExitPathRef.current || `/courses/${courseId}/manage/content`;
+      navigate(target);
+    }
+  };
+
+  // Block management
+  const handleAddBlockBelow = (targetIndex: number, type: BlockType = 'RICH_TEXT') => {
+    pushUndoSnapshot(title, blocks);
+    const newId = generateBlockId();
+    const newBlock: BlockDto = {
+      id: newId,
+      blockType: type,
+      position: targetIndex + 2,
+      title: null,
+      body:
+        type === 'RICH_TEXT'
+          ? JSON.stringify(createEmptyRichDocJson())
+          : type === 'MARKDOWN'
+          ? ''
+          : null,
+      resourceId: null,
+      questionId: null,
+      flashcards: type === 'FLASHCARD' ? [{ front: '', back: '' }] : undefined,
+      aiReviewStatus: 'NOT_APPLICABLE',
+    };
+
+    const nextList = [...blocks];
+    nextList.splice(targetIndex + 1, 0, newBlock);
+    const guaranteed = ensureTrailingEmptyTextBlock(nextList);
+    setBlocks(guaranteed);
+    setFocusedBlockId(newId);
+    setSelectedBlockIds(new Set());
     setIsDirty(true);
   };
 
   const handleUpdateBlock = (updatedBlock: BlockDto) => {
-    setBlocks(blocks.map((b) => (b.id === updatedBlock.id ? updatedBlock : b)));
+    const next = blocks.map((b) => (b.id === updatedBlock.id ? updatedBlock : b));
+    const guaranteed = ensureTrailingEmptyTextBlock(next);
+    setBlocks(guaranteed);
     setIsDirty(true);
   };
 
   const handleDeleteBlock = (blockId: string) => {
-    const remaining = blocks.filter((b) => b.id !== blockId);
-    // Re-index positions 1..N
-    const reindexed = remaining.map((b, i) => ({ ...b, position: i + 1 }));
-    setBlocks(reindexed);
+    pushUndoSnapshot(title, blocks);
+    if (blocks.length <= 1) {
+      setBlocks([createEmptyTextBlock(1)]);
+    } else {
+      const remaining = blocks.filter((b) => b.id !== blockId);
+      const guaranteed = ensureTrailingEmptyTextBlock(remaining);
+      setBlocks(guaranteed);
+    }
+    setSelectedBlockIds(new Set());
+    setIsDirty(true);
+  };
+
+  const handleDeleteSelectedBlocks = () => {
+    if (selectedBlockIds.size === 0) return;
+    pushUndoSnapshot(title, blocks);
+    const remaining = blocks.filter((b) => !selectedBlockIds.has(b.id));
+    const guaranteed = ensureTrailingEmptyTextBlock(remaining);
+    setBlocks(guaranteed);
+    setSelectedBlockIds(new Set());
     setIsDirty(true);
   };
 
   const handleMoveBlock = (index: number, direction: 'UP' | 'DOWN') => {
-    const targetIndex = direction === 'UP' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= blocks.length) return;
+    const block = blocks[index];
+    if (!block) return;
 
-    const list = [...blocks];
-    const [moved] = list.splice(index, 1);
-    if (!moved) return;
-    list.splice(targetIndex, 0, moved);
+    let movingBlocks: BlockDto[];
+    if (selectedBlockIds.has(block.id) && selectedBlockIds.size > 1) {
+      movingBlocks = blocks.filter((b) => selectedBlockIds.has(b.id));
+    } else {
+      movingBlocks = [block];
+    }
 
-    const reindexed = list.map((b, i) => ({ ...b, position: i + 1 }));
-    setBlocks(reindexed);
+    const movingBlockIds = new Set(movingBlocks.map((b) => b.id));
+    const firstMovingIdx = blocks.findIndex((b) => movingBlockIds.has(b.id));
+    const lastMovingIdx =
+      blocks.length - 1 - [...blocks].reverse().findIndex((b) => movingBlockIds.has(b.id));
+
+    if (direction === 'UP' && firstMovingIdx <= 0) return;
+    if (direction === 'DOWN' && lastMovingIdx >= blocks.length - 1) return;
+
+    pushUndoSnapshot(title, blocks);
+
+    const remainingBlocks = blocks.filter((b) => !movingBlockIds.has(b.id));
+
+    if (direction === 'UP') {
+      const blockAboveFirst = blocks[firstMovingIdx - 1];
+      if (!blockAboveFirst) return;
+      const targetIdxInRemaining = remainingBlocks.findIndex((b) => b.id === blockAboveFirst.id);
+      remainingBlocks.splice(targetIdxInRemaining, 0, ...movingBlocks);
+    } else {
+      const blockBelowLast = blocks[lastMovingIdx + 1];
+      if (!blockBelowLast) return;
+      const targetIdxInRemaining = remainingBlocks.findIndex((b) => b.id === blockBelowLast.id);
+      remainingBlocks.splice(targetIdxInRemaining + 1, 0, ...movingBlocks);
+    }
+
+    const guaranteed = ensureTrailingEmptyTextBlock(remainingBlocks);
+    setBlocks(guaranteed);
     setIsDirty(true);
   };
 
-  // Open resource picker for a specific media/file block
-  const handleOpenPickerForBlock = (blockId: string) => {
-    setPickerTargetBlockId(blockId);
-    setIsResourceDrawerOpen(true);
-  };
-
-  const handleSelectResourceFromDrawer = (resource: ResourceDto) => {
-    if (pickerTargetBlockId) {
-      setBlocks(
-        blocks.map((b) =>
-          b.id === pickerTargetBlockId
-            ? { ...b, resourceId: resource.id, title: b.title || resource.originalFilename }
-            : b
-        )
-      );
-      setIsDirty(true);
-      setPickerTargetBlockId(null);
+  // Drag and Drop block reordering (Hỗ trợ kéo thả 1 hoặc nhiều block cùng lúc)
+  const handleDragStart = (index: number) => {
+    draggedIndexRef.current = index;
+    const block = blocks[index];
+    if (block && !selectedBlockIds.has(block.id)) {
+      setSelectedBlockIds(new Set([block.id]));
     }
   };
 
-  // Save Draft (Optimistic Locking)
-  const handleSaveDraft = async () => {
-    if (!title.trim()) {
-      pushToast({
-        title: 'Tên chương không được để trống',
-        tone: 'warning',
-      });
+  const handleDragOver = (e: React.DragEvent, _targetIndex: number) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (targetIndex: number, position: 'TOP' | 'BOTTOM' = 'BOTTOM') => {
+    const sourceIndex = draggedIndexRef.current;
+    if (sourceIndex === null) return;
+
+    const draggedBlock = blocks[sourceIndex];
+    if (!draggedBlock) return;
+
+    let movingBlocks: BlockDto[];
+    if (selectedBlockIds.has(draggedBlock.id)) {
+      movingBlocks = blocks.filter((b) => selectedBlockIds.has(b.id));
+    } else {
+      movingBlocks = [draggedBlock];
+      setSelectedBlockIds(new Set([draggedBlock.id]));
+    }
+
+    if (movingBlocks.length === 0) return;
+
+    const targetBlock = blocks[targetIndex];
+    if (!targetBlock) return;
+
+    if (movingBlocks.some((b) => b.id === targetBlock.id)) {
+      draggedIndexRef.current = null;
       return;
     }
 
-    try {
-      const updated = await saveDraft({
-        baseVersionNo,
-        title: title.trim(),
-        description: description.trim() || '',
-        blocks,
-      });
+    pushUndoSnapshot(title, blocks);
 
-      setBaseVersionNo(updated.lastVersionNo || baseVersionNo + 1);
-      setIsDirty(false);
+    const movingBlockIds = new Set(movingBlocks.map((b) => b.id));
+    const remainingBlocks = blocks.filter((b) => !movingBlockIds.has(b.id));
 
+    const targetIdxInRemaining = remainingBlocks.findIndex((b) => b.id === targetBlock.id);
+    if (targetIdxInRemaining === -1) {
+      draggedIndexRef.current = null;
+      return;
+    }
+
+    const insertIndex = position === 'TOP' ? targetIdxInRemaining : targetIdxInRemaining + 1;
+    remainingBlocks.splice(insertIndex, 0, ...movingBlocks);
+
+    const guaranteed = ensureTrailingEmptyTextBlock(remainingBlocks);
+    setBlocks(guaranteed);
+    draggedIndexRef.current = null;
+    setIsDirty(true);
+  };
+
+  // Convert block type (nội dung cũ biến mất)
+  const handleConvertBlockType = (blockId: string, targetType: BlockType) => {
+    pushUndoSnapshot(title, blocks);
+    setBlocks(
+      blocks.map((b) => {
+        if (b.id !== blockId) return b;
+        return {
+          id: b.id,
+          blockType: targetType,
+          position: b.position,
+          title: null,
+          body:
+            targetType === 'RICH_TEXT'
+              ? JSON.stringify(createEmptyRichDocJson())
+              : targetType === 'MARKDOWN'
+              ? ''
+              : null,
+          resourceId: null,
+          questionId: null,
+          flashcards: targetType === 'FLASHCARD' ? [{ front: '', back: '' }] : undefined,
+          aiReviewStatus: 'NOT_APPLICABLE',
+        };
+      })
+    );
+    setIsDirty(true);
+  };
+
+  // Keyboard navigation across blocks (ArrowUp / ArrowDown)
+  const handleFocusPrevBlock = (currentIndex: number) => {
+    if (currentIndex > 0) {
+      const prevBlock = blocks[currentIndex - 1];
+      if (prevBlock) {
+        setFocusDirection('FROM_BOTTOM');
+        setFocusedBlockId(prevBlock.id);
+      }
+    }
+  };
+
+  const handleFocusNextBlock = (currentIndex: number) => {
+    if (currentIndex < blocks.length - 1) {
+      const nextBlock = blocks[currentIndex + 1];
+      if (nextBlock) {
+        setFocusDirection('FROM_TOP');
+        setFocusedBlockId(nextBlock.id);
+      }
+    }
+  };
+
+  // Block type popup menu selection (Khi bấm dấu +)
+  const handleSelectTypeCommand = (item: SlashCommandItem) => {
+    if (!activeTypeMenu) return;
+    const targetId = activeTypeMenu.blockId;
+    setActiveTypeMenu(null);
+    const targetIdx = blocks.findIndex((b) => b.id === targetId);
+    if (targetIdx !== -1) {
+      handleAddBlockBelow(targetIdx, item.blockType);
+    }
+  };
+
+  // Floating text format commands
+  const handleExecuteFormatCommand = (command: string, arg?: string) => {
+    document.execCommand(command, false, arg);
+    setIsDirty(true);
+  };
+
+  // Apply heading (H1 - H6, p)
+  const handleApplyHeading = (level: 1 | 2 | 3 | 4 | 5 | 6 | 'p') => {
+    const tag = level === 'p' ? '<p>' : `<h${level}>`;
+    document.execCommand('formatBlock', false, tag);
+    const sel = window.getSelection();
+    if (sel?.anchorNode) {
+      const parent =
+        sel.anchorNode.nodeType === Node.TEXT_NODE
+          ? sel.anchorNode.parentElement
+          : (sel.anchorNode as HTMLElement);
+      const editable = parent?.closest('[contenteditable="true"]') as HTMLElement | null;
+      if (editable) {
+        editable.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }
+    setIsDirty(true);
+  };
+
+  // Format code (<>)
+  const handleToggleCode = () => {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+    const parentCode = (sel.anchorNode?.nodeType === Node.TEXT_NODE
+      ? sel.anchorNode.parentElement
+      : (sel.anchorNode as HTMLElement)
+    )?.closest('code');
+
+    if (parentCode) {
+      // Unwrap
+      const textNode = document.createTextNode(parentCode.textContent || '');
+      parentCode.parentNode?.replaceChild(textNode, parentCode);
+    } else {
+      // Wrap code
+      const codeEl = document.createElement('code');
+      codeEl.className =
+        'bg-muted/80 text-[#ff7a1a] px-1.5 py-0.5 rounded font-mono text-xs border border-border/60';
+      codeEl.textContent = range.toString() || 'code';
+      range.deleteContents();
+      range.insertNode(codeEl);
+    }
+    setIsDirty(true);
+  };
+
+  // Chèn bảng với số dòng & số cột tùy chọn
+  const handleInsertTableCustom = (rows: number, cols: number) => {
+    let headerThs = '';
+    for (let c = 1; c <= cols; c++) {
+      headerThs += `<th class="border border-border/80 p-2.5 bg-muted/40 text-left font-semibold">Cột ${c}</th>`;
+    }
+
+    let bodyRows = '';
+    for (let r = 1; r < rows; r++) {
+      let cells = '';
+      for (let c = 1; c <= cols; c++) {
+        cells += `<td class="border border-border/80 p-2.5">Dữ liệu ${r}.${c}</td>`;
+      }
+      bodyRows += `<tr>${cells}</tr>`;
+    }
+
+    const tableHtml = `
+      <table class="border-collapse w-full my-3 border border-border/80">
+        <thead>
+          <tr class="bg-muted/40">${headerThs}</tr>
+        </thead>
+        <tbody>
+          ${bodyRows || `<tr><td class="border border-border/80 p-2.5" colspan="${cols}">Nội dung hàng</td></tr>`}
+        </tbody>
+      </table><p></p>
+    `;
+
+    document.execCommand('insertHTML', false, tableHtml);
+    const sel = window.getSelection();
+    const anchorNode = sel?.anchorNode;
+    const editableEl = (
+      anchorNode instanceof HTMLElement ? anchorNode : anchorNode?.parentElement
+    )?.closest<HTMLElement>('[contenteditable="true"]');
+    if (editableEl) {
+      editableEl.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    setIsDirty(true);
+  };
+
+  // Áp dụng chế độ truy cập từ Panel
+  const handleApplyAccess = async (newMode: 'PUBLIC' | 'PROTECTED', newPasscode: string) => {
+    setAccessMode(newMode);
+    setPasscode(newPasscode);
+
+    if (!isNewMode) {
+      try {
+        await setChapterAccess({
+          accessMode: newMode,
+          passcode: newMode === 'PROTECTED' ? newPasscode : undefined,
+        });
+        queryClient.setQueryData(
+          queryKeys.content.chapterDraft(courseId, chapterId),
+          (old: any) =>
+            old
+              ? {
+                  ...old,
+                  accessMode: newMode,
+                  passcode: newPasscode,
+                }
+              : old
+        );
+        pushToast({
+          title: 'Cập nhật chế độ truy cập thành công',
+          description: `Chương đã chuyển sang chế độ ${
+            newMode === 'PROTECTED' ? 'Protected (Có mật khẩu)' : 'Public (Công khai)'
+          }.`,
+          tone: 'success',
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Không thể lưu chế độ truy cập.';
+        pushToast({
+          title: 'Lỗi',
+          description: msg,
+          tone: 'error',
+        });
+        return;
+      }
+    } else {
       pushToast({
-        title: 'Lưu bản nháp thành công',
-        description: `Bản nháp đã được lưu an toàn (Phiên bản #${updated.lastVersionNo}).`,
-        tone: 'success',
+        title: 'Đã lưu thiết lập truy cập',
+        description: 'Chế độ truy cập sẽ được áp dụng khi bạn lưu nháp chương mới.',
+        tone: 'default',
       });
+      setIsDirty(true);
+    }
+    setIsAccessPanelOpen(false);
+  };
+
+  // Save Draft (Chỉ lưu khi click nút "Lưu nháp")
+  const handleSaveDraft = async (): Promise<boolean> => {
+    if (!title.trim()) {
+      pushToast({
+        title: 'Vui lòng nhập tên chương',
+        tone: 'warning',
+      });
+      return false;
+    }
+
+    try {
+      // Synchronize live DOM HTML from contenteditable elements before saving
+      const blockElements = document.querySelectorAll<HTMLElement>('[data-block-id]');
+      const domContentByBlockId = new Map<string, string>();
+      blockElements.forEach((el) => {
+        const blockId = el.getAttribute('data-block-id');
+        const editable = el.querySelector<HTMLElement>('[contenteditable="true"]');
+        if (blockId && editable) {
+          domContentByBlockId.set(blockId, editable.innerHTML);
+        }
+      });
+
+      const normalizedBlocks = blocks.map((b) => {
+        if (b.blockType === 'RICH_TEXT') {
+          const liveHtml = domContentByBlockId.get(b.id);
+          const bodyStr = liveHtml !== undefined ? liveHtml : (b.body || '');
+          const isJson = isRichDocumentJsonString(bodyStr);
+          const jsonBody = isJson ? bodyStr : JSON.stringify(htmlToRichJson(bodyStr));
+          return { ...b, body: jsonBody };
+        }
+        return b;
+      });
+
+      if (isNewMode) {
+        // 1. Tạo chương mới
+        const created = await createChapter({
+          title: title.trim(),
+          description: '',
+        });
+
+        // 2. Nếu chèn sau một chương, reorder
+        if (afterChapterId && created.id && allChapters) {
+          const remainingIds = allChapters
+            .map((c) => c.id!)
+            .filter((id) => id !== created.id);
+          const targetIdx = remainingIds.findIndex((id) => id === afterChapterId);
+          if (targetIdx !== -1) {
+            remainingIds.splice(targetIdx + 1, 0, created.id);
+            await reorderChapters(remainingIds);
+          }
+        }
+
+        // 3. Cập nhật access mode nếu được thiết lập
+        if (created.id && accessMode === 'PROTECTED') {
+          await setChapterAccess({
+            accessMode: 'PROTECTED',
+            passcode: passcode || undefined,
+          });
+        }
+
+        // 4. Lưu nội dung draft vừa soạn vào chương mới (với body đã là JSON)
+        if (created.id) {
+          await saveDraft({
+            chapterId: created.id,
+            body: {
+              baseVersionNo: 1,
+              title: title.trim(),
+              description: '',
+              blocks: normalizedBlocks,
+            },
+          });
+
+          pushToast({
+            title: 'Lưu bản nháp thành công',
+            description: `Chương "${created.title}" đã được tạo và lưu thành công.`,
+            tone: 'success',
+          });
+
+          setIsDirty(false);
+          navigate(`/courses/${courseId}/manage/content/${created.id}`, { replace: true });
+        }
+      } else {
+        // Lưu chương hiện có (với body đã là JSON)
+        const updated = await saveDraft({
+          chapterId,
+          body: {
+            baseVersionNo,
+            title: title.trim(),
+            description: chapter?.description || '',
+            blocks: normalizedBlocks,
+          },
+        });
+
+        setBaseVersionNo(updated.lastVersionNo || baseVersionNo + 1);
+        setIsDirty(false);
+
+        // Update local query cache to reflect Draft state & unpublished changes
+        queryClient.setQueryData(queryKeys.content.chapterDraft(courseId, chapterId), (old: any) =>
+          old
+            ? {
+                ...old,
+                status: 'DRAFT',
+                hasUnpublishedChanges: true,
+                lastVersionNo: updated.lastVersionNo,
+              }
+            : old
+        );
+
+        pushToast({
+          title: 'Lưu bản nháp thành công',
+          description: `Bản nháp đã được lưu an toàn (Phiên bản #${updated.lastVersionNo}).`,
+          tone: 'success',
+        });
+      }
+      return true;
     } catch (err: unknown) {
       if (
         (err instanceof ApiProblemError && err.status === 409) ||
@@ -276,18 +1060,20 @@ export function ChapterEditorPage() {
           tone: 'error',
         });
       }
+      return false;
     }
   };
 
   // Publish Chapter
   const handlePublish = async () => {
     if (isDirty) {
-      // Prompt user to save first
-      await handleSaveDraft();
+      const saved = await handleSaveDraft();
+      if (!saved) return;
     }
 
     try {
-      const published = await publishChapter();
+      const targetId = isNewMode ? chapterId : chapterId;
+      const published = await publishChapter(targetId);
       pushToast({
         title: 'Đăng tải chương thành công',
         description: `Chương "${published.title}" hiện đã được xuất bản tới học viên.`,
@@ -304,7 +1090,7 @@ export function ChapterEditorPage() {
         const detailMsg =
           err && typeof err === 'object' && 'detail' in err
             ? String((err as { detail?: string }).detail)
-            : 'Không thể đăng tải: Chương chưa đáp ứng đủ điều kiện (ví dụ: bộ flashcard AI chưa được phê duyệt, bài kiểm tra thiếu câu hỏi hợp lệ hoặc tài nguyên chưa sẵn sàng).';
+            : 'Không thể đăng tải: Chương chưa đáp ứng đủ điều kiện kiểm duyệt.';
         setPublishBlockedMessage(detailMsg);
         setPublishBlockedDialogOpen(true);
       } else {
@@ -323,286 +1109,396 @@ export function ChapterEditorPage() {
     }
   };
 
-  if (isLoading) {
+  // Delete chapter confirm
+  const handleDeleteChapterConfirm = async () => {
+    if (isNewMode) {
+      setIsDirty(false);
+      navigate(`/courses/${courseId}/manage/content`);
+      return;
+    }
+
+    try {
+      await deleteChapter(chapterId);
+      pushToast({
+        title: 'Đã xóa chương',
+        description: 'Chương bài học đã được xóa vĩnh viễn.',
+        tone: 'success',
+      });
+      setIsDeleteDialogOpen(false);
+      navigate(`/courses/${courseId}/manage/content`);
+    } catch {
+      pushToast({
+        title: 'Lỗi',
+        description: 'Không thể xóa chương vào lúc này.',
+        tone: 'error',
+      });
+    }
+  };
+
+  if (!isNewMode && isChapterLoading) {
     return (
-      <div className="space-y-6 max-w-5xl mx-auto p-4 sm:p-6 lg:p-8">
-        <Skeleton className="h-10 w-48" />
-        <Skeleton className="h-20 w-full rounded-2xl" />
-        <div className="space-y-4 pt-4">
-          <Skeleton className="h-44 w-full rounded-2xl" />
-          <Skeleton className="h-44 w-full rounded-2xl" />
+      <div className="space-y-6 max-w-4xl mx-auto p-6 sm:p-12">
+        <Skeleton className="h-8 w-48 rounded-lg" />
+        <Skeleton className="h-14 w-full rounded-2xl" />
+        <div className="space-y-3 pt-6">
+          <Skeleton className="h-20 w-full rounded-xl" />
+          <Skeleton className="h-20 w-full rounded-xl" />
         </div>
       </div>
     );
   }
 
-  if (isError) {
+  if (!isNewMode && isChapterError) {
     return (
       <div className="max-w-4xl mx-auto p-6">
         <ErrorState
-          title="Không thể tải bản nháp chương"
-          error={error}
+          title="Không thể tải nội dung chương"
+          error={chapterError}
           onRetry={() => refetch()}
         />
       </div>
     );
   }
 
+  const courseTitle = course?.name || 'Khóa học';
+  const isCourseOnlyMe =
+    (course as any)?.accessMode === 'ONLY_ME' || (course as any)?.visibility === 'ONLY_ME';
+
   return (
-    <div className="min-h-screen bg-background text-foreground pb-20">
-      {/* Top Sticky Header & Controls Bar */}
-      <header className="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur-md px-4 sm:px-6 py-3 shadow-xs">
-        <div className="max-w-5xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          {/* Left: Back & Chapter Info */}
-          <div className="flex items-center gap-3 min-w-0">
+    <div
+      onMouseDown={handleCanvasMouseDown}
+      className="min-h-screen bg-background text-foreground flex flex-col"
+    >
+      {/* 1. TOP HEADER BAR */}
+      <header className="sticky top-0 z-30 border-b border-border/80 bg-card/90 backdrop-blur-md px-4 sm:px-8 py-2.5 shadow-xs">
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
+          {/* Left: Exit button & Course Name */}
+          <div className="flex items-center gap-2.5 min-w-0">
             <button
               type="button"
-              onClick={() => handleSafeBack(`/courses/${courseId}/manage/content`)}
+              onClick={handleExitToChapterList}
               aria-label="Quay lại mục lục chương"
-              className="rounded-xl border border-border p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0"
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-medium transition-colors shrink-0 p-1.5 rounded-lg hover:bg-muted"
             >
               <ArrowLeft className="h-4 w-4" />
+              <span>Danh sách chương</span>
             </button>
 
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-bold text-muted-foreground">
-                  v{baseVersionNo}
-                </span>
+            <div className="h-4 w-px bg-border/60 shrink-0" />
 
-                {chapter?.status === 'PUBLISHED' ? (
-                  <span className="rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.2 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                    <CheckCircle2 className="h-3 w-3" />
-                    Đã xuất bản
-                  </span>
-                ) : (
-                  <span className="rounded-full bg-amber-500/10 border border-amber-500/30 px-2 py-0.2 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
-                    Bản nháp
-                  </span>
-                )}
-
-                {/* Dirty state indicator */}
-                {isDirty ? (
-                  <span className="text-[11px] font-medium text-amber-500 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    Chưa lưu
-                  </span>
-                ) : (
-                  <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
-                    <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                    Đã lưu
-                  </span>
-                )}
-              </div>
-              <h2 className="text-sm sm:text-base font-bold text-foreground truncate max-w-sm sm:max-w-md">
-                {title || 'Chương chưa đặt tên'}
-              </h2>
-            </div>
+            <span className="text-xs text-muted-foreground/80 font-medium truncate max-w-[160px] sm:max-w-xs">
+              {courseTitle}
+            </span>
           </div>
 
-          {/* Right: Actions Bar */}
-          <div className="flex flex-wrap items-center gap-2 self-end md:self-auto">
-            {/* Resource Drawer Trigger */}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setPickerTargetBlockId(null);
-                setIsResourceDrawerOpen(true);
-              }}
-              title="Quản lý kho tài nguyên"
-              className="text-xs h-9"
-            >
-              <FolderOpen className="h-3.5 w-3.5 mr-1 text-primary" />
-              Tài nguyên
-            </Button>
+          {/* Center: Status pill badge */}
+          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-card border border-border/80 text-xs shadow-xs">
+            {chapter?.status === 'PUBLISHED' && !(chapter as any)?.hasUnpublishedChanges && !isNewMode ? (
+              <span className="text-emerald-500 font-medium">Đã xuất bản</span>
+            ) : (
+              <span className="text-muted-foreground font-medium">Nháp</span>
+            )}
+            <span className="text-muted-foreground/40">•</span>
+            {isDirty ? (
+              <span className="text-amber-500 font-medium flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                Chưa lưu thay đổi
+              </span>
+            ) : (
+              <span className="text-muted-foreground font-medium flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-emerald-500/80" />
+                Đã lưu
+              </span>
+            )}
+          </div>
 
-            {/* Version History Trigger */}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setIsVersionsModalOpen(true)}
-              title="Lịch sử phiên bản"
-              className="text-xs h-9"
-            >
-              <History className="h-3.5 w-3.5 mr-1" />
-              Lịch sử
-            </Button>
-
-            {/* Preview Trigger */}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setIsPreviewOpen(true)}
-              title="Xem trước như học viên"
-              aria-label="Xem trước như học viên"
-              className="text-xs h-9"
-            >
-              <Eye className="h-3.5 w-3.5 mr-1" />
-              Xem trước
-            </Button>
-
-            {/* Save Draft Button */}
+          {/* Right: Actions */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Lưu nháp (Chỉ lưu khi click) */}
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={handleSaveDraft}
-              disabled={isSaving}
-              className="text-xs h-9 font-semibold text-foreground border-primary/40 hover:bg-primary/5"
+              disabled={isSaving || isCreating}
+              className="text-xs h-8 px-3.5 font-medium border-border/80 hover:bg-muted"
             >
-              <Save className="h-3.5 w-3.5 mr-1.5 text-primary" />
-              {isSaving ? 'Đang lưu...' : 'Lưu nháp'}
+              {isSaving || isCreating ? 'Đang lưu...' : 'Lưu nháp'}
             </Button>
 
-            {/* Publish Button */}
+            {/* Đăng tải */}
             <Button
               type="button"
               size="sm"
               onClick={handlePublish}
-              disabled={isPublishing}
-              className="bg-primary hover:bg-primary/90 text-white text-xs h-9 font-semibold shadow-xs"
+              disabled={isPublishing || isSaving || isCreating}
+              className="bg-[#ff7a1a] hover:bg-[#ff7a1a]/90 text-[#3b1700] text-xs h-8 px-4 font-bold rounded-lg shadow-xs"
             >
-              <Send className="h-3.5 w-3.5 mr-1.5" />
               {isPublishing ? 'Đang đăng...' : 'Đăng tải'}
             </Button>
+
+            {/* Menu 3 chấm (CHỈ GIỮ 3 MỤC: Chế độ truy cập, Lịch sử phiên bản, Xóa chương) */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  title="Tùy chọn khác"
+                  aria-label="Tùy chọn khác cho chương"
+                  className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52 text-xs bg-popover border border-border text-popover-foreground shadow-xl">
+                {/* 1. Chế độ truy cập */}
+                <DropdownMenuItem
+                  onClick={() => setIsAccessPanelOpen(true)}
+                  className="flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-2">
+                    <Lock className="h-4 w-4 text-[#ff7a1a]" />
+                    <span>Chế độ truy cập</span>
+                  </div>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground font-medium">
+                    {accessMode === 'PROTECTED' ? 'Protected' : 'Public'}
+                  </span>
+                </DropdownMenuItem>
+
+                {/* 2. Lịch sử phiên bản */}
+                {!isNewMode && (
+                  <DropdownMenuItem
+                    onClick={() =>
+                      navigate(`/courses/${courseId}/manage/content/${chapterId}/versions`)
+                    }
+                  >
+                    <History className="h-4 w-4 mr-2 text-muted-foreground" />
+                    <span>Lịch sử phiên bản</span>
+                  </DropdownMenuItem>
+                )}
+
+                <DropdownMenuSeparator />
+
+                {/* 3. Xóa chương */}
+                <DropdownMenuItem
+                  onClick={() => setIsDeleteDialogOpen(true)}
+                  className="text-red-500 focus:text-red-500 focus:bg-red-500/10"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  <span>Xóa chương</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
 
-      {/* Main Canvas Area */}
-      <main className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
-        {/* Chapter Header Card (Title & Description) */}
-        <section
-          aria-label="Thông tin cơ bản chương"
-          className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4"
-        >
-          <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">
-              Tiêu đề chương bài học <span className="text-destructive">*</span>
-            </label>
-            <Input
-              value={title}
-              onChange={(e) => {
-                setTitle(e.target.value);
-                setIsDirty(true);
-              }}
-              placeholder="Nhập tên chương..."
-              className="text-base sm:text-lg font-serif font-bold"
-            />
-          </div>
+      {/* 2. NOTION CANVAS CONTAINER */}
+      <main
+        onMouseDown={handleCanvasMouseDown}
+        className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-12 py-10 space-y-6 relative"
+      >
+        {/* DÒNG TO ĐẦU TIÊN: Tiêu đề chương (Không có mô tả tóm tắt) */}
+        <div className="pl-12">
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              setIsDirty(true);
+            }}
+            placeholder="Chương: Tiêu đề chương bài học..."
+            aria-label="Tiêu đề chương bài học"
+            className="w-full bg-transparent font-serif text-3xl sm:text-4xl font-bold tracking-tight text-foreground placeholder:text-muted-foreground/30 border-none outline-none focus:ring-0 p-0"
+          />
+        </div>
 
-          <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">
-              Mô tả tóm tắt chương (Tùy chọn)
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => {
-                setDescription(e.target.value);
-                setIsDirty(true);
-              }}
-              placeholder="Mô tả ngắn gọn nội dung và mục tiêu người học sẽ đạt được..."
-              rows={2}
-              className="w-full rounded-xl border border-border bg-background p-3 text-xs sm:text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-            />
-          </div>
-        </section>
-
-        {/* Blocks Canvas */}
-        <section aria-label="Danh sách khối nội dung" className="space-y-4">
-          <div className="flex items-center justify-between border-b border-border pb-2">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
-              <BookOpen className="h-4 w-4 text-primary" />
-              <span>Nội dung bài học ({blocks.length} khối)</span>
-            </h3>
-            <span className="text-xs text-muted-foreground">
-              Hệ thống không tự lưu, hãy nhấn &quot;Lưu nháp&quot; khi hoàn tất
+        {/* Thanh công cụ khi chọn nhiều block */}
+        {selectedBlockIds.size > 1 && (
+          <div className="ml-12 flex items-center justify-between p-2.5 rounded-xl border border-blue-500/30 bg-blue-500/10 text-xs">
+            <span className="font-semibold text-foreground">
+              Đã chọn {selectedBlockIds.size} khối nội dung
             </span>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedBlockIds(new Set())}
+                className="h-7 text-xs border-border/80"
+              >
+                Bỏ chọn
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={handleDeleteSelectedBlocks}
+                className="h-7 text-xs"
+              >
+                Xóa {selectedBlockIds.size} khối đã chọn
+              </Button>
+            </div>
           </div>
+        )}
 
-          {blocks.length === 0 ? (
-            <div className="rounded-2xl border-2 border-dashed border-border bg-card p-10 text-center space-y-3">
-              <BookOpen className="mx-auto h-10 w-10 text-muted-foreground/60" />
-              <p className="text-sm font-bold text-foreground">
-                Chưa có khối nội dung nào trong chương này
-              </p>
-              <p className="text-xs text-muted-foreground max-w-md mx-auto">
-                Chọn một trong các loại khối bên dưới để bắt đầu biên soạn bài giảng (Văn bản,
-                Markdown, Hình ảnh, Video, Flashcard, Bài tập, Quiz...).
-              </p>
-              <div className="pt-2">
-                <AddBlockMenu onAddBlock={handleAddBlock} />
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {blocks.map((block, index) => (
-                <React.Fragment key={block.id}>
-                  <BlockItem
-                    block={block}
-                    courseId={courseId}
-                    isFirst={index === 0}
-                    isLast={index === blocks.length - 1}
-                    onMoveUp={() => handleMoveBlock(index, 'UP')}
-                    onMoveDown={() => handleMoveBlock(index, 'DOWN')}
-                    onDelete={() => handleDeleteBlock(block.id)}
-                    onUpdate={handleUpdateBlock}
-                    onOpenResourcePicker={handleOpenPickerForBlock}
-                  />
-
-                  {/* Add block bar between blocks */}
-                  <div className="opacity-40 hover:opacity-100 transition-opacity">
-                    <AddBlockMenu onAddBlock={handleAddBlock} />
-                  </div>
-                </React.Fragment>
-              ))}
-            </div>
-          )}
-        </section>
+        {/* DANH SÁCH CÁC KHỐI NOTION BLOCKS */}
+        <div className="space-y-1">
+          {blocks.map((block, index) => (
+            <NotionBlockRow
+              key={block.id}
+              block={block}
+              index={index}
+              totalBlocks={blocks.length}
+              courseId={courseId}
+              isFocused={focusedBlockId === block.id}
+              focusDirection={focusedBlockId === block.id ? focusDirection : null}
+              isSelected={selectedBlockIds.has(block.id)}
+              onUpdate={handleUpdateBlock}
+              onDelete={() => handleDeleteBlock(block.id)}
+              onAddBelow={(type?: BlockType) => handleAddBlockBelow(index, type)}
+              onMoveUp={() => handleMoveBlock(index, 'UP')}
+              onMoveDown={() => handleMoveBlock(index, 'DOWN')}
+              onConvertType={(targetType) => handleConvertBlockType(block.id, targetType)}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              onOpenTypeMenu={(coords, blockId) => setActiveTypeMenu({ coords, blockId })}
+              onOpenResourcePicker={(blockId: string) => {
+                setPickerTargetBlockId(blockId);
+                setIsResourceDrawerOpen(true);
+              }}
+              onSelectionChange={(coords, blockId) => {
+                // Không hiển thị floating format bar nếu đang chọn nhiều block
+                if (coords && selectedBlockIds.size <= 1) {
+                  setActiveSelection({ coords, blockId });
+                } else {
+                  setActiveSelection(null);
+                }
+              }}
+              onFocusPrevBlock={() => handleFocusPrevBlock(index)}
+              onFocusNextBlock={() => handleFocusNextBlock(index)}
+              onFocusBlock={(blockId) => {
+                setFocusedBlockId(blockId);
+                setFocusDirection(null);
+                setSelectedBlockIds(new Set());
+              }}
+              onSelectThisBlock={(blockId) => {
+                setSelectedBlockIds(new Set([blockId]));
+              }}
+              onDeselectThisBlock={(blockId) => {
+                setSelectedBlockIds((prev) => {
+                  if (prev.has(blockId)) {
+                    const next = new Set(prev);
+                    next.delete(blockId);
+                    return next;
+                  }
+                  return prev;
+                });
+              }}
+            />
+          ))}
+        </div>
       </main>
 
-      {/* Resource Drawer (SCR-CNT-07) */}
+      {/* MARQUEE SELECTION RECTANGLE (Bôi đen nhiều block với con trỏ chuột) */}
+      {marqueeRect && (
+        <div
+          className="fixed pointer-events-none z-50 rounded border border-blue-500/70 bg-blue-500/20"
+          style={{
+            left: `${Math.min(marqueeRect.startX, marqueeRect.currentX)}px`,
+            top: `${Math.min(marqueeRect.startY, marqueeRect.currentY)}px`,
+            width: `${Math.abs(marqueeRect.currentX - marqueeRect.startX)}px`,
+            height: `${Math.abs(marqueeRect.currentY - marqueeRect.startY)}px`,
+          }}
+        />
+      )}
+
+      {/* 3. MENU CHỌN LOẠI BLOCK (KHI BẤM DẤU +) */}
+      <SlashCommandMenu
+        isOpen={Boolean(activeTypeMenu)}
+        position={activeTypeMenu?.coords}
+        onClose={() => setActiveTypeMenu(null)}
+        onSelect={handleSelectTypeCommand}
+      />
+
+      {/* 4. FLOATING TEXT FORMAT TOOLBAR (Chỉ hiện khi bôi đen text trong 1 block) */}
+      {selectedBlockIds.size <= 1 && (
+        <FloatingTextFormatToolbar
+          position={activeSelection?.coords || null}
+          onCommand={handleExecuteFormatCommand}
+          onApplyHeading={handleApplyHeading}
+          onToggleCode={handleToggleCode}
+          onInsertTable={handleInsertTableCustom}
+          onClose={() => setActiveSelection(null)}
+        />
+      )}
+
+      {/* 5. RIGHT DRAWER: CHẾ ĐỘ TRUY CẬP (Theo ảnh specimen) */}
+      <ChapterAccessPanel
+        isOpen={isAccessPanelOpen}
+        initialMode={accessMode}
+        initialPasscode={passcode}
+        isCourseOnlyMe={isCourseOnlyMe}
+        onClose={() => setIsAccessPanelOpen(false)}
+        onApply={handleApplyAccess}
+        isPending={isSettingAccess}
+      />
+
+      {/* 6. MODAL: XÓA CHƯƠNG HỌC */}
+      <DeleteChapterModal
+        isOpen={isDeleteDialogOpen}
+        chapterTitle={title}
+        blockCount={blocks.length}
+        onCancel={() => setIsDeleteDialogOpen(false)}
+        onConfirm={handleDeleteChapterConfirm}
+        isDeleting={isDeleting}
+      />
+
+      {/* 7. MODAL: RỜI KHỎI TRANG KHI CHƯA LƯU */}
+      <UnsavedChangesModal
+        isOpen={showUnsavedExitDialog}
+        chapterTitle={title}
+        onStay={() => setShowUnsavedExitDialog(false)}
+        onSaveDraft={handleSaveAndExit}
+        onLeave={handleConfirmExitDiscard}
+        isSaving={isSaving || isCreating}
+      />
+
+      {/* 8. MODAL: RESOURCE DRAWER */}
       <ResourceDrawer
-        courseId={courseId}
         isOpen={isResourceDrawerOpen}
+        courseId={courseId}
         onClose={() => {
           setIsResourceDrawerOpen(false);
           setPickerTargetBlockId(null);
         }}
-        pickerMode={Boolean(pickerTargetBlockId)}
-        onSelectResource={handleSelectResourceFromDrawer}
+        onSelectResource={(resource: ResourceDto) => {
+          if (pickerTargetBlockId) {
+            setBlocks(
+              blocks.map((b) =>
+                b.id === pickerTargetBlockId
+                  ? { ...b, resourceId: resource.id, title: b.title || resource.originalFilename }
+                  : b
+              )
+            );
+            setIsDirty(true);
+            setPickerTargetBlockId(null);
+          }
+        }}
       />
 
-      {/* Version History Modal (SCR-CNT-03) */}
-      <ChapterVersionsModal
-        courseId={courseId}
-        chapterId={chapterId}
-        isOpen={isVersionsModalOpen}
-        onClose={() => setIsVersionsModalOpen(false)}
-        currentVersionNo={baseVersionNo}
-      />
+      {/* 9. MODAL: VERSION HISTORY */}
+      {!isNewMode && (
+        <ChapterVersionsModal
+          isOpen={isVersionsModalOpen}
+          courseId={courseId}
+          chapterId={chapterId}
+          onClose={() => setIsVersionsModalOpen(false)}
+          currentVersionNo={baseVersionNo}
+        />
+      )}
 
-      {/* Student View Draft Preview Modal (FR-CNT-03) */}
-      <ChapterPreviewModal
-        isOpen={isPreviewOpen}
-        onClose={() => setIsPreviewOpen(false)}
-        chapterTitle={title}
-        chapterDescription={description}
-        blocks={blocks}
-      />
-
-      {/* Unsaved Changes Guard Dialog */}
-      <UnsavedChangesDialog
-        isOpen={showUnsavedExitDialog}
-        onCancel={() => setShowUnsavedExitDialog(false)}
-        onConfirm={handleConfirmExit}
-      />
-
-      {/* Optimistic Locking 409 VERSION_CONFLICT Dialog */}
+      {/* 10. MODAL: OPTIMISTIC LOCKING CONFLICT */}
       <Dialog open={conflictDialogOpen} onOpenChange={setConflictDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -614,55 +1510,39 @@ export function ChapterEditorPage() {
               {conflictErrorMessage}
             </DialogDescription>
           </DialogHeader>
-
           <DialogFooter>
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => setConflictDialogOpen(false)}
-            >
-              Tiếp tục giữ bản hiện tại
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              onClick={async () => {
+              onClick={() => {
                 setConflictDialogOpen(false);
-                await refetch();
-                pushToast({
-                  title: 'Đã tải phiên bản mới nhất từ máy chủ',
-                  tone: 'success',
-                });
+                refetch();
               }}
-              className="bg-primary hover:bg-primary/90 text-white"
             >
-              <RotateCcw className="h-3.5 w-3.5 mr-1" />
+              <RotateCcw className="h-4 w-4 mr-1.5" />
               Tải lại bản mới nhất
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Publish Blocked 422 Dialog */}
-      <Dialog
-        open={publishBlockedDialogOpen}
-        onOpenChange={setPublishBlockedDialogOpen}
-      >
+      {/* 11. MODAL: PUBLISH BLOCKED */}
+      <Dialog open={publishBlockedDialogOpen} onOpenChange={setPublishBlockedDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-amber-500">
+            <DialogTitle className="flex items-center gap-2 text-destructive">
               <AlertCircle className="h-5 w-5" />
-              Chưa thể đăng tải chương
+              Đăng tải bị chặn
             </DialogTitle>
             <DialogDescription className="text-foreground/90 pt-1">
               {publishBlockedMessage}
             </DialogDescription>
           </DialogHeader>
-
           <DialogFooter>
             <Button
               type="button"
+              variant="outline"
               size="sm"
               onClick={() => setPublishBlockedDialogOpen(false)}
             >

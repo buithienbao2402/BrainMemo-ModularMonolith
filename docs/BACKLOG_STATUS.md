@@ -35,8 +35,8 @@
 | T-S3-FE-01 | FE-01 + FE-02 | DONE | Antigravity (FE) | feat/T-S3-FE-01-content-editor-suite | **FE Content Editor Suite (Batched):** SCR-CNT-01, 02, 03, 07 (10 loại block, khóa lạc quan 409, quản lý tài nguyên DEC-05, lịch sử phiên bản, 17/17 tests pass) |
 | T-S3-INT-01 | INT-01 | DONE | Antigravity (INT) | feat/T-S3-INT-01-content-editor-e2e | **Tích hợp S3 + e2e:** Soạn thảo block + upload ảnh → Lưu nháp → Xử lý xung đột 2 tab (409) → Đăng tải chương → Khôi phục lịch sử (100% tests pass) |
 | **S4 – Ghi danh & Learning** | | | | | |
-| T-S4-BE-01 | BE-01 + BE-02 | TODO | – | – | **Enrollment & Chapter Access Engine (Batched):** Ghi danh 5 trạng thái + Ma trận quyền 3.2.2 + Mở khóa chương passcode + Outbox + Quản lý yêu cầu tham gia chờ duyệt (`GET/POST /courses/{id}/enrollment-requests`) |
-| T-S4-BE-02 | BE-03 | TODO | – | – | **Learning Progress & Player Service:** Đọc chương, hoàn thành block, tính tiến độ, bookmark, event hoàn thành khóa + Thống kê học tập (`GET /courses/{id}/enrollments/summary` phục vụ Overview Dashboard) |
+| T-S4-BE-01 | BE-01 + BE-02 | TODO | – | – | **Enrollment & Chapter Access Engine (Batched):** Ghi danh 5 trạng thái + Ma trận quyền 3.2.2 + Mở khóa chương passcode (`POST /courses/{id}/chapters/{chapterId}/verify-passcode`) + Outbox + Quản lý yêu cầu tham gia chờ duyệt (`GET/POST /courses/{id}/enrollment-requests`) |
+| T-S4-BE-02 | BE-03 | TODO | – | – | **Learning Progress & Player Service:** Đọc chương, hoàn thành block, tính tiến độ, bookmark, event hoàn thành khóa + Thống kê học tập (`GET /courses/{id}/enrollments/summary`) + Thống kê hoàn thành chương (`GET /courses/{id}/chapters/{chapterId}/progress-summary`) |
 | T-S4-FE-01 | FE-01 + FE-02 | TODO | – | – | **FE Enrollment & Learning Player (Batched):** SCR-CRS-05, 06 + SCR-LRN-01, 07 |
 | T-S4-INT-01 | INT-01 | TODO | – | – | Tích hợp S4 + e2e |
 | **S5 – Discovery** | | | | | |
@@ -49,7 +49,7 @@
 | T-S6-FE-01 | FE-01 + FE-02 | TODO | – | – | **FE Social & Notifications (Batched):** SCR-LRN-06 + SCR-NTF-01 + SCR-CRS-04 & nút đề cử |
 | T-S6-INT-01 | INT-01 | TODO | – | – | Tích hợp S6 + e2e |
 | **S7 – Ngân hàng câu hỏi & Quiz** | | | | | |
-| T-S7-BE-01 | BE-01 + BE-02 | TODO | – | – | **Question Bank & Quiz Authoring (Batched):** Ngân hàng câu hỏi 6 loại + Cấu hình bài thi trong chương + Bốc đề thi |
+| T-S7-BE-01 | BE-01 + BE-02 | TODO | – | – | **Question Bank & Quiz Authoring (Batched):** Ngân hàng câu hỏi 6 loại + Cấu hình bài thi trong chương + Bốc đề thi + API Quiz gắn với chương (`GET /courses/{id}/chapters/{chapterId}/quizzes`) |
 | T-S7-BE-02 | BE-03..05 | TODO | – | – | **Quiz Engine & Auto-Grading (Batched):** Làm bài, autosave, deadline worker + Bộ chấm tự động ADR-04 + Nộp bài TX1/TX2 |
 | T-S7-FE-01 | FE-01 + FE-02 | TODO | – | – | **FE Question Bank & Quiz Authoring (Batched):** SCR-CNT-04, 05, 06, 08, 09 |
 | T-S7-FE-02 | FE-03 | TODO | – | – | **FE Quiz Player:** SCR-LRN-02, 03, 04 (Làm quiz, đếm giờ, autosave, nộp bài) |

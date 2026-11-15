@@ -12,7 +12,6 @@ import {
   ExternalLink,
   MoreVertical,
   Edit3,
-  Share2,
   Star,
   Heart,
   MessageSquare,
@@ -103,16 +102,6 @@ export function CourseOverviewPage() {
     }
   };
 
-  const handleCopyLink = () => {
-    const url = `${window.location.origin}/courses/${courseId}`;
-    navigator.clipboard.writeText(url);
-    pushToast({
-      title: 'Đã sao chép liên kết',
-      description: 'Liên kết khóa học đã được lưu vào bộ nhớ tạm.',
-      tone: 'success',
-    });
-  };
-
   if (isLoading) {
     return (
       <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
@@ -143,7 +132,6 @@ export function CourseOverviewPage() {
 
   const courseTitle = course.name || 'Khóa học chưa đặt tên';
   const coverImage = course.coverUrl || defaultCourseCover;
-  const courseShortId = (course.id || courseId).slice(0, 8).toUpperCase();
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 text-foreground">
@@ -161,7 +149,7 @@ export function CourseOverviewPage() {
         </Link>
         <ChevronRight className="h-3 w-3 text-muted-foreground/60" />
         <span className="font-semibold text-foreground truncate max-w-[320px] sm:max-w-md">
-          Tổng quan {courseTitle}
+          Khóa học {courseTitle}
         </span>
       </nav>
 
@@ -258,25 +246,13 @@ export function CourseOverviewPage() {
         className="rounded-2xl border border-border bg-card p-5 sm:p-7 shadow-sm"
       >
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
-          {/* Left: 16:10 Cover image with overlay badges */}
+          {/* Left: 16:10 Cover image */}
           <div className="relative aspect-[16/10] w-full lg:w-[380px] shrink-0 overflow-hidden rounded-xl bg-muted border border-border/80 shadow-inner">
             <img
               src={coverImage}
               alt={courseTitle}
               className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
             />
-            {/* Dark gradient overlay at bottom */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
-
-            {/* Bottom Floating Badges */}
-            <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between pointer-events-none">
-              <span className="backdrop-blur-md bg-black/60 border border-white/10 px-2.5 py-0.5 rounded text-[11px] font-semibold text-white tracking-wide">
-                SRS Pro V3
-              </span>
-              <span className="backdrop-blur-md bg-black/60 border border-white/10 px-2.5 py-0.5 rounded font-mono text-[11px] font-bold text-white tracking-wide">
-                ID: {courseShortId}
-              </span>
-            </div>
           </div>
 
           {/* Right: Course Details & Controls */}
@@ -310,11 +286,6 @@ export function CourseOverviewPage() {
                         ? 'Riêng tư'
                         : 'Public'}
                     </span>
-
-                    {/* Academic Term */}
-                    <span className="inline-flex items-center rounded-md bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground border border-border">
-                      Kỳ học Mùa Thu 2026
-                    </span>
                   </div>
                 </div>
 
@@ -347,14 +318,6 @@ export function CourseOverviewPage() {
                       <DropdownMenuItem onClick={() => navigate(`/courses/${courseId}/edit`)}>
                         <Edit3 className="h-4 w-4 mr-2" />
                         Chỉnh sửa khóa học
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate(`/courses/${courseId}/manage/content`)}>
-                        <BookOpen className="h-4 w-4 mr-2" />
-                        Soạn thảo đề cương
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={handleCopyLink}>
-                        <Share2 className="h-4 w-4 mr-2" />
-                        Sao chép liên kết
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

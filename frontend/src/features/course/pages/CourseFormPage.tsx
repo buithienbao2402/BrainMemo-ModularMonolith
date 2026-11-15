@@ -21,6 +21,7 @@ import {
   X,
   UploadCloud,
   ChevronRight,
+  Home,
 } from 'lucide-react';
 import { useAuth } from '@/shared/hooks';
 import {
@@ -301,15 +302,27 @@ export function CourseFormPage() {
     <div className="space-y-6 max-w-[1280px] mx-auto">
       {/* Breadcrumb & Title Section matching Figma 27:6697 */}
       <div className="space-y-2">
-        <div className="flex items-center gap-1.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-          <Link to="/manage/courses" className="hover:text-foreground transition-colors">
-            Quản trị khóa học
+        <nav aria-label="Đường dẫn điều hướng" className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Link to="/manage/courses" className="hover:text-foreground transition-colors flex items-center gap-1.5">
+            <Home className="h-3.5 w-3.5" />
+            <span>Trang chủ</span>
           </Link>
           <ChevronRight className="h-3 w-3 text-muted-foreground/60" />
-          <span className="text-foreground">
-            {isEditMode ? 'Chỉnh sửa khóa học' : 'Tạo khóa học mới'}
-          </span>
-        </div>
+          {isEditMode ? (
+            <>
+              <Link
+                to={`/courses/${courseId}/manage`}
+                className="hover:text-foreground transition-colors truncate max-w-[260px]"
+              >
+                Khóa học {existingCourse?.name || '...'}
+              </Link>
+              <ChevronRight className="h-3 w-3 text-muted-foreground/60" />
+              <span className="font-semibold text-foreground">Chỉnh sửa khóa học</span>
+            </>
+          ) : (
+            <span className="font-semibold text-foreground">Tạo khóa học mới</span>
+          )}
+        </nav>
 
         <h1 className="font-serif text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
           {isEditMode ? 'Chỉnh sửa khóa học' : 'Tạo khóa học mới'}

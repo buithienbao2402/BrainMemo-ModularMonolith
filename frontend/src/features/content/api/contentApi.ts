@@ -133,6 +133,67 @@ export function useSaveChapterDraftMutation(courseId: string, chapterId: string)
 }
 
 /**
+ * Save chapter draft dynamically supporting new and existing chapters.
+ */
+export function useSaveChapterDraftDynamicMutation(courseId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      chapterId,
+      body,
+    }: {
+      chapterId: string;
+      body: SaveChapterRequest;
+    }): Promise<ChapterDetail> => {
+      return unwrapApi(
+        apiClient.PUT('/courses/{courseId}/chapters/{chapterId}', {
+          params: { path: { courseId, chapterId } },
+          body,
+        })
+      );
+    },
+    onSuccess: (updatedChapter, { chapterId }) => {
+      queryClient.setQueryData(
+        queryKeys.content.chapterDraft(courseId, chapterId),
+        updatedChapter
+      );
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.chapters(courseId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.content.chapterVersions(courseId, chapterId),
+      });
+    },
+  });
+}
+
+/**
+ * Publish chapter atomically with dynamic chapterId (FR-CNT-16).
+ */
+export function usePublishChapterDynamicMutation(courseId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (chapterId: string): Promise<ChapterDetail> => {
+      return unwrapApi(
+        apiClient.POST('/courses/{courseId}/chapters/{chapterId}/publish', {
+          params: { path: { courseId, chapterId } },
+        })
+      );
+    },
+    onSuccess: (publishedChapter, chapterId) => {
+      queryClient.setQueryData(
+        queryKeys.content.chapterDraft(courseId, chapterId),
+        publishedChapter
+      );
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.chapters(courseId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.content.chapterVersions(courseId, chapterId),
+      });
+    },
+  });
+}
+
+/**
  * Soft delete chapter (FR-CNT-01).
  */
 export function useDeleteChapterMutation(courseId: string) {
@@ -171,6 +232,29 @@ export function usePublishChapterMutation(courseId: string, chapterId: string) {
         queryKeys.content.chapterDraft(courseId, chapterId),
         publishedChapter
       );
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.chapters(courseId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.content.chapterVersions(courseId, chapterId),
+      });
+    },
+  });
+}
+
+/**
+ * Publish chapter by chapterId (convenient for chapter lists).
+ */
+export function usePublishChapterActionMutation(courseId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (chapterId: string): Promise<ChapterDetail> => {
+      return unwrapApi(
+        apiClient.POST('/courses/{courseId}/chapters/{chapterId}/publish', {
+          params: { path: { courseId, chapterId } },
+        })
+      );
+    },
+    onSuccess: (_, chapterId) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.content.chapters(courseId) });
       queryClient.invalidateQueries({
         queryKey: queryKeys.content.chapterVersions(courseId, chapterId),
@@ -333,5 +417,45 @@ export async function uploadAndCommitResource(
   return commitMutation({
     uploadKey,
     originalFilename: file.name,
+  });
+}
+
+/**
+ * Get chapter access mode & config (FR-CRS-07).
+ */
+export function useChapterAccessQuery(courseId: string, chapterId: string) {
+  return useQuery({
+    queryKey: queryKeys.content.chapterAccess(courseId, chapterId),
+    queryFn: async (): Promise<{ accessMode?: string; passcodeVersion?: number }> => {
+      return unwrapApi(
+        apiClient.GET('/courses/{courseId}/chapters/{chapterId}/access', {
+          params: { path: { courseId, chapterId } },
+        })
+      );
+    },
+    enabled: Boolean(courseId && chapterId && chapterId !== 'new'),
+  });
+}
+
+/**
+ * Set chapter access mode (FR-CRS-07).
+ */
+export function useSetChapterAccessMutation(courseId: string, chapterId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (body: { accessMode: 'PUBLIC' | 'PROTECTED'; passcode?: string }): Promise<void> => {
+      return unwrapApi(
+        apiClient.PUT('/courses/{courseId}/chapters/{chapterId}/access', {
+          params: { path: { courseId, chapterId } },
+          body,
+        })
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.chapterAccess(courseId, chapterId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.chapterDraft(courseId, chapterId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.chapters(courseId) });
+    },
   });
 }
