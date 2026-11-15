@@ -258,3 +258,150 @@ export function useWithdrawNominationMutation(courseId: string) {
     },
   });
 }
+
+export interface CourseOverviewStats {
+  activeLearners: number;
+  activeLearnersChangeWeekly: number;
+  completedLearners: number;
+  completionRatePercent: number;
+  completionTargetPercent: number;
+  totalChapters: number;
+  publishedChapters: number;
+  draftChapters: number;
+  totalComments: number;
+  newCommentsCount: number;
+  avgResponseTimeHours: number;
+  totalRatings: number;
+  averageRating: number;
+  fiveStarPercentage: number;
+  totalRecommendations: number;
+  systemRank: number;
+}
+
+export interface CourseRankingData {
+  timeRange: 'THIS_WEEK' | 'THIS_MONTH' | 'ALL_TIME';
+  byStudents: {
+    rank: number;
+    totalCourses: number;
+    percentileTop: number;
+    classSize: number;
+  };
+  byRecommendations: {
+    rank: number;
+    totalCourses: number;
+    isTop3: boolean;
+    totalRecommendations: number;
+  };
+  byRatings: {
+    rank: number;
+    totalCourses: number;
+    percentileTop: number;
+    ratingsCount: number;
+    averageRating: number;
+  };
+}
+
+export interface PendingSubmissionItem {
+  id: string;
+  studentName: string;
+  studentInitials: string;
+  avatarBgColor?: string;
+  assignmentTitle: string;
+  timeAgo: string;
+}
+
+export interface EnrollmentRequestItem {
+  id: string;
+  studentName: string;
+  studentInitials: string;
+  avatarBgColor?: string;
+  studentRoleOrSchool: string;
+  timeAgo: string;
+}
+
+export interface CourseReportItem {
+  id: string;
+  targetType: 'Khóa học' | 'Bình luận' | 'Bài học';
+  excerpt: string;
+  reason: string;
+  reportedDate: string;
+  status: 'Chờ xử lý' | 'Đã chấp nhận' | 'Đã từ chối';
+}
+
+export interface CourseOverviewData {
+  course: CourseDto;
+  stats: CourseOverviewStats;
+  ranking: CourseRankingData;
+  pendingSubmissions: PendingSubmissionItem[];
+  pendingRequests: EnrollmentRequestItem[];
+  reports: CourseReportItem[];
+}
+
+/**
+ * Fetch course overview dashboard data for instructor (SCR-CRS-Overview).
+ */
+export function useCourseOverviewQuery(
+  courseId: string,
+  timeRange: 'THIS_WEEK' | 'THIS_MONTH' | 'ALL_TIME' = 'ALL_TIME'
+) {
+  return useQuery({
+    queryKey: queryKeys.courses.overview(courseId, timeRange),
+    queryFn: async (): Promise<CourseOverviewData> => {
+      // In production or mock environment, call GET /api/v1/courses/{courseId}/overview
+      return unwrapApi(
+        apiClient.GET('/courses/{courseId}/overview' as any, {
+          params: {
+            path: { courseId },
+            query: { timeRange },
+          },
+        } as any)
+      );
+    },
+    enabled: Boolean(courseId),
+  });
+}
+
+/**
+ * Approve student enrollment request.
+ */
+export function useApproveEnrollmentRequestMutation(courseId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (requestId: string): Promise<void> => {
+      return unwrapApi(
+        apiClient.POST('/courses/{courseId}/enrollment-requests/{requestId}/approve' as any, {
+          params: {
+            path: { courseId, requestId },
+          },
+        } as any)
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.overview(courseId) });
+    },
+  });
+}
+
+/**
+ * Reject student enrollment request.
+ */
+export function useRejectEnrollmentRequestMutation(courseId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (requestId: string): Promise<void> => {
+      return unwrapApi(
+        apiClient.POST('/courses/{courseId}/enrollment-requests/{requestId}/reject' as any, {
+          params: {
+            path: { courseId, requestId },
+          },
+        } as any)
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.overview(courseId) });
+    },
+  });
+}
+

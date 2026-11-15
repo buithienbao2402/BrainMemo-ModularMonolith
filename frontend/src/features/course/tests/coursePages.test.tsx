@@ -229,4 +229,78 @@ describe('Course Pages (SCR-CRS-01..03)', () => {
       });
     });
   });
+
+  describe('Course Overview: Tổng quan khóa học (/courses/:courseId/manage)', () => {
+    it('renders top breadcrumb "Trang chủ / Tổng quan {courseTitle}"', async () => {
+      setMockPersonaCookie('user');
+      setAccessToken('mock-access-token-user');
+
+      renderAppAt('/courses/my-course-1/manage');
+
+      await waitFor(() => {
+        expect(screen.getByText(/Tổng quan Khóa học do tôi biên soạn/i)).toBeInTheDocument();
+      });
+
+      const breadcrumbNav = screen.getByRole('navigation', { name: /Đường dẫn điều hướng/i });
+      expect(breadcrumbNav).toBeInTheDocument();
+      expect(breadcrumbNav).toHaveTextContent(/Trang chủ/);
+      expect(breadcrumbNav).toHaveTextContent(/Tổng quan Khóa học do tôi biên soạn/);
+    });
+
+    it('renders sub-navigation tabs matching Figma specification', async () => {
+      setMockPersonaCookie('user');
+      setAccessToken('mock-access-token-user');
+
+      renderAppAt('/courses/my-course-1/manage');
+
+      await waitFor(() => {
+        expect(screen.getByText('Tổng quan')).toBeInTheDocument();
+      });
+
+      expect(screen.getByRole('link', { name: /Danh sách chương/i })).toHaveAttribute(
+        'href',
+        '/courses/my-course-1/manage/content'
+      );
+      expect(screen.getByRole('button', { name: /^Danh sách học viên$/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^Chấm điểm\s*12$/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^Chuẩn đầu ra$/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^Thống kê$/i })).toBeInTheDocument();
+    });
+
+    it('renders 6 stat cards, ranking section, pending tasks, and course reports', async () => {
+      setMockPersonaCookie('user');
+      setAccessToken('mock-access-token-user');
+
+      renderAppAt('/courses/my-course-1/manage');
+
+      await waitFor(() => {
+        expect(screen.getByText(/Học viên đang học/i)).toBeInTheDocument();
+      });
+
+      expect(screen.getByText(/XẾP HẠNG KHÓA HỌC/i)).toBeInTheDocument();
+      expect(screen.getByText(/Bài tập nộp chưa chấm/i)).toBeInTheDocument();
+      expect(screen.getByText(/Yêu cầu tham gia chờ duyệt/i)).toBeInTheDocument();
+      expect(screen.getByText(/BÁO CÁO CỦA KHÓA HỌC/i)).toBeInTheDocument();
+    });
+
+    it('allows approving an enrollment request', async () => {
+      setMockPersonaCookie('user');
+      setAccessToken('mock-access-token-user');
+
+      const user = userEvent.setup();
+      renderAppAt('/courses/my-course-1/manage');
+
+      await waitFor(() => {
+        expect(screen.getByText('Đặng Hải Yến')).toBeInTheDocument();
+      });
+
+      const approveButtons = screen.getAllByRole('button', { name: 'Duyệt' });
+      expect(approveButtons.length).toBeGreaterThan(0);
+      await user.click(approveButtons[0]);
+
+      await waitFor(() => {
+        expect(screen.getByText('Đã duyệt yêu cầu tham gia')).toBeInTheDocument();
+      });
+    });
+  });
 });

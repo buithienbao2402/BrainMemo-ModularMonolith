@@ -237,7 +237,7 @@ export function CourseManagementHomePage() {
                   {/* Course Body Information */}
                   <div className="p-5 space-y-3">
                     <Link
-                      to={`/courses/${course.id}`}
+                      to={`/courses/${course.id}/manage`}
                       className="font-serif text-lg font-bold text-foreground line-clamp-2 hover:text-primary transition-colors leading-snug"
                     >
                       {course.name}
@@ -304,7 +304,7 @@ export function CourseManagementHomePage() {
                 {/* Card Footer matching Figma */}
                 <div className="border-t border-border px-5 py-3 flex items-center justify-between">
                   <Link
-                    to={`/courses/${course.id}`}
+                    to={`/courses/${course.id}/manage`}
                     className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-primary transition-colors"
                   >
                     <span>Bấm để mở Tổng quan</span>
@@ -322,7 +322,13 @@ export function CourseManagementHomePage() {
                         <MoreVertical className="h-4 w-4" />
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-44">
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem asChild>
+                        <Link to={`/courses/${course.id}/manage`} className="flex items-center gap-2 cursor-pointer">
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          <span>Tổng quan khóa học</span>
+                        </Link>
+                      </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link to={`/courses/${course.id}/edit`} className="flex items-center gap-2 cursor-pointer">
                           <Edit className="h-3.5 w-3.5" />
@@ -332,7 +338,7 @@ export function CourseManagementHomePage() {
                       <DropdownMenuItem asChild>
                         <Link to={`/courses/${course.id}`} className="flex items-center gap-2 cursor-pointer">
                           <ExternalLink className="h-3.5 w-3.5" />
-                          <span>Xem chi tiết</span>
+                          <span>Xem trên web học viên</span>
                         </Link>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
