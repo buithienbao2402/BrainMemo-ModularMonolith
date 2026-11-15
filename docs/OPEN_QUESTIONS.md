@@ -10,8 +10,9 @@
 - **Trạng thái:** Đã gỡ chặn (2026-11-12).
 - **Giải pháp áp dụng:** Người điều phối đã xác thực plugin **Figma** (`figma_figma` MCP) và cấp link trực tiếp [UI-BrainMemo-LMS](https://www.figma.com/design/JrZ2EN5MfRmx8JoHzaVz0L/UI-BrainMemo-LMS?node-id=0-1). Thay cho `docs/design/figma-png/`, Agent đọc trực tiếp context + screenshot từ các frame Figma trong file trên cho `SCR-COM-01` (Header/SubNav/Footer Dark & Light, Profile menu, Admin Aside/Header) và hệ thống token màu/font chung.
 
-### [OQ-02] Một số màn hình chưa có frame riêng trên Page 1 của file Figma
-- **Phạm vi:** Rà soát toàn bộ **56** top-level frame trên `Page 1` của [UI-BrainMemo-LMS](https://www.figma.com/design/JrZ2EN5MfRmx8JoHzaVz0L/UI-BrainMemo-LMS?node-id=0-1):
-  - **`SCR-COM-02` (Trang 404 `*` trong `T-S0-FE-01`):** Chưa có frame riêng; hiện dựng bằng `PublicLayout` + thẻ trung tâm theo đúng design token, typography (`Merriweather` + `Inter`) và CTA cam `#ff7a1a` từ `SCR-COM-01` và frame `1:2` (`Khóa TK Vĩnh Viễn`).
-  - **`SCR-AUTH-01..05` (`/login`, `/register`, `/forgot-password`, `/reset-password`, `/verify-email` cho `T-S1-FE-01`):** Chưa thấy frame riêng trên `Page 1`.
-- **Đề xuất:** Nếu người điều phối bổ sung frame `SCR-COM-02` hoặc `SCR-AUTH-01..05` lên Figma (hoặc PNG vào `docs/design/figma-png/`) trước `T-S1-FE-01`, cần báo để cập nhật đúng bố cục.
+### [OQ-02] Rà soát và đồng bộ toàn bộ 66 frame thiết kế trên Figma — ĐÃ HOÀN TẤT
+- **Trạng thái:** Đã giải quyết & đồng bộ toàn diện vào `docs/FRONTEND_SPEC.md` (2026-11-15).
+- **Phạm vi & Kết quả:**
+  - Rà soát toàn bộ **66 top-level frames/screens/dialogs/drawers** trên `Page 1` của file Figma [UI-BrainMemo-LMS](https://www.figma.com/design/JrZ2EN5MfRmx8JoHzaVz0L/UI-BrainMemo-LMS?node-id=0-1).
+  - Đã lập danh mục chi tiết ánh xạ 1:1 giữa toàn bộ 66 frames Figma với mã màn hình `SCR-*`, Route, Phân quyền truy cập, API OpenAPI và các mẫu tương tác (Modal nộp bài, Drawer lịch sử phiên bản, Khóa tài khoản tạm thời/vĩnh viễn, OBE assessment matrix, Quản lý tài nguyên, Soạn thảo 10 blocks, Admin dashboard...).
+  - Các màn hình `SCR-COM-02` (404) và `SCR-AUTH-01..05` (Auth flow) tuân thủ hoàn toàn hệ thống Design Tokens, bảng màu Dark/Light, typography `Merriweather` + `Inter` và CTA cam `#ff7a1a` chuẩn hóa từ Figma.
