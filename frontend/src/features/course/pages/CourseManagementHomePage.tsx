@@ -324,12 +324,6 @@ export function CourseManagementHomePage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-48">
                       <DropdownMenuItem asChild>
-                        <Link to={`/courses/${course.id}/manage`} className="flex items-center gap-2 cursor-pointer">
-                          <ExternalLink className="h-3.5 w-3.5" />
-                          <span>Tổng quan khóa học</span>
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
                         <Link to={`/courses/${course.id}/edit`} className="flex items-center gap-2 cursor-pointer">
                           <Edit className="h-3.5 w-3.5" />
                           <span>Chỉnh sửa</span>
@@ -338,7 +332,7 @@ export function CourseManagementHomePage() {
                       <DropdownMenuItem asChild>
                         <Link to={`/courses/${course.id}`} className="flex items-center gap-2 cursor-pointer">
                           <ExternalLink className="h-3.5 w-3.5" />
-                          <span>Xem trên web học viên</span>
+                          <span>Xem trong trang khóa học</span>
                         </Link>
                       </DropdownMenuItem>
                     </DropdownMenuContent>

@@ -133,6 +133,67 @@ export function useSaveChapterDraftMutation(courseId: string, chapterId: string)
 }
 
 /**
+ * Save chapter draft dynamically supporting new and existing chapters.
+ */
+export function useSaveChapterDraftDynamicMutation(courseId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      chapterId,
+      body,
+    }: {
+      chapterId: string;
+      body: SaveChapterRequest;
+    }): Promise<ChapterDetail> => {
+      return unwrapApi(
+        apiClient.PUT('/courses/{courseId}/chapters/{chapterId}', {
+          params: { path: { courseId, chapterId } },
+          body,
+        })
+      );
+    },
+    onSuccess: (updatedChapter, { chapterId }) => {
+      queryClient.setQueryData(
+        queryKeys.content.chapterDraft(courseId, chapterId),
+        updatedChapter
+      );
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.chapters(courseId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.content.chapterVersions(courseId, chapterId),
+      });
+    },
+  });
+}
+
+/**
+ * Publish chapter atomically with dynamic chapterId (FR-CNT-16).
+ */
+export function usePublishChapterDynamicMutation(courseId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (chapterId: string): Promise<ChapterDetail> => {
+      return unwrapApi(
+        apiClient.POST('/courses/{courseId}/chapters/{chapterId}/publish', {
+          params: { path: { courseId, chapterId } },
+        })
+      );
+    },
+    onSuccess: (publishedChapter, chapterId) => {
+      queryClient.setQueryData(
+        queryKeys.content.chapterDraft(courseId, chapterId),
+        publishedChapter
+      );
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.chapters(courseId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.content.chapterVersions(courseId, chapterId),
+      });
+    },
+  });
+}
+
+/**
  * Soft delete chapter (FR-CNT-01).
  */
 export function useDeleteChapterMutation(courseId: string) {
@@ -171,6 +232,29 @@ export function usePublishChapterMutation(courseId: string, chapterId: string) {
         queryKeys.content.chapterDraft(courseId, chapterId),
         publishedChapter
       );
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.chapters(courseId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.content.chapterVersions(courseId, chapterId),
+      });
+    },
+  });
+}
+
+/**
+ * Publish chapter by chapterId (convenient for chapter lists).
+ */
+export function usePublishChapterActionMutation(courseId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (chapterId: string): Promise<ChapterDetail> => {
+      return unwrapApi(
+        apiClient.POST('/courses/{courseId}/chapters/{chapterId}/publish', {
+          params: { path: { courseId, chapterId } },
+        })
+      );
+    },
+    onSuccess: (_, chapterId) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.content.chapters(courseId) });
       queryClient.invalidateQueries({
         queryKey: queryKeys.content.chapterVersions(courseId, chapterId),

@@ -45,7 +45,8 @@ describe('Content Editor Suite (T-S3-FE-01)', () => {
   // SCR-CNT-01: Chapter List & Syllabus
   // ==========================================
   describe('SCR-CNT-01: Chapter List Page (/courses/:courseId/manage/content)', () => {
-    it('renders chapter syllabus with positions, titles, badges, and action buttons', async () => {
+    it('renders chapter syllabus with published tab and allows switching to draft tab', async () => {
+      const user = userEvent.setup();
       renderAppAt('/courses/my-course-1/manage/content');
 
       await waitFor(() => {
@@ -54,26 +55,29 @@ describe('Content Editor Suite (T-S3-FE-01)', () => {
         ).toBeInTheDocument();
       });
 
+      // Default tab: Chương đã đăng tải
       await waitFor(() => {
         expect(
           screen.getByText('Chương 1: Giới thiệu kiến trúc Modular Monolith')
         ).toBeInTheDocument();
       });
-      expect(
-        screen.getByText('Chương 2: Thiết kế CSDL & Domain Entity')
-      ).toBeInTheDocument();
 
-      // Check badges
-      expect(screen.getByText('Đã đăng tải')).toBeInTheDocument();
-      expect(screen.getByText('Bản nháp')).toBeInTheDocument();
-      expect(screen.getByText('Có sửa đổi chưa đăng tải')).toBeInTheDocument();
-
-      // Buttons
+      // Action buttons
       expect(screen.getByRole('button', { name: /Thêm chương mới/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Thư viện tài nguyên/i })).toBeInTheDocument();
+      // "Thư viện tài nguyên" was removed as requested
+      expect(screen.queryByRole('button', { name: /Thư viện tài nguyên/i })).not.toBeInTheDocument();
+
+      // Switch to "Chương nháp" tab to see draft chapter
+      await user.click(screen.getByRole('button', { name: /Chương nháp/i }));
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('Chương 2: Thiết kế CSDL & Domain Entity')
+        ).toBeInTheDocument();
+      });
     });
 
-    it('creates a new chapter through modal and updates syllabus list', async () => {
+    it('navigates to unified editor on "Thêm chương mới" and saves chapter draft', async () => {
       const user = userEvent.setup();
       renderAppAt('/courses/my-course-1/manage/content');
 
@@ -85,24 +89,26 @@ describe('Content Editor Suite (T-S3-FE-01)', () => {
 
       await user.click(screen.getByRole('button', { name: /Thêm chương mới/i }));
 
-      // Modal appears
+      // Editor canvas appears with placeholder for title
       await waitFor(() => {
-        expect(screen.getByText('Thêm chương bài học mới')).toBeInTheDocument();
+        expect(
+          screen.getByPlaceholderText(/Chương: Tiêu đề chương bài học.../i)
+        ).toBeInTheDocument();
       });
 
-      const titleInput = screen.getByPlaceholderText(/Ví dụ: Chương 1: Giới thiệu tổng quan.../i);
+      const titleInput = screen.getByPlaceholderText(/Chương: Tiêu đề chương bài học.../i);
       await user.type(titleInput, 'Chương 3: Kiểm thử và Tích hợp hệ thống');
 
-      const submitBtn = screen.getByRole('button', { name: 'Tạo chương' });
-      await user.click(submitBtn);
+      const saveBtn = screen.getByRole('button', { name: /Lưu nháp/i });
+      await user.click(saveBtn);
 
-      // Verifies navigation or toast
+      // Verifies save toast
       await waitFor(() => {
-        expect(screen.getByText(/Tạo chương mới thành công/i)).toBeInTheDocument();
+        expect(screen.getByText(/Lưu bản nháp thành công/i)).toBeInTheDocument();
       });
     });
 
-    it('allows moving chapter order up and down', async () => {
+    it('supports inserting a chapter after an existing chapter from actions menu', async () => {
       const user = userEvent.setup();
       renderAppAt('/courses/my-course-1/manage/content');
 
@@ -112,19 +118,33 @@ describe('Content Editor Suite (T-S3-FE-01)', () => {
         ).toBeInTheDocument();
       });
 
-      const downBtn = screen.getByRole('button', {
-        name: 'Di chuyển chương Chương 1: Giới thiệu kiến trúc Modular Monolith xuống',
+      const moreBtn = screen.getByRole('button', {
+        name: 'Thao tác khác cho Chương 1: Giới thiệu kiến trúc Modular Monolith',
       });
-      await user.click(downBtn);
+      await user.click(moreBtn);
 
       await waitFor(() => {
-        expect(screen.getByText('Đã cập nhật thứ tự chương')).toBeInTheDocument();
+        expect(screen.getByRole('menuitem', { name: /Chèn chương sau/i })).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByRole('menuitem', { name: /Chèn chương sau/i }));
+
+      await waitFor(() => {
+        expect(
+          screen.getByPlaceholderText(/Chương: Tiêu đề chương bài học.../i)
+        ).toBeInTheDocument();
       });
     });
 
     it('opens confirmation modal and soft deletes a chapter', async () => {
       const user = userEvent.setup();
       renderAppAt('/courses/my-course-1/manage/content');
+
+      // Click to draft tab where chapter 2 is located
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Chương nháp/i })).toBeInTheDocument();
+      });
+      await user.click(screen.getByRole('button', { name: /Chương nháp/i }));
 
       await waitFor(() => {
         expect(
@@ -155,13 +175,13 @@ describe('Content Editor Suite (T-S3-FE-01)', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText('Khóa học chưa có chương bài học nào')
+          screen.getByText('Chưa có chương nào được đăng tải')
         ).toBeInTheDocument();
       });
 
       expect(
-        screen.getByRole('button', { name: /Tạo chương đầu tiên/i })
-      ).toBeInTheDocument();
+        screen.getAllByRole('button', { name: /Thêm chương mới/i }).length
+      ).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -183,7 +203,6 @@ describe('Content Editor Suite (T-S3-FE-01)', () => {
       expect(screen.getByText('Đã lưu')).toBeInTheDocument();
 
       // Check blocks loaded
-      expect(screen.getByText('Văn bản (Rich Text)')).toBeInTheDocument();
       expect(screen.getByText('Markdown')).toBeInTheDocument();
       expect(screen.getByText('Bộ thẻ nhớ (Flashcard)')).toBeInTheDocument();
 
@@ -211,7 +230,7 @@ describe('Content Editor Suite (T-S3-FE-01)', () => {
       await user.type(titleInput, ' - Cập nhật mới');
 
       // Dirty indicator turns on
-      expect(screen.getByText('Chưa lưu')).toBeInTheDocument();
+      expect(screen.getByText(/Chưa lưu/i)).toBeInTheDocument();
 
       // Save draft
       const saveBtn = screen.getByRole('button', { name: /Lưu nháp/i });
@@ -230,7 +249,7 @@ describe('Content Editor Suite (T-S3-FE-01)', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText('Chương 1: Giới thiệu kiến trúc Modular Monolith')
+          screen.getByDisplayValue('Chương 1: Giới thiệu kiến trúc Modular Monolith')
         ).toBeInTheDocument();
       });
 
@@ -251,7 +270,7 @@ describe('Content Editor Suite (T-S3-FE-01)', () => {
         ).toBeInTheDocument();
       });
 
-      expect(screen.getByText('Chưa lưu')).toBeInTheDocument();
+      expect(screen.getByText(/Chưa lưu/i)).toBeInTheDocument();
     });
 
     it('deletes a block from chapter', async () => {
@@ -265,7 +284,7 @@ describe('Content Editor Suite (T-S3-FE-01)', () => {
       const deleteBtns = screen.getAllByRole('button', { name: 'Xóa khối' });
       await user.click(deleteBtns[0]!); // Delete first block
 
-      expect(screen.getByText('Chưa lưu')).toBeInTheDocument();
+      expect(screen.getByText(/Chưa lưu/i)).toBeInTheDocument();
     });
 
     it('shows unsaved changes confirmation dialog when clicking back button while dirty', async () => {
@@ -288,18 +307,18 @@ describe('Content Editor Suite (T-S3-FE-01)', () => {
 
       // Warning dialog appears
       await waitFor(() => {
-        expect(screen.getByText('Có thay đổi chưa được lưu!')).toBeInTheDocument();
+        expect(screen.getByText('Rời khỏi trang?')).toBeInTheDocument();
       });
 
       expect(
-        screen.getByText(/Nếu rời đi bây giờ, mọi thay đổi chưa được lưu sẽ bị mất/i)
+        screen.getByText(/Mọi nội dung vừa biên tập sẽ bị mất nếu bạn rời đi mà không nhấn lưu/i)
       ).toBeInTheDocument();
 
       // Cancel keeps user on page
-      const cancelBtn = screen.getByRole('button', { name: 'Tiếp tục chỉnh sửa' });
-      await user.click(cancelBtn);
+      const stayBtn = screen.getByRole('button', { name: 'Ở lại tiếp tục sửa' });
+      await user.click(stayBtn);
 
-      expect(screen.queryByText('Có thay đổi chưa được lưu!')).not.toBeInTheDocument();
+      expect(screen.queryByText('Rời khỏi trang?')).not.toBeInTheDocument();
     });
 
     it('publishes chapter successfully', async () => {

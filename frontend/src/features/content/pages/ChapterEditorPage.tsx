@@ -1,69 +1,119 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
-  Save,
-  Send,
+  MoreVertical,
+  AlertCircle,
   Eye,
   History,
   FolderOpen,
-  AlertCircle,
-  CheckCircle2,
-  AlertTriangle,
+  Trash2,
+  Lock,
+  Globe,
   RotateCcw,
-  BookOpen,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   Button,
-  Input,
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
   DialogFooter,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
   Skeleton,
   ErrorState,
+  useToast,
 } from '@/shared/ui';
+import { useCourseQuery } from '@/features/course/api/courseApi';
 import {
   useChapterDraftQuery,
-  useSaveChapterDraftMutation,
-  usePublishChapterMutation,
+  useSaveChapterDraftDynamicMutation,
+  usePublishChapterDynamicMutation,
+  useCreateChapterMutation,
+  useDeleteChapterMutation,
+  useChaptersQuery,
+  useReorderChaptersMutation,
   type BlockDto,
   type BlockType,
   type ResourceDto,
 } from '../api/contentApi';
-import { BlockItem } from '../components/BlockItem';
-import { AddBlockMenu } from '../components/AddBlockMenu';
+import { NotionBlockRow } from '../components/NotionBlockRow';
+import { SlashCommandMenu, type SlashCommandItem } from '../components/SlashCommandMenu';
+import { FloatingTextFormatToolbar } from '../components/FloatingTextFormatToolbar';
 import { ResourceDrawer } from '../components/ResourceDrawer';
 import { ChapterVersionsModal } from '../components/ChapterVersionsModal';
 import { ChapterPreviewModal } from '../components/ChapterPreviewModal';
-import { UnsavedChangesDialog } from '../components/UnsavedChangesDialog';
-import { useToast } from '@/shared/ui';
+import { DeleteChapterModal } from '../components/DeleteChapterModal';
+import { UnsavedChangesModal } from '../components/UnsavedChangesModal';
 import { ApiProblemError } from '@/shared/api';
+
+function generateBlockId(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `block-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
 
 export function ChapterEditorPage() {
   const { courseId = '', chapterId = '' } = useParams<{
     courseId: string;
     chapterId: string;
   }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { pushToast } = useToast();
 
-  // Working draft local state
+  const isNewMode = !chapterId || chapterId === 'new';
+  const afterChapterId = searchParams.get('after');
+
+  // Course query for displaying course name
+  const { data: course } = useCourseQuery(courseId);
+  const { data: allChapters } = useChaptersQuery(courseId);
+
+  // Working draft state
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [blocks, setBlocks] = useState<BlockDto[]>([]);
+  const [blocks, setBlocks] = useState<BlockDto[]>([
+    {
+      id: generateBlockId(),
+      blockType: 'RICH_TEXT',
+      position: 1,
+      title: null,
+      body: '<p></p>',
+      resourceId: null,
+      questionId: null,
+      aiReviewStatus: 'NOT_APPLICABLE',
+    },
+  ]);
   const [baseVersionNo, setBaseVersionNo] = useState<number>(1);
+  const [accessMode, setAccessMode] = useState<'PUBLIC' | 'PROTECTED'>('PUBLIC');
   const [isDirty, setIsDirty] = useState(false);
+  const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
+
+  // Floating menus & context menus state
+  const [activeSlashMenu, setActiveSlashMenu] = useState<{
+    coords: { top: number; left: number };
+    blockId: string;
+  } | null>(null);
+
+  const [activeSelection, setActiveSelection] = useState<{
+    coords: { top: number; left: number };
+    blockId: string;
+  } | null>(null);
 
   // Modals & Drawers state
   const [isResourceDrawerOpen, setIsResourceDrawerOpen] = useState(false);
   const [pickerTargetBlockId, setPickerTargetBlockId] = useState<string | null>(null);
   const [isVersionsModalOpen, setIsVersionsModalOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  // Unsaved changes warning dialog state
+  // Unsaved changes exit dialog state
   const [showUnsavedExitDialog, setShowUnsavedExitDialog] = useState(false);
   const pendingExitPathRef = useRef<string | null>(null);
 
@@ -75,106 +125,107 @@ export function ChapterEditorPage() {
   const [publishBlockedDialogOpen, setPublishBlockedDialogOpen] = useState(false);
   const [publishBlockedMessage, setPublishBlockedMessage] = useState('');
 
-  // Fetch chapter draft
+  // Chapter Draft Query (for edit mode)
   const {
     data: chapter,
-    isLoading,
-    isError,
-    error,
+    isLoading: isChapterLoading,
+    isError: isChapterError,
+    error: chapterError,
     refetch,
-  } = useChapterDraftQuery(courseId, chapterId);
+  } = useChapterDraftQuery(courseId, isNewMode ? '' : chapterId);
 
-  const { mutateAsync: saveDraft, isPending: isSaving } =
-    useSaveChapterDraftMutation(courseId, chapterId);
-  const { mutateAsync: publishChapter, isPending: isPublishing } =
-    usePublishChapterMutation(courseId, chapterId);
+  // Mutations
+  const { mutateAsync: createChapter, isPending: isCreating } = useCreateChapterMutation(courseId);
+  const { mutateAsync: saveDraft, isPending: isSaving } = useSaveChapterDraftDynamicMutation(courseId);
+  const { mutateAsync: publishChapter, isPending: isPublishing } = usePublishChapterDynamicMutation(courseId);
+  const { mutateAsync: deleteChapter, isPending: isDeleting } = useDeleteChapterMutation(courseId);
+  const { mutateAsync: reorderChapters } = useReorderChaptersMutation(courseId);
 
-  // Populate local working state whenever fresh server data arrives
+  // Populate draft data in edit mode
   useEffect(() => {
-    if (chapter) {
+    if (!isNewMode && chapter) {
       setTitle(chapter.title || '');
-      setDescription(chapter.description || '');
-      setBlocks(chapter.blocks || []);
+      setAccessMode(((chapter as any)?.accessMode as any) || 'PUBLIC');
       setBaseVersionNo(chapter.lastVersionNo || 1);
+      if (chapter.blocks && chapter.blocks.length > 0) {
+        setBlocks(chapter.blocks);
+      } else {
+        setBlocks([
+          {
+            id: generateBlockId(),
+            blockType: 'RICH_TEXT',
+            position: 1,
+            title: null,
+            body: '<p></p>',
+            resourceId: null,
+            questionId: null,
+            aiReviewStatus: 'NOT_APPLICABLE',
+          },
+        ]);
+      }
       setIsDirty(false);
     }
-  }, [chapter]);
+  }, [isNewMode, chapter]);
 
-  // Window beforeunload guard to protect uncommitted data
+  // Window beforeunload guard
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (isDirty) {
         e.preventDefault();
-        e.returnValue = 'Bạn có thay đổi chưa lưu!';
-        return 'Bạn có thay đổi chưa lưu!';
+        e.returnValue = 'Bạn có thay đổi chưa lưu trên chương!';
+        return 'Bạn có thay đổi chưa lưu trên chương!';
       }
     };
-
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isDirty]);
 
-  // Handle safe back navigation
-  const handleSafeBack = (to: string) => {
+  // Navigation exit guard
+  const handleExitToChapterList = () => {
     if (isDirty) {
-      pendingExitPathRef.current = to;
+      pendingExitPathRef.current = `/courses/${courseId}/manage/content`;
       setShowUnsavedExitDialog(true);
     } else {
-      navigate(to);
+      navigate(`/courses/${courseId}/manage/content`);
     }
   };
 
-  const handleConfirmExit = () => {
+  const handleConfirmExitDiscard = () => {
     setShowUnsavedExitDialog(false);
     setIsDirty(false);
-    if (pendingExitPathRef.current) {
-      navigate(pendingExitPathRef.current);
+    const target = pendingExitPathRef.current || `/courses/${courseId}/manage/content`;
+    navigate(target);
+  };
+
+  const handleSaveAndExit = async () => {
+    const success = await handleSaveDraft();
+    if (success) {
+      setShowUnsavedExitDialog(false);
+      const target = pendingExitPathRef.current || `/courses/${courseId}/manage/content`;
+      navigate(target);
     }
   };
 
-  // Block management functions
-  const handleAddBlock = (blockType: BlockType) => {
-    const newPosition = blocks.length + 1;
-    // Generate a client-side stable UUID (v7 style or crypto UUID)
-    const newId =
-      typeof crypto !== 'undefined' && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `block-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-
+  // Block handlers
+  const handleAddBlockBelow = (targetIndex: number, type: BlockType = 'RICH_TEXT') => {
+    const newId = generateBlockId();
     const newBlock: BlockDto = {
       id: newId,
-      blockType,
-      position: newPosition,
+      blockType: type,
+      position: targetIndex + 2,
       title: null,
-      body: blockType === 'RICH_TEXT' ? '<p></p>' : blockType === 'MARKDOWN' ? '' : null,
+      body: type === 'RICH_TEXT' ? '<p></p>' : type === 'MARKDOWN' ? '' : null,
       resourceId: null,
       questionId: null,
-      flashcards: blockType === 'FLASHCARD' ? [{ front: '', back: '' }] : undefined,
+      flashcards: type === 'FLASHCARD' ? [{ front: '', back: '' }] : undefined,
       aiReviewStatus: 'NOT_APPLICABLE',
-      quizConfig:
-        blockType === 'QUIZ'
-          ? {
-              timeLimitMinutes: 45,
-              passScore: 70,
-              maxAttempts: 3,
-              resultDisplay: 'AFTER_SUBMIT',
-              shuffleQuestions: true,
-              shuffleOptions: true,
-              questions: [],
-              randomRules: [],
-            }
-          : undefined,
-      assignmentConfig:
-        blockType === 'ASSIGNMENT'
-          ? {
-              dueAt: null,
-              maxPoints: 10,
-              maxFileSizeBytes: 10 * 1024 * 1024,
-            }
-          : undefined,
     };
 
-    setBlocks([...blocks, newBlock]);
+    const nextList = [...blocks];
+    nextList.splice(targetIndex + 1, 0, newBlock);
+    const reindexed = nextList.map((b, i) => ({ ...b, position: i + 1 }));
+    setBlocks(reindexed);
+    setFocusedBlockId(newId);
     setIsDirty(true);
   };
 
@@ -184,10 +235,25 @@ export function ChapterEditorPage() {
   };
 
   const handleDeleteBlock = (blockId: string) => {
-    const remaining = blocks.filter((b) => b.id !== blockId);
-    // Re-index positions 1..N
-    const reindexed = remaining.map((b, i) => ({ ...b, position: i + 1 }));
-    setBlocks(reindexed);
+    if (blocks.length <= 1) {
+      // Keep at least one empty rich text block
+      setBlocks([
+        {
+          id: generateBlockId(),
+          blockType: 'RICH_TEXT',
+          position: 1,
+          title: null,
+          body: '<p></p>',
+          resourceId: null,
+          questionId: null,
+          aiReviewStatus: 'NOT_APPLICABLE',
+        },
+      ]);
+    } else {
+      const remaining = blocks.filter((b) => b.id !== blockId);
+      const reindexed = remaining.map((b, i) => ({ ...b, position: i + 1 }));
+      setBlocks(reindexed);
+    }
     setIsDirty(true);
   };
 
@@ -195,62 +261,186 @@ export function ChapterEditorPage() {
     const targetIndex = direction === 'UP' ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= blocks.length) return;
 
-    const list = [...blocks];
-    const [moved] = list.splice(index, 1);
+    const nextList = [...blocks];
+    const [moved] = nextList.splice(index, 1);
     if (!moved) return;
-    list.splice(targetIndex, 0, moved);
+    nextList.splice(targetIndex, 0, moved);
 
-    const reindexed = list.map((b, i) => ({ ...b, position: i + 1 }));
+    const reindexed = nextList.map((b, i) => ({ ...b, position: i + 1 }));
     setBlocks(reindexed);
     setIsDirty(true);
   };
 
-  // Open resource picker for a specific media/file block
-  const handleOpenPickerForBlock = (blockId: string) => {
-    setPickerTargetBlockId(blockId);
-    setIsResourceDrawerOpen(true);
+  const handleDuplicateBlock = (index: number) => {
+    const current = blocks[index];
+    if (!current) return;
+    const duplicated: BlockDto = {
+      ...JSON.parse(JSON.stringify(current)),
+      id: generateBlockId(),
+      position: index + 2,
+    };
+
+    const nextList = [...blocks];
+    nextList.splice(index + 1, 0, duplicated);
+    const reindexed = nextList.map((b, i) => ({ ...b, position: i + 1 }));
+    setBlocks(reindexed);
+    setIsDirty(true);
   };
 
-  const handleSelectResourceFromDrawer = (resource: ResourceDto) => {
-    if (pickerTargetBlockId) {
-      setBlocks(
-        blocks.map((b) =>
-          b.id === pickerTargetBlockId
-            ? { ...b, resourceId: resource.id, title: b.title || resource.originalFilename }
-            : b
-        )
-      );
-      setIsDirty(true);
-      setPickerTargetBlockId(null);
-    }
+  // Slash menu selection
+  const handleSelectSlashCommand = (item: SlashCommandItem) => {
+    if (!activeSlashMenu) return;
+    const targetId = activeSlashMenu.blockId;
+    setActiveSlashMenu(null);
+
+    setBlocks(
+      blocks.map((b) => {
+        if (b.id !== targetId) return b;
+
+        let initialBody = b.body;
+        if (item.initialFormat === 'H2') {
+          initialBody = '<h2>Tiêu đề phần</h2>';
+        } else if (item.initialFormat === 'H3') {
+          initialBody = '<h3>Tiêu đề phụ</h3>';
+        } else if (item.initialFormat === 'BULLET') {
+          initialBody = '<ul><li>Nội dung mục</li></ul>';
+        } else if (item.initialFormat === 'NUMBERED') {
+          initialBody = '<ol><li>Nội dung thứ tự</li></ol>';
+        } else if (item.initialFormat === 'TABLE') {
+          initialBody = `
+            <table class="w-full border-collapse border border-border my-2">
+              <thead>
+                <tr class="bg-muted/30">
+                  <th class="border border-border p-2 text-left font-semibold">Cột 1</th>
+                  <th class="border border-border p-2 text-left font-semibold">Cột 2</th>
+                  <th class="border border-border p-2 text-left font-semibold">Cột 3</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="border border-border p-2">Dữ liệu 1</td>
+                  <td class="border border-border p-2">Dữ liệu 2</td>
+                  <td class="border border-border p-2">Dữ liệu 3</td>
+                </tr>
+              </tbody>
+            </table><p></p>
+          `;
+        }
+
+        return {
+          ...b,
+          blockType: item.blockType,
+          body: initialBody,
+          flashcards: item.blockType === 'FLASHCARD' ? [{ front: '', back: '' }] : b.flashcards,
+        };
+      })
+    );
+    setIsDirty(true);
   };
 
-  // Save Draft (Optimistic Locking)
-  const handleSaveDraft = async () => {
+  // Floating text format command
+  const handleExecuteFormatCommand = (command: string, arg?: string) => {
+    document.execCommand(command, false, arg);
+    setIsDirty(true);
+  };
+
+  const handleInsertTableAtSelection = () => {
+    const tableHtml = `
+      <table class="w-full border-collapse border border-border my-2">
+        <thead>
+          <tr class="bg-muted/30">
+            <th class="border border-border p-2 text-left font-semibold">Cột 1</th>
+            <th class="border border-border p-2 text-left font-semibold">Cột 2</th>
+            <th class="border border-border p-2 text-left font-semibold">Cột 3</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="border border-border p-2">Dữ liệu 1</td>
+            <td class="border border-border p-2">Dữ liệu 2</td>
+            <td class="border border-border p-2">Dữ liệu 3</td>
+          </tr>
+        </tbody>
+      </table><p></p>
+    `;
+    document.execCommand('insertHTML', false, tableHtml);
+    setIsDirty(true);
+  };
+
+  // Save Draft (Only when user clicks "Lưu nháp")
+  const handleSaveDraft = async (): Promise<boolean> => {
     if (!title.trim()) {
       pushToast({
-        title: 'Tên chương không được để trống',
+        title: 'Vui lòng nhập tên chương',
         tone: 'warning',
       });
-      return;
+      return false;
     }
 
     try {
-      const updated = await saveDraft({
-        baseVersionNo,
-        title: title.trim(),
-        description: description.trim() || '',
-        blocks,
-      });
+      if (isNewMode) {
+        // 1. Tạo chương mới
+        const created = await createChapter({
+          title: title.trim(),
+          description: '',
+        });
 
-      setBaseVersionNo(updated.lastVersionNo || baseVersionNo + 1);
-      setIsDirty(false);
+        // 2. Nếu chèn sau một chương, reorder
+        if (afterChapterId && created.id && allChapters) {
+          const remainingIds = allChapters
+            .map((c) => c.id!)
+            .filter((id) => id !== created.id);
+          const targetIdx = remainingIds.findIndex((id) => id === afterChapterId);
+          if (targetIdx !== -1) {
+            remainingIds.splice(targetIdx + 1, 0, created.id);
+            await reorderChapters(remainingIds);
+          }
+        }
 
-      pushToast({
-        title: 'Lưu bản nháp thành công',
-        description: `Bản nháp đã được lưu an toàn (Phiên bản #${updated.lastVersionNo}).`,
-        tone: 'success',
-      });
+        // 3. Lưu nội dung draft vừa soạn vào chương mới
+        if (created.id) {
+          await saveDraft({
+            chapterId: created.id,
+            body: {
+              baseVersionNo: 1,
+              title: title.trim(),
+              description: '',
+              blocks,
+            },
+          });
+
+          pushToast({
+            title: 'Lưu bản nháp thành công',
+            description: `Chương "${created.title}" đã được tạo và lưu thành công.`,
+            tone: 'success',
+          });
+
+          setIsDirty(false);
+          // Chuyển URL sang id chương mới
+          navigate(`/courses/${courseId}/manage/content/${created.id}`, { replace: true });
+        }
+      } else {
+        // Lưu chương hiện có
+        const updated = await saveDraft({
+          chapterId,
+          body: {
+            baseVersionNo,
+            title: title.trim(),
+            description: chapter?.description || '',
+            blocks,
+          },
+        });
+
+        setBaseVersionNo(updated.lastVersionNo || baseVersionNo + 1);
+        setIsDirty(false);
+
+        pushToast({
+          title: 'Lưu bản nháp thành công',
+          description: `Bản nháp đã được lưu an toàn (Phiên bản #${updated.lastVersionNo}).`,
+          tone: 'success',
+        });
+      }
+      return true;
     } catch (err: unknown) {
       if (
         (err instanceof ApiProblemError && err.status === 409) ||
@@ -276,18 +466,20 @@ export function ChapterEditorPage() {
           tone: 'error',
         });
       }
+      return false;
     }
   };
 
   // Publish Chapter
   const handlePublish = async () => {
     if (isDirty) {
-      // Prompt user to save first
-      await handleSaveDraft();
+      const saved = await handleSaveDraft();
+      if (!saved) return;
     }
 
     try {
-      const published = await publishChapter();
+      const targetId = isNewMode ? chapterId : chapterId;
+      const published = await publishChapter(targetId);
       pushToast({
         title: 'Đăng tải chương thành công',
         description: `Chương "${published.title}" hiện đã được xuất bản tới học viên.`,
@@ -304,7 +496,7 @@ export function ChapterEditorPage() {
         const detailMsg =
           err && typeof err === 'object' && 'detail' in err
             ? String((err as { detail?: string }).detail)
-            : 'Không thể đăng tải: Chương chưa đáp ứng đủ điều kiện (ví dụ: bộ flashcard AI chưa được phê duyệt, bài kiểm tra thiếu câu hỏi hợp lệ hoặc tài nguyên chưa sẵn sàng).';
+            : 'Không thể đăng tải: Chương chưa đáp ứng đủ điều kiện kiểm duyệt.';
         setPublishBlockedMessage(detailMsg);
         setPublishBlockedDialogOpen(true);
       } else {
@@ -323,286 +515,366 @@ export function ChapterEditorPage() {
     }
   };
 
-  if (isLoading) {
+  // Delete chapter confirm
+  const handleDeleteChapterConfirm = async () => {
+    if (isNewMode) {
+      setIsDirty(false);
+      navigate(`/courses/${courseId}/manage/content`);
+      return;
+    }
+
+    try {
+      await deleteChapter(chapterId);
+      pushToast({
+        title: 'Đã xóa chương',
+        description: 'Chương bài học đã được xóa vĩnh viễn.',
+        tone: 'success',
+      });
+      setIsDeleteDialogOpen(false);
+      navigate(`/courses/${courseId}/manage/content`);
+    } catch {
+      pushToast({
+        title: 'Lỗi',
+        description: 'Không thể xóa chương vào lúc này.',
+        tone: 'error',
+      });
+    }
+  };
+
+  if (!isNewMode && isChapterLoading) {
     return (
-      <div className="space-y-6 max-w-5xl mx-auto p-4 sm:p-6 lg:p-8">
-        <Skeleton className="h-10 w-48" />
-        <Skeleton className="h-20 w-full rounded-2xl" />
-        <div className="space-y-4 pt-4">
-          <Skeleton className="h-44 w-full rounded-2xl" />
-          <Skeleton className="h-44 w-full rounded-2xl" />
+      <div className="space-y-6 max-w-4xl mx-auto p-6 sm:p-12">
+        <Skeleton className="h-8 w-48 rounded-lg" />
+        <Skeleton className="h-14 w-full rounded-2xl" />
+        <div className="space-y-3 pt-6">
+          <Skeleton className="h-20 w-full rounded-xl" />
+          <Skeleton className="h-20 w-full rounded-xl" />
         </div>
       </div>
     );
   }
 
-  if (isError) {
+  if (!isNewMode && isChapterError) {
     return (
       <div className="max-w-4xl mx-auto p-6">
         <ErrorState
-          title="Không thể tải bản nháp chương"
-          error={error}
+          title="Không thể tải nội dung chương"
+          error={chapterError}
           onRetry={() => refetch()}
         />
       </div>
     );
   }
 
+  const courseTitle = course?.name || 'Khóa học';
+
   return (
-    <div className="min-h-screen bg-background text-foreground pb-20">
-      {/* Top Sticky Header & Controls Bar */}
-      <header className="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur-md px-4 sm:px-6 py-3 shadow-xs">
-        <div className="max-w-5xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          {/* Left: Back & Chapter Info */}
-          <div className="flex items-center gap-3 min-w-0">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
+      {/* 1. TOP HEADER BAR: Notion-style matching Figma Frame */}
+      <header className="sticky top-0 z-30 border-b border-border/80 bg-card/90 backdrop-blur-md px-4 sm:px-8 py-2.5 shadow-xs">
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
+          {/* Left: Exit button & Course Name */}
+          <div className="flex items-center gap-2.5 min-w-0">
             <button
               type="button"
-              onClick={() => handleSafeBack(`/courses/${courseId}/manage/content`)}
+              onClick={handleExitToChapterList}
               aria-label="Quay lại mục lục chương"
-              className="rounded-xl border border-border p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0"
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-medium transition-colors shrink-0 p-1.5 rounded-lg hover:bg-muted"
             >
               <ArrowLeft className="h-4 w-4" />
+              <span>Danh sách chương</span>
             </button>
 
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-bold text-muted-foreground">
-                  v{baseVersionNo}
-                </span>
+            <div className="h-4 w-px bg-border/60 shrink-0" />
 
-                {chapter?.status === 'PUBLISHED' ? (
-                  <span className="rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.2 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                    <CheckCircle2 className="h-3 w-3" />
-                    Đã xuất bản
-                  </span>
-                ) : (
-                  <span className="rounded-full bg-amber-500/10 border border-amber-500/30 px-2 py-0.2 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
-                    Bản nháp
-                  </span>
-                )}
-
-                {/* Dirty state indicator */}
-                {isDirty ? (
-                  <span className="text-[11px] font-medium text-amber-500 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    Chưa lưu
-                  </span>
-                ) : (
-                  <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
-                    <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                    Đã lưu
-                  </span>
-                )}
-              </div>
-              <h2 className="text-sm sm:text-base font-bold text-foreground truncate max-w-sm sm:max-w-md">
-                {title || 'Chương chưa đặt tên'}
-              </h2>
-            </div>
+            <span className="text-xs text-muted-foreground/80 font-medium truncate max-w-[160px] sm:max-w-xs">
+              {courseTitle}
+            </span>
           </div>
 
-          {/* Right: Actions Bar */}
-          <div className="flex flex-wrap items-center gap-2 self-end md:self-auto">
-            {/* Resource Drawer Trigger */}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setPickerTargetBlockId(null);
-                setIsResourceDrawerOpen(true);
-              }}
-              title="Quản lý kho tài nguyên"
-              className="text-xs h-9"
-            >
-              <FolderOpen className="h-3.5 w-3.5 mr-1 text-primary" />
-              Tài nguyên
-            </Button>
+          {/* Center: Status pill badge */}
+          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-card border border-border/80 text-xs shadow-xs">
+            {chapter?.status === 'PUBLISHED' && !isNewMode ? (
+              <span className="text-emerald-500 font-medium">Đã xuất bản</span>
+            ) : (
+              <span className="text-muted-foreground font-medium">Nháp</span>
+            )}
+            <span className="text-muted-foreground/40">•</span>
+            {isDirty ? (
+              <span className="text-amber-500 font-medium flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                Chưa lưu thay đổi
+              </span>
+            ) : (
+              <span className="text-muted-foreground font-medium flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-emerald-500/80" />
+                Đã lưu
+              </span>
+            )}
+          </div>
 
-            {/* Version History Trigger */}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setIsVersionsModalOpen(true)}
-              title="Lịch sử phiên bản"
-              className="text-xs h-9"
-            >
-              <History className="h-3.5 w-3.5 mr-1" />
-              Lịch sử
-            </Button>
+          {/* Right: Actions */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Version indicator */}
+            {!isNewMode && (
+              <span className="hidden md:inline-block font-mono text-[11px] font-bold text-muted-foreground px-2 py-0.5 rounded bg-muted/40">
+                v{baseVersionNo}
+              </span>
+            )}
 
-            {/* Preview Trigger */}
-            <Button
+            {/* Xem trước như học viên */}
+            <button
               type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setIsPreviewOpen(true)}
               title="Xem trước như học viên"
               aria-label="Xem trước như học viên"
-              className="text-xs h-9"
+              onClick={() => setIsPreviewOpen(true)}
+              className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
             >
-              <Eye className="h-3.5 w-3.5 mr-1" />
-              Xem trước
-            </Button>
+              <Eye className="h-4 w-4" />
+            </button>
 
-            {/* Save Draft Button */}
+            {/* Lịch sử phiên bản */}
+            {!isNewMode && (
+              <button
+                type="button"
+                title="Lịch sử phiên bản"
+                aria-label="Lịch sử phiên bản"
+                onClick={() => setIsVersionsModalOpen(true)}
+                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+              >
+                <History className="h-4 w-4" />
+              </button>
+            )}
+
+            {/* Tài nguyên */}
+            <button
+              type="button"
+              title="Quản lý tài nguyên"
+              aria-label="Tài nguyên"
+              onClick={() => setIsResourceDrawerOpen(true)}
+              className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+            >
+              <FolderOpen className="h-4 w-4" />
+            </button>
+
+            {/* Lưu nháp (Chỉ lưu khi click) */}
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={handleSaveDraft}
-              disabled={isSaving}
-              className="text-xs h-9 font-semibold text-foreground border-primary/40 hover:bg-primary/5"
+              disabled={isSaving || isCreating}
+              className="text-xs h-8 px-3.5 font-medium border-border/80 hover:bg-muted"
             >
-              <Save className="h-3.5 w-3.5 mr-1.5 text-primary" />
-              {isSaving ? 'Đang lưu...' : 'Lưu nháp'}
+              {isSaving || isCreating ? 'Đang lưu...' : 'Lưu nháp'}
             </Button>
 
-            {/* Publish Button */}
+            {/* Đăng tải */}
             <Button
               type="button"
               size="sm"
               onClick={handlePublish}
-              disabled={isPublishing}
-              className="bg-primary hover:bg-primary/90 text-white text-xs h-9 font-semibold shadow-xs"
+              disabled={isPublishing || isSaving || isCreating}
+              className="bg-[#ff7a1a] hover:bg-[#ff7a1a]/90 text-[#5e2700] text-xs h-8 px-4 font-bold rounded-lg shadow-xs"
             >
-              <Send className="h-3.5 w-3.5 mr-1.5" />
               {isPublishing ? 'Đang đăng...' : 'Đăng tải'}
             </Button>
+
+            {/* Menu MoreVertical */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  title="Tùy chọn khác"
+                  aria-label="Tùy chọn khác cho chương"
+                  className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 text-xs">
+                {/* Chế độ truy cập toggle */}
+                <DropdownMenuItem
+                  onClick={() => {
+                    const nextMode = accessMode === 'PUBLIC' ? 'PROTECTED' : 'PUBLIC';
+                    setAccessMode(nextMode);
+                    setIsDirty(true);
+                  }}
+                >
+                  {accessMode === 'PROTECTED' ? (
+                    <Lock className="h-4 w-4 mr-2 text-zinc-400" />
+                  ) : (
+                    <Globe className="h-4 w-4 mr-2 text-emerald-400" />
+                  )}
+                  <span>Chế độ: {accessMode === 'PROTECTED' ? 'Protected' : 'Public'}</span>
+                </DropdownMenuItem>
+
+                {/* Xem trước như học viên */}
+                <DropdownMenuItem onClick={() => setIsPreviewOpen(true)}>
+                  <Eye className="h-4 w-4 mr-2 text-muted-foreground" />
+                  <span>Xem trước như học viên</span>
+                </DropdownMenuItem>
+
+                {/* Kho tài nguyên */}
+                <DropdownMenuItem onClick={() => setIsResourceDrawerOpen(true)}>
+                  <FolderOpen className="h-4 w-4 mr-2 text-muted-foreground" />
+                  <span>Kho tài nguyên</span>
+                </DropdownMenuItem>
+
+                {/* Lịch sử phiên bản */}
+                {!isNewMode && (
+                  <DropdownMenuItem onClick={() => setIsVersionsModalOpen(true)}>
+                    <History className="h-4 w-4 mr-2 text-muted-foreground" />
+                    <span>Lịch sử phiên bản</span>
+                  </DropdownMenuItem>
+                )}
+
+                <DropdownMenuSeparator />
+
+                {/* Xóa chương */}
+                <DropdownMenuItem
+                  onClick={() => setIsDeleteDialogOpen(true)}
+                  className="text-red-500 focus:text-red-500 focus:bg-red-500/10"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  <span>Xóa chương</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
 
-      {/* Main Canvas Area */}
-      <main className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
-        {/* Chapter Header Card (Title & Description) */}
-        <section
-          aria-label="Thông tin cơ bản chương"
-          className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4"
-        >
-          <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">
-              Tiêu đề chương bài học <span className="text-destructive">*</span>
-            </label>
-            <Input
-              value={title}
-              onChange={(e) => {
-                setTitle(e.target.value);
-                setIsDirty(true);
+      {/* 2. NOTION CANVAS CONTAINER */}
+      <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-12 py-10 space-y-6">
+        {/* DÒNG TO ĐẦU TIÊN: Tiêu đề chương (Không có mô tả tóm tắt) */}
+        <div className="pl-12">
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              setIsDirty(true);
+            }}
+            placeholder="Chương: Tiêu đề chương bài học..."
+            aria-label="Tiêu đề chương bài học"
+            className="w-full bg-transparent font-serif text-3xl sm:text-4xl font-bold tracking-tight text-foreground placeholder:text-muted-foreground/30 border-none outline-none focus:ring-0 p-0"
+          />
+        </div>
+
+        {/* DANH SÁCH CÁC KHỐI NOTION BLOCKS */}
+        <div className="space-y-1">
+          {blocks.map((block, index) => (
+            <NotionBlockRow
+              key={block.id}
+              block={block}
+              index={index}
+              totalBlocks={blocks.length}
+              courseId={courseId}
+              isFocused={focusedBlockId === block.id}
+              onUpdate={handleUpdateBlock}
+              onDelete={() => handleDeleteBlock(block.id)}
+              onAddBelow={(type?: BlockType) => handleAddBlockBelow(index, type)}
+              onMoveUp={() => handleMoveBlock(index, 'UP')}
+              onMoveDown={() => handleMoveBlock(index, 'DOWN')}
+              onDuplicate={() => handleDuplicateBlock(index)}
+              onOpenSlashMenu={(coords: { top: number; left: number }, blockId: string) => setActiveSlashMenu({ coords, blockId })}
+              onOpenResourcePicker={(blockId: string) => {
+                setPickerTargetBlockId(blockId);
+                setIsResourceDrawerOpen(true);
               }}
-              placeholder="Nhập tên chương..."
-              className="text-base sm:text-lg font-serif font-bold"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">
-              Mô tả tóm tắt chương (Tùy chọn)
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => {
-                setDescription(e.target.value);
-                setIsDirty(true);
+              onSelectionChange={(coords: { top: number; left: number } | null, blockId: string) => {
+                if (coords) {
+                  setActiveSelection({ coords, blockId });
+                } else {
+                  setActiveSelection(null);
+                }
               }}
-              placeholder="Mô tả ngắn gọn nội dung và mục tiêu người học sẽ đạt được..."
-              rows={2}
-              className="w-full rounded-xl border border-border bg-background p-3 text-xs sm:text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
             />
-          </div>
-        </section>
-
-        {/* Blocks Canvas */}
-        <section aria-label="Danh sách khối nội dung" className="space-y-4">
-          <div className="flex items-center justify-between border-b border-border pb-2">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
-              <BookOpen className="h-4 w-4 text-primary" />
-              <span>Nội dung bài học ({blocks.length} khối)</span>
-            </h3>
-            <span className="text-xs text-muted-foreground">
-              Hệ thống không tự lưu, hãy nhấn &quot;Lưu nháp&quot; khi hoàn tất
-            </span>
-          </div>
-
-          {blocks.length === 0 ? (
-            <div className="rounded-2xl border-2 border-dashed border-border bg-card p-10 text-center space-y-3">
-              <BookOpen className="mx-auto h-10 w-10 text-muted-foreground/60" />
-              <p className="text-sm font-bold text-foreground">
-                Chưa có khối nội dung nào trong chương này
-              </p>
-              <p className="text-xs text-muted-foreground max-w-md mx-auto">
-                Chọn một trong các loại khối bên dưới để bắt đầu biên soạn bài giảng (Văn bản,
-                Markdown, Hình ảnh, Video, Flashcard, Bài tập, Quiz...).
-              </p>
-              <div className="pt-2">
-                <AddBlockMenu onAddBlock={handleAddBlock} />
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {blocks.map((block, index) => (
-                <React.Fragment key={block.id}>
-                  <BlockItem
-                    block={block}
-                    courseId={courseId}
-                    isFirst={index === 0}
-                    isLast={index === blocks.length - 1}
-                    onMoveUp={() => handleMoveBlock(index, 'UP')}
-                    onMoveDown={() => handleMoveBlock(index, 'DOWN')}
-                    onDelete={() => handleDeleteBlock(block.id)}
-                    onUpdate={handleUpdateBlock}
-                    onOpenResourcePicker={handleOpenPickerForBlock}
-                  />
-
-                  {/* Add block bar between blocks */}
-                  <div className="opacity-40 hover:opacity-100 transition-opacity">
-                    <AddBlockMenu onAddBlock={handleAddBlock} />
-                  </div>
-                </React.Fragment>
-              ))}
-            </div>
-          )}
-        </section>
+          ))}
+        </div>
       </main>
 
-      {/* Resource Drawer (SCR-CNT-07) */}
+      {/* 3. SLASH COMMAND POPUP MENU */}
+      <SlashCommandMenu
+        isOpen={Boolean(activeSlashMenu)}
+        position={activeSlashMenu?.coords}
+        onClose={() => setActiveSlashMenu(null)}
+        onSelect={handleSelectSlashCommand}
+      />
+
+      {/* 4. FLOATING TEXT FORMAT TOOLBAR */}
+      <FloatingTextFormatToolbar
+        position={activeSelection?.coords || null}
+        onCommand={handleExecuteFormatCommand}
+        onInsertTable={handleInsertTableAtSelection}
+        onClose={() => setActiveSelection(null)}
+      />
+
+      {/* 5. MODAL: XÓA CHƯƠNG HỌC (Figma Specimen) */}
+      <DeleteChapterModal
+        isOpen={isDeleteDialogOpen}
+        chapterTitle={title}
+        blockCount={blocks.length}
+        onCancel={() => setIsDeleteDialogOpen(false)}
+        onConfirm={handleDeleteChapterConfirm}
+        isDeleting={isDeleting}
+      />
+
+      {/* 6. MODAL: RỜI KHỎI TRANG (Figma Specimen) */}
+      <UnsavedChangesModal
+        isOpen={showUnsavedExitDialog}
+        chapterTitle={title}
+        onStay={() => setShowUnsavedExitDialog(false)}
+        onSaveDraft={handleSaveAndExit}
+        onLeave={handleConfirmExitDiscard}
+        isSaving={isSaving || isCreating}
+      />
+
+      {/* 7. MODAL: RESOURCE DRAWER */}
       <ResourceDrawer
-        courseId={courseId}
         isOpen={isResourceDrawerOpen}
+        courseId={courseId}
         onClose={() => {
           setIsResourceDrawerOpen(false);
           setPickerTargetBlockId(null);
         }}
-        pickerMode={Boolean(pickerTargetBlockId)}
-        onSelectResource={handleSelectResourceFromDrawer}
+        onSelectResource={(resource: ResourceDto) => {
+          if (pickerTargetBlockId) {
+            setBlocks(
+              blocks.map((b) =>
+                b.id === pickerTargetBlockId
+                  ? { ...b, resourceId: resource.id, title: b.title || resource.originalFilename }
+                  : b
+              )
+            );
+            setIsDirty(true);
+            setPickerTargetBlockId(null);
+          }
+        }}
       />
 
-      {/* Version History Modal (SCR-CNT-03) */}
-      <ChapterVersionsModal
-        courseId={courseId}
-        chapterId={chapterId}
-        isOpen={isVersionsModalOpen}
-        onClose={() => setIsVersionsModalOpen(false)}
-        currentVersionNo={baseVersionNo}
-      />
+      {/* 8. MODAL: VERSION HISTORY */}
+      {!isNewMode && (
+        <ChapterVersionsModal
+          isOpen={isVersionsModalOpen}
+          courseId={courseId}
+          chapterId={chapterId}
+          onClose={() => setIsVersionsModalOpen(false)}
+          currentVersionNo={baseVersionNo}
+        />
+      )}
 
-      {/* Student View Draft Preview Modal (FR-CNT-03) */}
+      {/* 9. MODAL: CHAPTER PREVIEW */}
       <ChapterPreviewModal
         isOpen={isPreviewOpen}
         onClose={() => setIsPreviewOpen(false)}
-        chapterTitle={title}
-        chapterDescription={description}
+        chapterTitle={title || 'Xem trước chương bài học'}
+        chapterDescription={chapter?.description}
         blocks={blocks}
       />
 
-      {/* Unsaved Changes Guard Dialog */}
-      <UnsavedChangesDialog
-        isOpen={showUnsavedExitDialog}
-        onCancel={() => setShowUnsavedExitDialog(false)}
-        onConfirm={handleConfirmExit}
-      />
-
-      {/* Optimistic Locking 409 VERSION_CONFLICT Dialog */}
+      {/* 10. MODAL: OPTIMISTIC LOCKING CONFLICT */}
       <Dialog open={conflictDialogOpen} onOpenChange={setConflictDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -614,55 +886,39 @@ export function ChapterEditorPage() {
               {conflictErrorMessage}
             </DialogDescription>
           </DialogHeader>
-
           <DialogFooter>
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => setConflictDialogOpen(false)}
-            >
-              Tiếp tục giữ bản hiện tại
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              onClick={async () => {
+              onClick={() => {
                 setConflictDialogOpen(false);
-                await refetch();
-                pushToast({
-                  title: 'Đã tải phiên bản mới nhất từ máy chủ',
-                  tone: 'success',
-                });
+                refetch();
               }}
-              className="bg-primary hover:bg-primary/90 text-white"
             >
-              <RotateCcw className="h-3.5 w-3.5 mr-1" />
+              <RotateCcw className="h-4 w-4 mr-1.5" />
               Tải lại bản mới nhất
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Publish Blocked 422 Dialog */}
-      <Dialog
-        open={publishBlockedDialogOpen}
-        onOpenChange={setPublishBlockedDialogOpen}
-      >
+      {/* 11. MODAL: PUBLISH BLOCKED */}
+      <Dialog open={publishBlockedDialogOpen} onOpenChange={setPublishBlockedDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-amber-500">
+            <DialogTitle className="flex items-center gap-2 text-destructive">
               <AlertCircle className="h-5 w-5" />
-              Chưa thể đăng tải chương
+              Đăng tải bị chặn
             </DialogTitle>
             <DialogDescription className="text-foreground/90 pt-1">
               {publishBlockedMessage}
             </DialogDescription>
           </DialogHeader>
-
           <DialogFooter>
             <Button
               type="button"
+              variant="outline"
               size="sm"
               onClick={() => setPublishBlockedDialogOpen(false)}
             >

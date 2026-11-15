@@ -175,6 +175,10 @@ export const appRoutes: RouteObject[] = [
             element: <ChapterListPage />,
           },
           {
+            path: '/courses/:courseId/manage/content/new',
+            element: <ChapterEditorPage />,
+          },
+          {
             path: '/courses/:courseId/manage/content/:chapterId',
             element: <ChapterEditorPage />,
           },
