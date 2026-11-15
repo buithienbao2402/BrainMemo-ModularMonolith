@@ -18,6 +18,9 @@
     <ProjectReference Include="..\..\Modules\Content\BrainMemo.Content.Api\BrainMemo.Content.Api.csproj" />
     <ProjectReference Include="..\..\Modules\Content\BrainMemo.Content.Contracts\BrainMemo.Content.Contracts.csproj" />
     <ProjectReference Include="..\..\Modules\Content\BrainMemo.Content.Infrastructure\BrainMemo.Content.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Learning\BrainMemo.Learning.Api\BrainMemo.Learning.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Learning\BrainMemo.Learning.Contracts\BrainMemo.Learning.Contracts.csproj" />
+    <ProjectReference Include="..\..\Modules\Learning\BrainMemo.Learning.Infrastructure\BrainMemo.Learning.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
