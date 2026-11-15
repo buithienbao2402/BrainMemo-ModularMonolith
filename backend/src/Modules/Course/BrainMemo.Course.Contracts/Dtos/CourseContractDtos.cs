@@ -120,3 +120,16 @@ public sealed record EnrollmentDto(
     string Status,
     Guid? RequestId,
     DateTimeOffset StatusChangedAt);
+
+public sealed record EnrollmentRequestDto(
+    Guid Id,
+    Guid CourseId,
+    UserRefDto User,
+    string Decision,
+    DateTimeOffset RequestedAt,
+    DateTimeOffset? DecidedAt,
+    Guid? DecidedByUserId);
+
+public sealed record ChapterAccessConfigDto(
+    string AccessMode,
+    uint PasscodeVersion);

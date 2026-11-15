@@ -31,9 +31,14 @@ public sealed record EnrollmentChanged(
     Guid EventId,
     DateTimeOffset OccurredAt,
     Guid CourseId,
+    Guid OwnerUserId,
     Guid UserId,
-    string PreviousStatus,
-    string NewStatus) : IntegrationEvent(EventId, OccurredAt);
+    string Action,
+    string? FromStatus,
+    string ToStatus,
+    bool IsFirstActivation = false,
+    string? PreviousStatus = null,
+    string? NewStatus = null) : IntegrationEvent(EventId, OccurredAt);
 
 public sealed record NominationChanged(
     Guid EventId,

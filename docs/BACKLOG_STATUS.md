@@ -35,7 +35,7 @@
 | T-S3-FE-01 | FE-01 + FE-02 | DONE | Antigravity (FE) | feat/T-S3-FE-01-content-editor-suite | **FE Content Editor Suite (Batched):** SCR-CNT-01, 02, 03, 07 (10 loại block, khóa lạc quan 409, quản lý tài nguyên DEC-05, lịch sử phiên bản, 17/17 tests pass) |
 | T-S3-INT-01 | INT-01 | DONE | Antigravity (INT) | feat/T-S3-INT-01-content-editor-e2e | **Tích hợp S3 + e2e:** Soạn thảo block + upload ảnh → Lưu nháp → Xử lý xung đột 2 tab (409) → Đăng tải chương → Khôi phục lịch sử (100% tests pass) |
 | **S4 – Ghi danh & Learning** | | | | | |
-| T-S4-BE-01 | BE-01 + BE-02 | TODO | – | – | **Enrollment & Chapter Access Engine (Batched):** Ghi danh 5 trạng thái + Ma trận quyền 3.2.2 + Mở khóa chương passcode (`POST /courses/{id}/chapters/{chapterId}/verify-passcode`) + Outbox + Quản lý yêu cầu tham gia chờ duyệt (`GET/POST /courses/{id}/enrollment-requests`) |
+| T-S4-BE-01 | BE-01 + BE-02 | REVIEW | Antigravity (BE) | feat/T-S4-BE-01-enrollment-chapter-access | **Enrollment & Chapter Access Engine (Batched):** Ghi danh 5 trạng thái + Ma trận quyền 3.2.2 + Mở khóa chương passcode (`POST /courses/{id}/chapters/{chapterId}/verify-passcode`) + Outbox + Quản lý yêu cầu tham gia chờ duyệt (`GET/POST /courses/{id}/enrollment-requests`) |
 | T-S4-BE-02 | BE-03 | TODO | – | – | **Learning Progress & Player Service:** Đọc chương, hoàn thành block, tính tiến độ, bookmark, event hoàn thành khóa + Thống kê học tập (`GET /courses/{id}/enrollments/summary`) + Thống kê hoàn thành chương (`GET /courses/{id}/chapters/{chapterId}/progress-summary`) |
 | T-S4-FE-01 | FE-01 + FE-02 | TODO | – | – | **FE Enrollment & Learning Player (Batched):** SCR-CRS-05, 06 + SCR-LRN-01, 07 |
 | T-S4-INT-01 | INT-01 | TODO | – | – | Tích hợp S4 + e2e |

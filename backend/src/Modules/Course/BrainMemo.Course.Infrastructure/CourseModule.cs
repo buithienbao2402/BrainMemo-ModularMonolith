@@ -36,5 +36,8 @@ public sealed class CourseModule : IModule
 
         services.AddScoped<ICourseRepository, CourseRepository>();
         services.AddScoped<ICourseContract, CourseContractService>();
+        services.AddSingleton<IPasscodeHasher, Security.BCryptPasscodeHasher>();
+        services.AddSingleton<IPasscodeRateLimiter, Security.MemoryPasscodeRateLimiter>();
+        services.AddScoped<BrainMemo.BuildingBlocks.Abstractions.Events.IIntegrationEventHandler<BrainMemo.Content.Contracts.Events.ChapterDeleted>, Application.EventHandlers.ChapterDeletedEventHandler>();
     }
 }

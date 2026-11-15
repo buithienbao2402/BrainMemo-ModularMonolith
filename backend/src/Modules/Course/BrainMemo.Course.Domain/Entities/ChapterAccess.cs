@@ -34,16 +34,8 @@ public sealed class ChapterAccess
     public void UpdateAccess(ChapterAccessMode accessMode, string? passcodeHash, DateTimeOffset now)
     {
         AccessMode = accessMode;
-        if (accessMode == ChapterAccessMode.Protected)
-        {
-            PasscodeHash = passcodeHash;
-            PasscodeVersion++;
-        }
-        else
-        {
-            PasscodeHash = null;
-        }
-
+        PasscodeHash = accessMode == ChapterAccessMode.Protected ? passcodeHash : null;
+        PasscodeVersion++;
         UpdatedAt = now;
     }
 }

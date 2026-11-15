@@ -133,8 +133,8 @@ public sealed class CourseApplicationTests
             OwnerUserId: OwnerId,
             Name: "Khóa học thử nghiệm",
             Description: "Mô tả",
-            AccessMode: CourseAccessMode.Public,
-            Status: CourseStatus.Updating,
+            AccessMode: AccessMode.Public,
+            Status: BrainMemo.Course.Contracts.Enums.CourseStatus.Updating,
             Tags: ["tag1"],
             CoverUploadKey: null);
 
@@ -163,8 +163,8 @@ public sealed class CourseApplicationTests
             OwnerUserId: OwnerId,
             Name: "Khóa học ảnh quá lớn",
             Description: "Mô tả",
-            AccessMode: CourseAccessMode.Public,
-            Status: CourseStatus.Updating,
+            AccessMode: AccessMode.Public,
+            Status: BrainMemo.Course.Contracts.Enums.CourseStatus.Updating,
             Tags: ["tag1"],
             CoverUploadKey: uploadKey);
 
@@ -191,8 +191,8 @@ public sealed class CourseApplicationTests
             OwnerUserId: OwnerId,
             Name: "Lập trình C# nâng cao",
             Description: "Mô tả khóa",
-            AccessMode: CourseAccessMode.Public,
-            Status: CourseStatus.Updating,
+            AccessMode: AccessMode.Public,
+            Status: BrainMemo.Course.Contracts.Enums.CourseStatus.Updating,
             Tags: ["csharp", "dotnet"],
             CoverUploadKey: uploadKey);
 
@@ -244,7 +244,7 @@ public sealed class CourseApplicationTests
             CurrentUserId: OwnerId,
             Name: "Tên mới",
             Description: null,
-            AccessMode: CourseAccessMode.OnlyMe,
+            AccessMode: AccessMode.OnlyMe,
             Status: null,
             Tags: null,
             CoverUploadKey: null,
@@ -522,6 +522,7 @@ public sealed class CourseApplicationTests
     {
         public List<CourseEntity> Courses { get; } = [];
         public List<Enrollment> Enrollments { get; } = [];
+        public List<EnrollmentRequest> EnrollmentRequests { get; } = [];
         public List<ChapterAccess> ChapterAccesses { get; } = [];
         public List<ChapterUnlock> ChapterUnlocks { get; } = [];
         public List<Nomination> Nominations { get; } = [];
@@ -544,11 +545,88 @@ public sealed class CourseApplicationTests
         public Task<Enrollment?> GetEnrollmentAsync(Guid courseId, Guid userId, CancellationToken ct = default) =>
             Task.FromResult(Enrollments.FirstOrDefault(e => e.CourseId == courseId && e.UserId == userId));
 
+        public Task AddEnrollmentAsync(Enrollment enrollment, CancellationToken ct = default)
+        {
+            Enrollments.Add(enrollment);
+            return Task.CompletedTask;
+        }
+
+        public Task RemoveEnrollmentAsync(Enrollment enrollment, CancellationToken ct = default)
+        {
+            Enrollments.Remove(enrollment);
+            return Task.CompletedTask;
+        }
+
+        public Task<EnrollmentRequest?> GetPendingEnrollmentRequestAsync(Guid courseId, Guid userId, CancellationToken ct = default) =>
+            Task.FromResult(EnrollmentRequests.FirstOrDefault(r => r.CourseId == courseId && r.UserId == userId && r.Decision == EnrollmentDecision.Pending));
+
+        public Task<EnrollmentRequest?> GetEnrollmentRequestByIdAsync(Guid requestId, CancellationToken ct = default) =>
+            Task.FromResult(EnrollmentRequests.FirstOrDefault(r => r.Id == requestId));
+
+        public Task AddEnrollmentRequestAsync(EnrollmentRequest request, CancellationToken ct = default)
+        {
+            EnrollmentRequests.Add(request);
+            return Task.CompletedTask;
+        }
+
+        public Task<PagedResult<Enrollment>> ListEnrollmentsPagedAsync(
+            Guid courseId,
+            BrainMemo.Course.Domain.Enums.EnrollmentStatus? status,
+            int page,
+            int pageSize,
+            CancellationToken ct = default)
+        {
+            var query = Enrollments.Where(e => e.CourseId == courseId);
+            if (status.HasValue) query = query.Where(e => e.Status == status.Value);
+            var list = query.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+            return Task.FromResult(new PagedResult<Enrollment>(list, page, pageSize, query.Count()));
+        }
+
+        public Task<IReadOnlyList<Enrollment>> ListUserInvitationsAsync(Guid userId, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<Enrollment>>(Enrollments.Where(e => e.UserId == userId && e.Status == BrainMemo.Course.Domain.Enums.EnrollmentStatus.Invited).ToList());
+
+        public Task<PagedResult<EnrollmentRequest>> ListEnrollmentRequestsPagedAsync(
+            Guid courseId,
+            EnrollmentDecision? decision,
+            int page,
+            int pageSize,
+            CancellationToken ct = default)
+        {
+            var query = EnrollmentRequests.Where(r => r.CourseId == courseId);
+            if (decision.HasValue) query = query.Where(r => r.Decision == decision.Value);
+            var list = query.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+            return Task.FromResult(new PagedResult<EnrollmentRequest>(list, page, pageSize, query.Count()));
+        }
+
         public Task<ChapterAccess?> GetChapterAccessAsync(Guid chapterId, CancellationToken ct = default) =>
             Task.FromResult(ChapterAccesses.FirstOrDefault(a => a.ChapterId == chapterId));
 
+        public Task AddChapterAccessAsync(ChapterAccess chapterAccess, CancellationToken ct = default)
+        {
+            ChapterAccesses.Add(chapterAccess);
+            return Task.CompletedTask;
+        }
+
+        public Task RemoveChapterAccessAsync(ChapterAccess chapterAccess, CancellationToken ct = default)
+        {
+            ChapterAccesses.Remove(chapterAccess);
+            return Task.CompletedTask;
+        }
+
         public Task<ChapterUnlock?> GetChapterUnlockAsync(Guid chapterId, Guid userId, CancellationToken ct = default) =>
             Task.FromResult(ChapterUnlocks.FirstOrDefault(u => u.ChapterId == chapterId && u.UserId == userId));
+
+        public Task AddChapterUnlockAsync(ChapterUnlock chapterUnlock, CancellationToken ct = default)
+        {
+            ChapterUnlocks.Add(chapterUnlock);
+            return Task.CompletedTask;
+        }
+
+        public Task RemoveChapterUnlocksByChapterIdAsync(Guid chapterId, CancellationToken ct = default)
+        {
+            ChapterUnlocks.RemoveAll(u => u.ChapterId == chapterId);
+            return Task.CompletedTask;
+        }
 
         public Task<bool> HasNominatedAsync(Guid courseId, Guid userId, CancellationToken ct = default) =>
             Task.FromResult(Nominations.Any(n => n.CourseId == courseId && n.UserId == userId && n.WithdrawnAt == null));

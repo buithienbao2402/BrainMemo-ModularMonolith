@@ -8,6 +8,7 @@
     <ProjectReference Include="..\BrainMemo.Course.Domain\BrainMemo.Course.Domain.csproj" />
     <ProjectReference Include="..\..\Identity\BrainMemo.Identity.Contracts\BrainMemo.Identity.Contracts.csproj" />
     <ProjectReference Include="..\..\Profile\BrainMemo.Profile.Contracts\BrainMemo.Profile.Contracts.csproj" />
+    <ProjectReference Include="..\..\Content\BrainMemo.Content.Contracts\BrainMemo.Content.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -15,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.2">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
