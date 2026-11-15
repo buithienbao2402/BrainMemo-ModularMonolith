@@ -391,8 +391,8 @@ describe('Content Editor Suite (T-S3-FE-01)', () => {
   // ==========================================
   // SCR-CNT-03: Version History & Restore
   // ==========================================
-  describe('SCR-CNT-03: Version History Modal', () => {
-    it('opens version history dialog from 3-dots menu, displays versions and restores past version', async () => {
+  describe('SCR-CNT-03: Version History Page', () => {
+    it('opens dedicated version history page from 3-dots menu, displays versions and restores past version', async () => {
       const user = userEvent.setup();
       renderAppAt('/courses/my-course-1/manage/content/chapter-1111-1111');
 
@@ -411,24 +411,23 @@ describe('Content Editor Suite (T-S3-FE-01)', () => {
 
       await user.click(screen.getByRole('menuitem', { name: /Lịch sử phiên bản/i }));
 
-      // Modal opens
+      // Dedicated version history page opens
       await waitFor(() => {
         expect(
-          screen.getByText('Lịch sử phiên bản chương (SCR-CNT-03)')
+          screen.getByRole('heading', { name: 'Lịch sử phiên bản' })
         ).toBeInTheDocument();
       });
 
-      expect(screen.getByText('Phiên bản #1')).toBeInTheDocument();
-      expect(screen.getByText('Phiên bản #2')).toBeInTheDocument();
-      expect(screen.getByText('Bản hiện tại')).toBeInTheDocument();
+      expect(screen.getByText('Quay lại bản hiện tại')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Khôi phục phiên bản này/i })).toBeInTheDocument();
 
-      // Click restore on version 1
-      const restoreBtn = screen.getByRole('button', { name: /Khôi phục/i });
+      // Click restore
+      const restoreBtn = screen.getByRole('button', { name: /Khôi phục phiên bản này/i });
       await user.click(restoreBtn);
 
       // Confirm restore
       await waitFor(() => {
-        expect(screen.getByText(/Khôi phục về Phiên bản #1?/i)).toBeInTheDocument();
+        expect(screen.getByText(/Khôi phục về phiên bản #/i)).toBeInTheDocument();
       });
 
       const confirmBtn = screen.getByRole('button', { name: 'Xác nhận khôi phục' });

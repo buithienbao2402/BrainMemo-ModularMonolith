@@ -238,6 +238,18 @@ export function SlashCommandMenu({
 
   let itemCounter = -1;
 
+  const menuHeight = 360;
+  const menuWidth = 320;
+  const shouldOpenAbove = position && position.top + menuHeight > window.innerHeight;
+  const topPos = position
+    ? shouldOpenAbove
+      ? Math.max(10, position.top - menuHeight - 12)
+      : Math.min(position.top, window.innerHeight - menuHeight - 12)
+    : 0;
+  const leftPos = position
+    ? Math.max(10, Math.min(position.left, window.innerWidth - menuWidth - 16))
+    : 0;
+
   return (
     <div
       ref={containerRef}
@@ -245,12 +257,13 @@ export function SlashCommandMenu({
         position
           ? {
               position: 'fixed',
-              top: `${Math.min(position.top, window.innerHeight - 380)}px`,
-              left: `${Math.min(position.left, window.innerWidth - 340)}px`,
+              top: `${topPos}px`,
+              left: `${leftPos}px`,
+              maxHeight: 'min(380px, calc(100vh - 40px))',
             }
           : undefined
       }
-      className="z-50 w-80 max-h-96 rounded-2xl border border-border/80 bg-popover/95 backdrop-blur-md shadow-2xl flex flex-col overflow-hidden text-popover-foreground animate-in fade-in zoom-in-95 duration-100"
+      className="z-50 w-80 rounded-2xl border border-border/80 bg-popover/95 backdrop-blur-md shadow-2xl flex flex-col overflow-hidden text-popover-foreground animate-in fade-in zoom-in-95 duration-100"
     >
       {/* Header title */}
       <div className="px-3 pt-2.5 pb-1 border-b border-border/40 text-[11px] font-bold text-foreground select-none">

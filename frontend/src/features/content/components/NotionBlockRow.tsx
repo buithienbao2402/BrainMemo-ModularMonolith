@@ -333,6 +333,9 @@ export function NotionBlockRow({
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="start"
+              avoidCollisions={true}
+              collisionPadding={16}
+              sideOffset={4}
               className="w-52 text-xs bg-popover border border-border text-popover-foreground shadow-2xl"
             >
             {/* Đổi thứ tự: Di chuyển lên / xuống */}

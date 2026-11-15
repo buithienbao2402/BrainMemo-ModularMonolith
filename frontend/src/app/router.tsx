@@ -24,6 +24,7 @@ import {
 import {
   ChapterListPage,
   ChapterEditorPage,
+  ChapterVersionHistoryPage,
   ResourceManagementPage,
 } from '@/features/content';
 import { RequireAdmin, RequireAuth, RequireVerifiedEmail } from './guards';
@@ -184,7 +185,7 @@ export const appRoutes: RouteObject[] = [
           },
           {
             path: '/courses/:courseId/manage/content/:chapterId/versions',
-            element: <ChapterEditorPage />,
+            element: <ChapterVersionHistoryPage />,
           },
           {
             path: '/courses/:courseId/manage/resources',

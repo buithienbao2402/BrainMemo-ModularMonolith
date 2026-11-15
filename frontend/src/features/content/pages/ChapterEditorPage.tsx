@@ -118,6 +118,7 @@ export function ChapterEditorPage() {
 
   // Drag and drop block state
   const draggedIndexRef = useRef<number | null>(null);
+  const copiedBlocksRef = useRef<BlockDto[]>([]);
 
   // Undo / Redo history state
   const undoStackRef = useRef<Array<{ title: string; blocks: BlockDto[] }>>([]);
@@ -309,12 +310,73 @@ export function ChapterEditorPage() {
           e.preventDefault();
           handleDeleteSelectedBlocks();
         }
+        return;
+      }
+
+      // 4. Copy blocks (Ctrl+C / Cmd+C)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
+        const textSelection = window.getSelection()?.toString();
+        // Chỉ copy block nếu người dùng không bôi đen text trong contenteditable
+        if (!textSelection && selectedBlockIds.size > 0) {
+          e.preventDefault();
+          const toCopy = blocks.filter((b) => selectedBlockIds.has(b.id));
+          if (toCopy.length > 0) {
+            copiedBlocksRef.current = JSON.parse(JSON.stringify(toCopy));
+            try {
+              navigator.clipboard?.writeText(
+                JSON.stringify({ type: 'BRAINMEMO_BLOCKS', blocks: toCopy })
+              );
+            } catch {
+              // Ignore clipboard restriction
+            }
+            pushToast({
+              title: `Đã sao chép ${toCopy.length} khối`,
+              tone: 'default',
+            });
+          }
+        }
+        return;
+      }
+
+      // 5. Paste blocks (Ctrl+V / Cmd+V)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+        const activeTag = (document.activeElement?.tagName || '').toLowerCase();
+        const isEditingInput = activeTag === 'input' || activeTag === 'textarea';
+        if (!isEditingInput && copiedBlocksRef.current && copiedBlocksRef.current.length > 0 && selectedBlockIds.size > 0) {
+          e.preventDefault();
+          pushUndoSnapshot(title, blocks);
+
+          const cloned: BlockDto[] = copiedBlocksRef.current.map((b) => ({
+            ...b,
+            id: generateBlockId(),
+          }));
+
+          let lastSelectedIndex = -1;
+          blocks.forEach((b, idx) => {
+            if (selectedBlockIds.has(b.id)) lastSelectedIndex = idx;
+          });
+
+          const nextList = [...blocks];
+          const insertIdx = lastSelectedIndex !== -1 ? lastSelectedIndex + 1 : nextList.length - 1;
+          nextList.splice(insertIdx, 0, ...cloned);
+
+          const guaranteed = ensureTrailingEmptyTextBlock(nextList);
+          setBlocks(guaranteed);
+          setSelectedBlockIds(new Set(cloned.map((c) => c.id)));
+          setIsDirty(true);
+
+          pushToast({
+            title: `Đã dán ${cloned.length} khối`,
+            tone: 'success',
+          });
+          return;
+        }
       }
     };
 
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [title, blocks, selectedBlockIds]);
+  }, [title, blocks, selectedBlockIds, pushToast, pushUndoSnapshot]);
 
   // Marquee / Box Selection effect
   useEffect(() => {
@@ -388,12 +450,74 @@ export function ChapterEditorPage() {
     };
   }, [blocks]);
 
+  // Viewport auto-scrolling when dragging block near window edges
+  useEffect(() => {
+    let animationFrameId: number | null = null;
+    let scrollSpeed = 0;
+
+    const scrollLoop = () => {
+      if (scrollSpeed !== 0) {
+        window.scrollBy(0, scrollSpeed);
+        animationFrameId = requestAnimationFrame(scrollLoop);
+      } else {
+        animationFrameId = null;
+      }
+    };
+
+    const handleWindowDragOver = (e: DragEvent) => {
+      if (draggedIndexRef.current === null) return;
+      const threshold = 100;
+      const maxSpeed = 18;
+
+      if (e.clientY < threshold) {
+        const factor = (threshold - e.clientY) / threshold;
+        scrollSpeed = -Math.round(maxSpeed * factor);
+      } else if (window.innerHeight - e.clientY < threshold) {
+        const factor = (threshold - (window.innerHeight - e.clientY)) / threshold;
+        scrollSpeed = Math.round(maxSpeed * factor);
+      } else {
+        scrollSpeed = 0;
+      }
+
+      if (scrollSpeed !== 0 && animationFrameId === null) {
+        animationFrameId = requestAnimationFrame(scrollLoop);
+      }
+    };
+
+    const handleWindowDragEnd = () => {
+      scrollSpeed = 0;
+      if (animationFrameId !== null) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
+    };
+
+    window.addEventListener('dragover', handleWindowDragOver);
+    window.addEventListener('dragend', handleWindowDragEnd);
+    window.addEventListener('drop', handleWindowDragEnd);
+
+    return () => {
+      window.removeEventListener('dragover', handleWindowDragOver);
+      window.removeEventListener('dragend', handleWindowDragEnd);
+      window.removeEventListener('drop', handleWindowDragEnd);
+      if (animationFrameId !== null) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, []);
+
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
 
     // RULE: Kéo chuột trên canvas chỉ kích hoạt khi kéo chuột từ bên ngoài phạm vi block!
     // Còn kéo từ trong block thì không kích hoạt (sẽ chỉ bôi đen nội dung trong block)
     if (target.closest('[data-block-id]')) {
+      const blockEl = target.closest('[data-block-id]');
+      const blockId = blockEl?.getAttribute('data-block-id');
+      // If clicking inside a block that is ALREADY in selectedBlockIds, do NOT deselect so user can drag the multi-block selection!
+      if (blockId && selectedBlockIds.has(blockId)) {
+        return;
+      }
       if (!target.closest('[data-drag-handle="true"]')) {
         setSelectedBlockIds(new Set());
       }
@@ -892,6 +1016,18 @@ export function ChapterEditorPage() {
         setBaseVersionNo(updated.lastVersionNo || baseVersionNo + 1);
         setIsDirty(false);
 
+        // Update local query cache to reflect Draft state & unpublished changes
+        queryClient.setQueryData(queryKeys.content.chapterDraft(courseId, chapterId), (old: any) =>
+          old
+            ? {
+                ...old,
+                status: 'DRAFT',
+                hasUnpublishedChanges: true,
+                lastVersionNo: updated.lastVersionNo,
+              }
+            : old
+        );
+
         pushToast({
           title: 'Lưu bản nháp thành công',
           description: `Bản nháp đã được lưu an toàn (Phiên bản #${updated.lastVersionNo}).`,
@@ -1057,7 +1193,7 @@ export function ChapterEditorPage() {
 
           {/* Center: Status pill badge */}
           <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-card border border-border/80 text-xs shadow-xs">
-            {chapter?.status === 'PUBLISHED' && !isNewMode ? (
+            {chapter?.status === 'PUBLISHED' && !(chapter as any)?.hasUnpublishedChanges && !isNewMode ? (
               <span className="text-emerald-500 font-medium">Đã xuất bản</span>
             ) : (
               <span className="text-muted-foreground font-medium">Nháp</span>
@@ -1130,7 +1266,11 @@ export function ChapterEditorPage() {
 
                 {/* 2. Lịch sử phiên bản */}
                 {!isNewMode && (
-                  <DropdownMenuItem onClick={() => setIsVersionsModalOpen(true)}>
+                  <DropdownMenuItem
+                    onClick={() =>
+                      navigate(`/courses/${courseId}/manage/content/${chapterId}/versions`)
+                    }
+                  >
                     <History className="h-4 w-4 mr-2 text-muted-foreground" />
                     <span>Lịch sử phiên bản</span>
                   </DropdownMenuItem>

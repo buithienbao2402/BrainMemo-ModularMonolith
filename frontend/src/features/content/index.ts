@@ -17,4 +17,7 @@ export * from './components/RichTextDocumentRenderer';
 export * from './lib/richTextDocument';
 export * from './pages/ChapterListPage';
 export * from './pages/ChapterEditorPage';
+export * from './pages/ChapterVersionHistoryPage';
+export * from './pages/GlobalResourceManagementPage';
+export * from './pages/CourseResourceDetailPage';
 export * from './pages/ResourceManagementPage';
