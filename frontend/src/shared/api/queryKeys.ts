@@ -41,6 +41,8 @@ export const queryKeys = {
       ['content', 'chapterDraft', courseId, chapterId] as const,
     chapterVersions: (courseId: string, chapterId: string, params?: Record<string, unknown>) =>
       ['content', 'chapterVersions', courseId, chapterId, params ?? {}] as const,
+    chapterAccess: (courseId: string, chapterId: string) =>
+      ['content', 'chapterAccess', courseId, chapterId] as const,
     resources: (courseId: string) => ['content', 'resources', courseId] as const,
     resourceDownloadUrl: (courseId: string, resourceId: string) =>
       ['content', 'resourceDownloadUrl', courseId, resourceId] as const,

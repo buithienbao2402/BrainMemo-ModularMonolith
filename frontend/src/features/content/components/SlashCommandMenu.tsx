@@ -254,7 +254,7 @@ export function SlashCommandMenu({
     >
       {/* Header title */}
       <div className="px-3 pt-2.5 pb-1 border-b border-border/40 text-[11px] font-bold text-foreground select-none">
-        Chọn loại khối nội dung cần thêm
+        Chọn loại block chèn vào
       </div>
 
       {/* Search Input */}
@@ -269,7 +269,7 @@ export function SlashCommandMenu({
             setSelectedIndex(0);
           }}
           onKeyDown={handleKeyDown}
-          placeholder="Tìm kiếm lệnh hoặc gõ để lọc..."
+          placeholder="Tìm kiếm loại block..."
           className="w-full bg-transparent text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
         />
       </div>

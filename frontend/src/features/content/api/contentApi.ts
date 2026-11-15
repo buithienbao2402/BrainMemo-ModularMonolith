@@ -419,3 +419,43 @@ export async function uploadAndCommitResource(
     originalFilename: file.name,
   });
 }
+
+/**
+ * Get chapter access mode & config (FR-CRS-07).
+ */
+export function useChapterAccessQuery(courseId: string, chapterId: string) {
+  return useQuery({
+    queryKey: queryKeys.content.chapterAccess(courseId, chapterId),
+    queryFn: async (): Promise<{ accessMode?: string; passcodeVersion?: number }> => {
+      return unwrapApi(
+        apiClient.GET('/courses/{courseId}/chapters/{chapterId}/access', {
+          params: { path: { courseId, chapterId } },
+        })
+      );
+    },
+    enabled: Boolean(courseId && chapterId && chapterId !== 'new'),
+  });
+}
+
+/**
+ * Set chapter access mode (FR-CRS-07).
+ */
+export function useSetChapterAccessMutation(courseId: string, chapterId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (body: { accessMode: 'PUBLIC' | 'PROTECTED'; passcode?: string }): Promise<void> => {
+      return unwrapApi(
+        apiClient.PUT('/courses/{courseId}/chapters/{chapterId}/access', {
+          params: { path: { courseId, chapterId } },
+          body,
+        })
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.chapterAccess(courseId, chapterId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.chapterDraft(courseId, chapterId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.chapters(courseId) });
+    },
+  });
+}

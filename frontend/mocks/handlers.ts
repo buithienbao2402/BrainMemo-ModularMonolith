@@ -1910,6 +1910,52 @@ export const handlers = [
     }
   ),
 
+  http.get('*/api/v1/courses/:courseId/chapters/:chapterId/access', ({ params }) => {
+    mockChapters = getStoredChapters();
+    const courseId = String(params.courseId);
+    const chapterId = String(params.chapterId);
+    const list = mockChapters[courseId] || [];
+    const chapter = list.find((c) => c.id === chapterId);
+    if (!chapter) {
+      return problemResponse(404, {
+        title: 'Chương không tồn tại',
+        status: 404,
+        code: 'CHAPTER_NOT_FOUND',
+      });
+    }
+    return HttpResponse.json(
+      {
+        accessMode: chapter.accessMode || 'PUBLIC',
+        passcodeVersion: 1,
+      },
+      { status: 200 }
+    );
+  }),
+
+  http.put('*/api/v1/courses/:courseId/chapters/:chapterId/access', async ({ params, request }) => {
+    mockChapters = getStoredChapters();
+    const courseId = String(params.courseId);
+    const chapterId = String(params.chapterId);
+    const body = (await request.json().catch(() => ({}))) as {
+      accessMode?: 'PUBLIC' | 'PROTECTED';
+      passcode?: string;
+    };
+    const list = mockChapters[courseId] || [];
+    const chapter = list.find((c) => c.id === chapterId);
+    if (!chapter) {
+      return problemResponse(404, {
+        title: 'Chương không tồn tại',
+        status: 404,
+        code: 'CHAPTER_NOT_FOUND',
+      });
+    }
+    if (body.accessMode) {
+      chapter.accessMode = body.accessMode;
+      saveStoredChapters(mockChapters);
+    }
+    return new HttpResponse(null, { status: 204 });
+  }),
+
   http.get('*/api/v1/courses/:courseId/resources', ({ params }) => {
     mockResources = getStoredResources();
     const courseId = String(params.courseId);

@@ -1,15 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
   MoreVertical,
   AlertCircle,
-  Eye,
   History,
-  FolderOpen,
   Trash2,
   Lock,
-  Globe,
   RotateCcw,
   AlertTriangle,
 } from 'lucide-react';
@@ -39,6 +36,7 @@ import {
   useDeleteChapterMutation,
   useChaptersQuery,
   useReorderChaptersMutation,
+  useSetChapterAccessMutation,
   type BlockDto,
   type BlockType,
   type ResourceDto,
@@ -48,9 +46,9 @@ import { SlashCommandMenu, type SlashCommandItem } from '../components/SlashComm
 import { FloatingTextFormatToolbar } from '../components/FloatingTextFormatToolbar';
 import { ResourceDrawer } from '../components/ResourceDrawer';
 import { ChapterVersionsModal } from '../components/ChapterVersionsModal';
-import { ChapterPreviewModal } from '../components/ChapterPreviewModal';
 import { DeleteChapterModal } from '../components/DeleteChapterModal';
 import { UnsavedChangesModal } from '../components/UnsavedChangesModal';
+import { ChapterAccessPanel } from '../components/ChapterAccessPanel';
 import { ApiProblemError } from '@/shared/api';
 
 function generateBlockId(): string {
@@ -58,6 +56,19 @@ function generateBlockId(): string {
     return crypto.randomUUID();
   }
   return `block-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function createEmptyTextBlock(position: number): BlockDto {
+  return {
+    id: generateBlockId(),
+    blockType: 'RICH_TEXT',
+    position,
+    title: null,
+    body: '<p></p>',
+    resourceId: null,
+    questionId: null,
+    aiReviewStatus: 'NOT_APPLICABLE',
+  };
 }
 
 export function ChapterEditorPage() {
@@ -72,31 +83,45 @@ export function ChapterEditorPage() {
   const isNewMode = !chapterId || chapterId === 'new';
   const afterChapterId = searchParams.get('after');
 
-  // Course query for displaying course name
+  // Course query for displaying course name and checking access mode
   const { data: course } = useCourseQuery(courseId);
   const { data: allChapters } = useChaptersQuery(courseId);
 
   // Working draft state
   const [title, setTitle] = useState('');
-  const [blocks, setBlocks] = useState<BlockDto[]>([
-    {
-      id: generateBlockId(),
-      blockType: 'RICH_TEXT',
-      position: 1,
-      title: null,
-      body: '<p></p>',
-      resourceId: null,
-      questionId: null,
-      aiReviewStatus: 'NOT_APPLICABLE',
-    },
-  ]);
+  const [blocks, setBlocks] = useState<BlockDto[]>([createEmptyTextBlock(1)]);
   const [baseVersionNo, setBaseVersionNo] = useState<number>(1);
   const [accessMode, setAccessMode] = useState<'PUBLIC' | 'PROTECTED'>('PUBLIC');
+  const [passcode, setPasscode] = useState<string>('');
   const [isDirty, setIsDirty] = useState(false);
   const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
 
+  // Multi-select blocks state
+  const [selectedBlockIds, setSelectedBlockIds] = useState<Set<string>>(new Set());
+
+  // Drag and drop block state
+  const draggedIndexRef = useRef<number | null>(null);
+
+  // Undo / Redo history state
+  const undoStackRef = useRef<Array<{ title: string; blocks: BlockDto[] }>>([]);
+  const redoStackRef = useRef<Array<{ title: string; blocks: BlockDto[] }>>([]);
+  const isUndoRedoActionRef = useRef(false);
+
+  // Push current state into undo history
+  const pushUndoSnapshot = useCallback((newTitle: string, newBlocks: BlockDto[]) => {
+    if (isUndoRedoActionRef.current) return;
+    undoStackRef.current.push({
+      title: newTitle,
+      blocks: JSON.parse(JSON.stringify(newBlocks)),
+    });
+    if (undoStackRef.current.length > 50) {
+      undoStackRef.current.shift();
+    }
+    redoStackRef.current = [];
+  }, []);
+
   // Floating menus & context menus state
-  const [activeSlashMenu, setActiveSlashMenu] = useState<{
+  const [activeTypeMenu, setActiveTypeMenu] = useState<{
     coords: { top: number; left: number };
     blockId: string;
   } | null>(null);
@@ -106,11 +131,11 @@ export function ChapterEditorPage() {
     blockId: string;
   } | null>(null);
 
-  // Modals & Drawers state
+  // Modals & Panels state
+  const [isAccessPanelOpen, setIsAccessPanelOpen] = useState(false);
   const [isResourceDrawerOpen, setIsResourceDrawerOpen] = useState(false);
   const [pickerTargetBlockId, setPickerTargetBlockId] = useState<string | null>(null);
   const [isVersionsModalOpen, setIsVersionsModalOpen] = useState(false);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   // Unsaved changes exit dialog state
@@ -140,32 +165,55 @@ export function ChapterEditorPage() {
   const { mutateAsync: publishChapter, isPending: isPublishing } = usePublishChapterDynamicMutation(courseId);
   const { mutateAsync: deleteChapter, isPending: isDeleting } = useDeleteChapterMutation(courseId);
   const { mutateAsync: reorderChapters } = useReorderChaptersMutation(courseId);
+  const { mutateAsync: setChapterAccess, isPending: isSettingAccess } = useSetChapterAccessMutation(
+    courseId,
+    isNewMode ? '' : chapterId
+  );
+
+  // Luôn đảm bảo có ít nhất 1 khối text trống ở dưới cùng
+  const ensureTrailingEmptyTextBlock = useCallback((currentBlocks: BlockDto[]): BlockDto[] => {
+    if (currentBlocks.length === 0) {
+      return [createEmptyTextBlock(1)];
+    }
+    const lastBlock = currentBlocks[currentBlocks.length - 1];
+    if (!lastBlock) {
+      return [createEmptyTextBlock(1)];
+    }
+    const isLastBlockEmptyText =
+      lastBlock.blockType === 'RICH_TEXT' &&
+      (!lastBlock.body || lastBlock.body.trim() === '' || lastBlock.body.trim() === '<p></p>');
+
+    if (!isLastBlockEmptyText) {
+      // Tự động append một khối text trống ở dưới cùng
+      const nextList = [...currentBlocks, createEmptyTextBlock(currentBlocks.length + 1)];
+      return nextList.map((b, i) => ({ ...b, position: i + 1 }));
+    }
+    return currentBlocks;
+  }, []);
 
   // Populate draft data in edit mode
   useEffect(() => {
     if (!isNewMode && chapter) {
-      setTitle(chapter.title || '');
-      setAccessMode(((chapter as any)?.accessMode as any) || 'PUBLIC');
+      const initTitle = chapter.title || '';
+      setTitle(initTitle);
+      const mode = ((chapter as any)?.accessMode as any) || 'PUBLIC';
+      setAccessMode(mode);
+      setPasscode(((chapter as any)?.passcode as any) || '');
       setBaseVersionNo(chapter.lastVersionNo || 1);
+
+      let loadedBlocks: BlockDto[] = [];
       if (chapter.blocks && chapter.blocks.length > 0) {
-        setBlocks(chapter.blocks);
+        loadedBlocks = chapter.blocks;
       } else {
-        setBlocks([
-          {
-            id: generateBlockId(),
-            blockType: 'RICH_TEXT',
-            position: 1,
-            title: null,
-            body: '<p></p>',
-            resourceId: null,
-            questionId: null,
-            aiReviewStatus: 'NOT_APPLICABLE',
-          },
-        ]);
+        loadedBlocks = [createEmptyTextBlock(1)];
       }
+      const guaranteed = ensureTrailingEmptyTextBlock(loadedBlocks);
+      setBlocks(guaranteed);
       setIsDirty(false);
+      undoStackRef.current = [{ title: initTitle, blocks: JSON.parse(JSON.stringify(guaranteed)) }];
+      redoStackRef.current = [];
     }
-  }, [isNewMode, chapter]);
+  }, [isNewMode, chapter, ensureTrailingEmptyTextBlock]);
 
   // Window beforeunload guard
   useEffect(() => {
@@ -179,6 +227,78 @@ export function ChapterEditorPage() {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isDirty]);
+
+  // Global Keyboard shortcuts: Undo (Ctrl+Z), Redo (Ctrl+Y / Ctrl+Shift+Z), Delete selected blocks
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // 1. Undo
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        if (undoStackRef.current.length > 1) {
+          e.preventDefault();
+          const current = undoStackRef.current.pop();
+          if (current) {
+            redoStackRef.current.push({
+              title,
+              blocks: JSON.parse(JSON.stringify(blocks)),
+            });
+            const prev = undoStackRef.current[undoStackRef.current.length - 1];
+            if (prev) {
+              isUndoRedoActionRef.current = true;
+              setTitle(prev.title);
+              setBlocks(JSON.parse(JSON.stringify(prev.blocks)));
+              setIsDirty(true);
+              setTimeout(() => {
+                isUndoRedoActionRef.current = false;
+              }, 50);
+            }
+          }
+        }
+        return;
+      }
+
+      // 2. Redo
+      if (
+        ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') ||
+        ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z')
+      ) {
+        if (redoStackRef.current.length > 0) {
+          e.preventDefault();
+          const next = redoStackRef.current.pop();
+          if (next) {
+            undoStackRef.current.push({
+              title,
+              blocks: JSON.parse(JSON.stringify(blocks)),
+            });
+            isUndoRedoActionRef.current = true;
+            setTitle(next.title);
+            setBlocks(JSON.parse(JSON.stringify(next.blocks)));
+            setIsDirty(true);
+            setTimeout(() => {
+              isUndoRedoActionRef.current = false;
+            }, 50);
+          }
+        }
+        return;
+      }
+
+      // 3. Xóa các block đã chọn bằng Delete / Backspace khi không focus ô input
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedBlockIds.size > 0) {
+        const activeTag = (document.activeElement?.tagName || '').toLowerCase();
+        const isEditingText =
+          activeTag === 'input' ||
+          activeTag === 'textarea' ||
+          document.activeElement?.getAttribute('contenteditable') === 'true';
+
+        if (!isEditingText) {
+          e.preventDefault();
+          handleDeleteSelectedBlocks();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [title, blocks, selectedBlockIds]);
 
   // Navigation exit guard
   const handleExitToChapterList = () => {
@@ -206,8 +326,9 @@ export function ChapterEditorPage() {
     }
   };
 
-  // Block handlers
+  // Block management
   const handleAddBlockBelow = (targetIndex: number, type: BlockType = 'RICH_TEXT') => {
+    pushUndoSnapshot(title, blocks);
     const newId = generateBlockId();
     const newBlock: BlockDto = {
       id: newId,
@@ -223,37 +344,40 @@ export function ChapterEditorPage() {
 
     const nextList = [...blocks];
     nextList.splice(targetIndex + 1, 0, newBlock);
-    const reindexed = nextList.map((b, i) => ({ ...b, position: i + 1 }));
-    setBlocks(reindexed);
+    const guaranteed = ensureTrailingEmptyTextBlock(nextList);
+    setBlocks(guaranteed);
     setFocusedBlockId(newId);
+    setSelectedBlockIds(new Set());
     setIsDirty(true);
   };
 
   const handleUpdateBlock = (updatedBlock: BlockDto) => {
-    setBlocks(blocks.map((b) => (b.id === updatedBlock.id ? updatedBlock : b)));
+    const next = blocks.map((b) => (b.id === updatedBlock.id ? updatedBlock : b));
+    const guaranteed = ensureTrailingEmptyTextBlock(next);
+    setBlocks(guaranteed);
     setIsDirty(true);
   };
 
   const handleDeleteBlock = (blockId: string) => {
+    pushUndoSnapshot(title, blocks);
     if (blocks.length <= 1) {
-      // Keep at least one empty rich text block
-      setBlocks([
-        {
-          id: generateBlockId(),
-          blockType: 'RICH_TEXT',
-          position: 1,
-          title: null,
-          body: '<p></p>',
-          resourceId: null,
-          questionId: null,
-          aiReviewStatus: 'NOT_APPLICABLE',
-        },
-      ]);
+      setBlocks([createEmptyTextBlock(1)]);
     } else {
       const remaining = blocks.filter((b) => b.id !== blockId);
-      const reindexed = remaining.map((b, i) => ({ ...b, position: i + 1 }));
-      setBlocks(reindexed);
+      const guaranteed = ensureTrailingEmptyTextBlock(remaining);
+      setBlocks(guaranteed);
     }
+    setSelectedBlockIds(new Set());
+    setIsDirty(true);
+  };
+
+  const handleDeleteSelectedBlocks = () => {
+    if (selectedBlockIds.size === 0) return;
+    pushUndoSnapshot(title, blocks);
+    const remaining = blocks.filter((b) => !selectedBlockIds.has(b.id));
+    const guaranteed = ensureTrailingEmptyTextBlock(remaining);
+    setBlocks(guaranteed);
+    setSelectedBlockIds(new Set());
     setIsDirty(true);
   };
 
@@ -261,113 +385,290 @@ export function ChapterEditorPage() {
     const targetIndex = direction === 'UP' ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= blocks.length) return;
 
+    pushUndoSnapshot(title, blocks);
     const nextList = [...blocks];
     const [moved] = nextList.splice(index, 1);
     if (!moved) return;
     nextList.splice(targetIndex, 0, moved);
 
-    const reindexed = nextList.map((b, i) => ({ ...b, position: i + 1 }));
-    setBlocks(reindexed);
+    const guaranteed = ensureTrailingEmptyTextBlock(nextList);
+    setBlocks(guaranteed);
     setIsDirty(true);
   };
 
-  const handleDuplicateBlock = (index: number) => {
-    const current = blocks[index];
-    if (!current) return;
-    const duplicated: BlockDto = {
-      ...JSON.parse(JSON.stringify(current)),
-      id: generateBlockId(),
-      position: index + 2,
-    };
+  // Drag and Drop block reordering
+  const handleDragStart = (index: number) => {
+    draggedIndexRef.current = index;
+  };
 
+  const handleDragOver = (e: React.DragEvent, _targetIndex: number) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (targetIndex: number) => {
+    const sourceIndex = draggedIndexRef.current;
+    if (sourceIndex === null || sourceIndex === targetIndex) return;
+
+    pushUndoSnapshot(title, blocks);
     const nextList = [...blocks];
-    nextList.splice(index + 1, 0, duplicated);
-    const reindexed = nextList.map((b, i) => ({ ...b, position: i + 1 }));
-    setBlocks(reindexed);
+    const [moved] = nextList.splice(sourceIndex, 1);
+    if (!moved) return;
+    nextList.splice(targetIndex, 0, moved);
+
+    const guaranteed = ensureTrailingEmptyTextBlock(nextList);
+    setBlocks(guaranteed);
+    draggedIndexRef.current = null;
     setIsDirty(true);
   };
 
-  // Slash menu selection
-  const handleSelectSlashCommand = (item: SlashCommandItem) => {
-    if (!activeSlashMenu) return;
-    const targetId = activeSlashMenu.blockId;
-    setActiveSlashMenu(null);
-
+  // Convert block type (nội dung cũ biến mất)
+  const handleConvertBlockType = (blockId: string, targetType: BlockType) => {
+    pushUndoSnapshot(title, blocks);
     setBlocks(
       blocks.map((b) => {
-        if (b.id !== targetId) return b;
-
-        let initialBody = b.body;
-        if (item.initialFormat === 'H2') {
-          initialBody = '<h2>Tiêu đề phần</h2>';
-        } else if (item.initialFormat === 'H3') {
-          initialBody = '<h3>Tiêu đề phụ</h3>';
-        } else if (item.initialFormat === 'BULLET') {
-          initialBody = '<ul><li>Nội dung mục</li></ul>';
-        } else if (item.initialFormat === 'NUMBERED') {
-          initialBody = '<ol><li>Nội dung thứ tự</li></ol>';
-        } else if (item.initialFormat === 'TABLE') {
-          initialBody = `
-            <table class="w-full border-collapse border border-border my-2">
-              <thead>
-                <tr class="bg-muted/30">
-                  <th class="border border-border p-2 text-left font-semibold">Cột 1</th>
-                  <th class="border border-border p-2 text-left font-semibold">Cột 2</th>
-                  <th class="border border-border p-2 text-left font-semibold">Cột 3</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td class="border border-border p-2">Dữ liệu 1</td>
-                  <td class="border border-border p-2">Dữ liệu 2</td>
-                  <td class="border border-border p-2">Dữ liệu 3</td>
-                </tr>
-              </tbody>
-            </table><p></p>
-          `;
-        }
-
+        if (b.id !== blockId) return b;
         return {
-          ...b,
-          blockType: item.blockType,
-          body: initialBody,
-          flashcards: item.blockType === 'FLASHCARD' ? [{ front: '', back: '' }] : b.flashcards,
+          id: b.id,
+          blockType: targetType,
+          position: b.position,
+          title: null,
+          body: targetType === 'RICH_TEXT' ? '<p></p>' : targetType === 'MARKDOWN' ? '' : null,
+          resourceId: null,
+          questionId: null,
+          flashcards: targetType === 'FLASHCARD' ? [{ front: '', back: '' }] : undefined,
+          aiReviewStatus: 'NOT_APPLICABLE',
         };
       })
     );
     setIsDirty(true);
   };
 
-  // Floating text format command
+  // Keyboard navigation across blocks (ArrowUp / ArrowDown)
+  const handleFocusPrevBlock = (currentIndex: number) => {
+    if (currentIndex > 0) {
+      const prevBlock = blocks[currentIndex - 1];
+      if (prevBlock) setFocusedBlockId(prevBlock.id);
+    }
+  };
+
+  const handleFocusNextBlock = (currentIndex: number) => {
+    if (currentIndex < blocks.length - 1) {
+      const nextBlock = blocks[currentIndex + 1];
+      if (nextBlock) setFocusedBlockId(nextBlock.id);
+    }
+  };
+
+  // Select / Multi-select block toggle
+  const handleToggleSelectBlock = (blockId: string) => {
+    setSelectedBlockIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(blockId)) {
+        next.delete(blockId);
+      } else {
+        next.add(blockId);
+      }
+      return next;
+    });
+  };
+
+  // Block type popup menu selection (Khi bấm dấu +)
+  const handleSelectTypeCommand = (item: SlashCommandItem) => {
+    if (!activeTypeMenu) return;
+    const targetId = activeTypeMenu.blockId;
+    setActiveTypeMenu(null);
+    const targetIdx = blocks.findIndex((b) => b.id === targetId);
+    if (targetIdx !== -1) {
+      handleAddBlockBelow(targetIdx, item.blockType);
+    }
+  };
+
+  // Floating text format commands
   const handleExecuteFormatCommand = (command: string, arg?: string) => {
     document.execCommand(command, false, arg);
     setIsDirty(true);
   };
 
-  const handleInsertTableAtSelection = () => {
+  // Format code (<>)
+  const handleToggleCode = () => {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+    const parentCode = (sel.anchorNode?.nodeType === Node.TEXT_NODE
+      ? sel.anchorNode.parentElement
+      : (sel.anchorNode as HTMLElement)
+    )?.closest('code');
+
+    if (parentCode) {
+      // Unwrap
+      const textNode = document.createTextNode(parentCode.textContent || '');
+      parentCode.parentNode?.replaceChild(textNode, parentCode);
+    } else {
+      // Wrap code
+      const codeEl = document.createElement('code');
+      codeEl.className =
+        'bg-muted/80 text-[#ff7a1a] px-1.5 py-0.5 rounded font-mono text-xs border border-border/60';
+      codeEl.textContent = range.toString() || 'code';
+      range.deleteContents();
+      range.insertNode(codeEl);
+    }
+    setIsDirty(true);
+  };
+
+  // Chèn bảng với số dòng & số cột tùy chọn
+  const handleInsertTableCustom = (rows: number, cols: number) => {
+    let headerThs = '';
+    for (let c = 1; c <= cols; c++) {
+      headerThs += `<th class="border border-border/80 p-2.5 text-left font-semibold">Cột ${c}</th>`;
+    }
+
+    let bodyRows = '';
+    for (let r = 1; r < rows; r++) {
+      let cells = '';
+      for (let c = 1; c <= cols; c++) {
+        cells += `<td class="border border-border/80 p-2.5">Dữ liệu ${r}.${c}</td>`;
+      }
+      bodyRows += `<tr>${cells}</tr>`;
+    }
+
     const tableHtml = `
-      <table class="w-full border-collapse border border-border my-2">
+      <table class="border-collapse w-full my-3 border border-border/80">
         <thead>
-          <tr class="bg-muted/30">
-            <th class="border border-border p-2 text-left font-semibold">Cột 1</th>
-            <th class="border border-border p-2 text-left font-semibold">Cột 2</th>
-            <th class="border border-border p-2 text-left font-semibold">Cột 3</th>
-          </tr>
+          <tr class="bg-muted/40">${headerThs}</tr>
         </thead>
         <tbody>
-          <tr>
-            <td class="border border-border p-2">Dữ liệu 1</td>
-            <td class="border border-border p-2">Dữ liệu 2</td>
-            <td class="border border-border p-2">Dữ liệu 3</td>
-          </tr>
+          ${bodyRows || `<tr><td class="border border-border/80 p-2.5" colspan="${cols}">Nội dung hàng</td></tr>`}
         </tbody>
       </table><p></p>
     `;
+
     document.execCommand('insertHTML', false, tableHtml);
     setIsDirty(true);
   };
 
-  // Save Draft (Only when user clicks "Lưu nháp")
+  // Thao tác chỉnh sửa bảng (Thêm/xóa hàng, thêm/xóa cột, xóa bảng)
+  const handleTableAction = (
+    action:
+      | 'ADD_ROW_ABOVE'
+      | 'ADD_ROW_BELOW'
+      | 'DELETE_ROW'
+      | 'ADD_COL_LEFT'
+      | 'ADD_COL_RIGHT'
+      | 'DELETE_COL'
+      | 'DELETE_TABLE'
+  ) => {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const node = sel.anchorNode;
+    const parent = node?.nodeType === Node.TEXT_NODE ? node.parentElement : (node as HTMLElement);
+
+    const cell = parent?.closest('td, th') as HTMLTableCellElement | null;
+    const row = parent?.closest('tr') as HTMLTableRowElement | null;
+    const table = parent?.closest('table') as HTMLTableElement | null;
+
+    if (!table) return;
+
+    if (action === 'DELETE_TABLE') {
+      table.remove();
+      setIsDirty(true);
+      return;
+    }
+
+    if (!row || !cell) return;
+
+    const cellIndex = cell.cellIndex;
+    const colCount = row.cells.length;
+
+    if (action === 'ADD_ROW_ABOVE' || action === 'ADD_ROW_BELOW') {
+      const newRow = document.createElement('tr');
+      for (let i = 0; i < colCount; i++) {
+        const td = document.createElement('td');
+        td.className = 'border border-border/80 p-2.5';
+        td.innerHTML = '<br>';
+        newRow.appendChild(td);
+      }
+      if (action === 'ADD_ROW_ABOVE') {
+        row.parentNode?.insertBefore(newRow, row);
+      } else {
+        row.parentNode?.insertBefore(newRow, row.nextSibling);
+      }
+    } else if (action === 'DELETE_ROW') {
+      const tbody = row.closest('tbody, thead');
+      if (tbody && tbody.children.length <= 1) {
+        table.remove();
+      } else {
+        row.remove();
+      }
+    } else if (action === 'ADD_COL_LEFT' || action === 'ADD_COL_RIGHT') {
+      const insertAt = action === 'ADD_COL_LEFT' ? cellIndex : cellIndex + 1;
+      const allRows = table.querySelectorAll('tr');
+      allRows.forEach((r) => {
+        const isHeader = r.closest('thead') !== null;
+        const newCell = document.createElement(isHeader ? 'th' : 'td');
+        newCell.className = isHeader
+          ? 'border border-border/80 p-2.5 text-left font-semibold'
+          : 'border border-border/80 p-2.5';
+        newCell.innerHTML = isHeader ? 'Cột mới' : '<br>';
+        if (insertAt >= r.cells.length) {
+          r.appendChild(newCell);
+        } else {
+          r.insertBefore(newCell, r.cells[insertAt] ?? null);
+        }
+      });
+    } else if (action === 'DELETE_COL') {
+      const allRows = table.querySelectorAll('tr');
+      if (colCount <= 1) {
+        table.remove();
+      } else {
+        allRows.forEach((r) => {
+          if (r.cells[cellIndex]) {
+            r.deleteCell(cellIndex);
+          }
+        });
+      }
+    }
+
+    setIsDirty(true);
+  };
+
+  // Áp dụng chế độ truy cập từ Panel
+  const handleApplyAccess = async (newMode: 'PUBLIC' | 'PROTECTED', newPasscode: string) => {
+    setAccessMode(newMode);
+    setPasscode(newPasscode);
+
+    if (!isNewMode) {
+      try {
+        await setChapterAccess({
+          accessMode: newMode,
+          passcode: newMode === 'PROTECTED' ? newPasscode : undefined,
+        });
+        pushToast({
+          title: 'Cập nhật chế độ truy cập thành công',
+          description: `Chương đã chuyển sang chế độ ${
+            newMode === 'PROTECTED' ? 'Protected (Có mật khẩu)' : 'Public (Công khai)'
+          }.`,
+          tone: 'success',
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Không thể lưu chế độ truy cập.';
+        pushToast({
+          title: 'Lỗi',
+          description: msg,
+          tone: 'error',
+        });
+        return;
+      }
+    } else {
+      pushToast({
+        title: 'Đã lưu thiết lập truy cập',
+        description: 'Chế độ truy cập sẽ được áp dụng khi bạn lưu nháp chương mới.',
+        tone: 'default',
+      });
+      setIsDirty(true);
+    }
+    setIsAccessPanelOpen(false);
+  };
+
+  // Save Draft (Chỉ lưu khi click nút "Lưu nháp")
   const handleSaveDraft = async (): Promise<boolean> => {
     if (!title.trim()) {
       pushToast({
@@ -397,7 +698,15 @@ export function ChapterEditorPage() {
           }
         }
 
-        // 3. Lưu nội dung draft vừa soạn vào chương mới
+        // 3. Cập nhật access mode nếu được thiết lập
+        if (created.id && accessMode === 'PROTECTED') {
+          await setChapterAccess({
+            accessMode: 'PROTECTED',
+            passcode: passcode || undefined,
+          });
+        }
+
+        // 4. Lưu nội dung draft vừa soạn vào chương mới
         if (created.id) {
           await saveDraft({
             chapterId: created.id,
@@ -416,7 +725,6 @@ export function ChapterEditorPage() {
           });
 
           setIsDirty(false);
-          // Chuyển URL sang id chương mới
           navigate(`/courses/${courseId}/manage/content/${created.id}`, { replace: true });
         }
       } else {
@@ -567,10 +875,12 @@ export function ChapterEditorPage() {
   }
 
   const courseTitle = course?.name || 'Khóa học';
+  const isCourseOnlyMe =
+    (course as any)?.accessMode === 'ONLY_ME' || (course as any)?.visibility === 'ONLY_ME';
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
-      {/* 1. TOP HEADER BAR: Notion-style matching Figma Frame */}
+      {/* 1. TOP HEADER BAR */}
       <header className="sticky top-0 z-30 border-b border-border/80 bg-card/90 backdrop-blur-md px-4 sm:px-8 py-2.5 shadow-xs">
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
           {/* Left: Exit button & Course Name */}
@@ -615,48 +925,6 @@ export function ChapterEditorPage() {
 
           {/* Right: Actions */}
           <div className="flex items-center gap-2 shrink-0">
-            {/* Version indicator */}
-            {!isNewMode && (
-              <span className="hidden md:inline-block font-mono text-[11px] font-bold text-muted-foreground px-2 py-0.5 rounded bg-muted/40">
-                v{baseVersionNo}
-              </span>
-            )}
-
-            {/* Xem trước như học viên */}
-            <button
-              type="button"
-              title="Xem trước như học viên"
-              aria-label="Xem trước như học viên"
-              onClick={() => setIsPreviewOpen(true)}
-              className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-            >
-              <Eye className="h-4 w-4" />
-            </button>
-
-            {/* Lịch sử phiên bản */}
-            {!isNewMode && (
-              <button
-                type="button"
-                title="Lịch sử phiên bản"
-                aria-label="Lịch sử phiên bản"
-                onClick={() => setIsVersionsModalOpen(true)}
-                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-              >
-                <History className="h-4 w-4" />
-              </button>
-            )}
-
-            {/* Tài nguyên */}
-            <button
-              type="button"
-              title="Quản lý tài nguyên"
-              aria-label="Tài nguyên"
-              onClick={() => setIsResourceDrawerOpen(true)}
-              className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-            >
-              <FolderOpen className="h-4 w-4" />
-            </button>
-
             {/* Lưu nháp (Chỉ lưu khi click) */}
             <Button
               type="button"
@@ -675,12 +943,12 @@ export function ChapterEditorPage() {
               size="sm"
               onClick={handlePublish}
               disabled={isPublishing || isSaving || isCreating}
-              className="bg-[#ff7a1a] hover:bg-[#ff7a1a]/90 text-[#5e2700] text-xs h-8 px-4 font-bold rounded-lg shadow-xs"
+              className="bg-[#ff7a1a] hover:bg-[#ff7a1a]/90 text-[#3b1700] text-xs h-8 px-4 font-bold rounded-lg shadow-xs"
             >
               {isPublishing ? 'Đang đăng...' : 'Đăng tải'}
             </Button>
 
-            {/* Menu MoreVertical */}
+            {/* Menu 3 chấm (CHỈ GIỮ 3 MỤC: Chế độ truy cập, Lịch sử phiên bản, Xóa chương) */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
@@ -692,36 +960,22 @@ export function ChapterEditorPage() {
                   <MoreVertical className="h-4 w-4" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 text-xs">
-                {/* Chế độ truy cập toggle */}
+              <DropdownMenuContent align="end" className="w-52 text-xs bg-[#1e1e24] border-border/80 text-foreground">
+                {/* 1. Chế độ truy cập */}
                 <DropdownMenuItem
-                  onClick={() => {
-                    const nextMode = accessMode === 'PUBLIC' ? 'PROTECTED' : 'PUBLIC';
-                    setAccessMode(nextMode);
-                    setIsDirty(true);
-                  }}
+                  onClick={() => setIsAccessPanelOpen(true)}
+                  className="flex items-center justify-between"
                 >
-                  {accessMode === 'PROTECTED' ? (
-                    <Lock className="h-4 w-4 mr-2 text-zinc-400" />
-                  ) : (
-                    <Globe className="h-4 w-4 mr-2 text-emerald-400" />
-                  )}
-                  <span>Chế độ: {accessMode === 'PROTECTED' ? 'Protected' : 'Public'}</span>
+                  <div className="flex items-center gap-2">
+                    <Lock className="h-4 w-4 text-[#ff7a1a]" />
+                    <span>Chế độ truy cập</span>
+                  </div>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground font-medium">
+                    {accessMode === 'PROTECTED' ? 'Protected' : 'Public'}
+                  </span>
                 </DropdownMenuItem>
 
-                {/* Xem trước như học viên */}
-                <DropdownMenuItem onClick={() => setIsPreviewOpen(true)}>
-                  <Eye className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <span>Xem trước như học viên</span>
-                </DropdownMenuItem>
-
-                {/* Kho tài nguyên */}
-                <DropdownMenuItem onClick={() => setIsResourceDrawerOpen(true)}>
-                  <FolderOpen className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <span>Kho tài nguyên</span>
-                </DropdownMenuItem>
-
-                {/* Lịch sử phiên bản */}
+                {/* 2. Lịch sử phiên bản */}
                 {!isNewMode && (
                   <DropdownMenuItem onClick={() => setIsVersionsModalOpen(true)}>
                     <History className="h-4 w-4 mr-2 text-muted-foreground" />
@@ -731,7 +985,7 @@ export function ChapterEditorPage() {
 
                 <DropdownMenuSeparator />
 
-                {/* Xóa chương */}
+                {/* 3. Xóa chương */}
                 <DropdownMenuItem
                   onClick={() => setIsDeleteDialogOpen(true)}
                   className="text-red-500 focus:text-red-500 focus:bg-red-500/10"
@@ -762,6 +1016,35 @@ export function ChapterEditorPage() {
           />
         </div>
 
+        {/* Thanh công cụ khi chọn nhiều block */}
+        {selectedBlockIds.size > 1 && (
+          <div className="ml-12 flex items-center justify-between p-2.5 rounded-xl border border-[#ff7a1a]/30 bg-[#ff7a1a]/10 text-xs">
+            <span className="font-semibold text-foreground">
+              Đã chọn {selectedBlockIds.size} khối nội dung
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedBlockIds(new Set())}
+                className="h-7 text-xs border-border/80"
+              >
+                Bỏ chọn
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={handleDeleteSelectedBlocks}
+                className="h-7 text-xs"
+              >
+                Xóa {selectedBlockIds.size} khối đã chọn
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* DANH SÁCH CÁC KHỐI NOTION BLOCKS */}
         <div className="space-y-1">
           {blocks.map((block, index) => (
@@ -772,46 +1055,69 @@ export function ChapterEditorPage() {
               totalBlocks={blocks.length}
               courseId={courseId}
               isFocused={focusedBlockId === block.id}
+              isSelected={selectedBlockIds.has(block.id)}
               onUpdate={handleUpdateBlock}
               onDelete={() => handleDeleteBlock(block.id)}
               onAddBelow={(type?: BlockType) => handleAddBlockBelow(index, type)}
               onMoveUp={() => handleMoveBlock(index, 'UP')}
               onMoveDown={() => handleMoveBlock(index, 'DOWN')}
-              onDuplicate={() => handleDuplicateBlock(index)}
-              onOpenSlashMenu={(coords: { top: number; left: number }, blockId: string) => setActiveSlashMenu({ coords, blockId })}
+              onConvertType={(targetType) => handleConvertBlockType(block.id, targetType)}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              onOpenTypeMenu={(coords, blockId) => setActiveTypeMenu({ coords, blockId })}
               onOpenResourcePicker={(blockId: string) => {
                 setPickerTargetBlockId(blockId);
                 setIsResourceDrawerOpen(true);
               }}
-              onSelectionChange={(coords: { top: number; left: number } | null, blockId: string) => {
-                if (coords) {
+              onSelectionChange={(coords, blockId) => {
+                // Không hiển thị floating format bar nếu đang chọn nhiều block
+                if (coords && selectedBlockIds.size <= 1) {
                   setActiveSelection({ coords, blockId });
                 } else {
                   setActiveSelection(null);
                 }
               }}
+              onFocusPrevBlock={() => handleFocusPrevBlock(index)}
+              onFocusNextBlock={() => handleFocusNextBlock(index)}
+              onToggleSelect={() => handleToggleSelectBlock(block.id)}
             />
           ))}
         </div>
       </main>
 
-      {/* 3. SLASH COMMAND POPUP MENU */}
+      {/* 3. MENU CHỌN LOẠI BLOCK (KHI BẤM DẤU +) */}
       <SlashCommandMenu
-        isOpen={Boolean(activeSlashMenu)}
-        position={activeSlashMenu?.coords}
-        onClose={() => setActiveSlashMenu(null)}
-        onSelect={handleSelectSlashCommand}
+        isOpen={Boolean(activeTypeMenu)}
+        position={activeTypeMenu?.coords}
+        onClose={() => setActiveTypeMenu(null)}
+        onSelect={handleSelectTypeCommand}
       />
 
-      {/* 4. FLOATING TEXT FORMAT TOOLBAR */}
-      <FloatingTextFormatToolbar
-        position={activeSelection?.coords || null}
-        onCommand={handleExecuteFormatCommand}
-        onInsertTable={handleInsertTableAtSelection}
-        onClose={() => setActiveSelection(null)}
+      {/* 4. FLOATING TEXT FORMAT TOOLBAR (Chỉ hiện khi bôi đen text trong 1 block) */}
+      {selectedBlockIds.size <= 1 && (
+        <FloatingTextFormatToolbar
+          position={activeSelection?.coords || null}
+          onCommand={handleExecuteFormatCommand}
+          onToggleCode={handleToggleCode}
+          onInsertTable={handleInsertTableCustom}
+          onTableAction={handleTableAction}
+          onClose={() => setActiveSelection(null)}
+        />
+      )}
+
+      {/* 5. RIGHT DRAWER: CHẾ ĐỘ TRUY CẬP (Theo ảnh specimen) */}
+      <ChapterAccessPanel
+        isOpen={isAccessPanelOpen}
+        initialMode={accessMode}
+        initialPasscode={passcode}
+        isCourseOnlyMe={isCourseOnlyMe}
+        onClose={() => setIsAccessPanelOpen(false)}
+        onApply={handleApplyAccess}
+        isPending={isSettingAccess}
       />
 
-      {/* 5. MODAL: XÓA CHƯƠNG HỌC (Figma Specimen) */}
+      {/* 6. MODAL: XÓA CHƯƠNG HỌC */}
       <DeleteChapterModal
         isOpen={isDeleteDialogOpen}
         chapterTitle={title}
@@ -821,7 +1127,7 @@ export function ChapterEditorPage() {
         isDeleting={isDeleting}
       />
 
-      {/* 6. MODAL: RỜI KHỎI TRANG (Figma Specimen) */}
+      {/* 7. MODAL: RỜI KHỎI TRANG KHI CHƯA LƯU */}
       <UnsavedChangesModal
         isOpen={showUnsavedExitDialog}
         chapterTitle={title}
@@ -831,7 +1137,7 @@ export function ChapterEditorPage() {
         isSaving={isSaving || isCreating}
       />
 
-      {/* 7. MODAL: RESOURCE DRAWER */}
+      {/* 8. MODAL: RESOURCE DRAWER */}
       <ResourceDrawer
         isOpen={isResourceDrawerOpen}
         courseId={courseId}
@@ -854,7 +1160,7 @@ export function ChapterEditorPage() {
         }}
       />
 
-      {/* 8. MODAL: VERSION HISTORY */}
+      {/* 9. MODAL: VERSION HISTORY */}
       {!isNewMode && (
         <ChapterVersionsModal
           isOpen={isVersionsModalOpen}
@@ -864,15 +1170,6 @@ export function ChapterEditorPage() {
           currentVersionNo={baseVersionNo}
         />
       )}
-
-      {/* 9. MODAL: CHAPTER PREVIEW */}
-      <ChapterPreviewModal
-        isOpen={isPreviewOpen}
-        onClose={() => setIsPreviewOpen(false)}
-        chapterTitle={title || 'Xem trước chương bài học'}
-        chapterDescription={chapter?.description}
-        blocks={blocks}
-      />
 
       {/* 10. MODAL: OPTIMISTIC LOCKING CONFLICT */}
       <Dialog open={conflictDialogOpen} onOpenChange={setConflictDialogOpen}>
