@@ -49,6 +49,12 @@ import { ChapterVersionsModal } from '../components/ChapterVersionsModal';
 import { DeleteChapterModal } from '../components/DeleteChapterModal';
 import { UnsavedChangesModal } from '../components/UnsavedChangesModal';
 import { ChapterAccessPanel } from '../components/ChapterAccessPanel';
+import {
+  createEmptyRichDocJson,
+  isRichDocEmpty,
+  isRichDocumentJsonString,
+  htmlToRichJson,
+} from '../lib/richTextDocument';
 import { ApiProblemError } from '@/shared/api';
 
 function generateBlockId(): string {
@@ -64,7 +70,7 @@ function createEmptyTextBlock(position: number): BlockDto {
     blockType: 'RICH_TEXT',
     position,
     title: null,
-    body: '<p></p>',
+    body: JSON.stringify(createEmptyRichDocJson()),
     resourceId: null,
     questionId: null,
     aiReviewStatus: 'NOT_APPLICABLE',
@@ -180,8 +186,7 @@ export function ChapterEditorPage() {
       return [createEmptyTextBlock(1)];
     }
     const isLastBlockEmptyText =
-      lastBlock.blockType === 'RICH_TEXT' &&
-      (!lastBlock.body || lastBlock.body.trim() === '' || lastBlock.body.trim() === '<p></p>');
+      lastBlock.blockType === 'RICH_TEXT' && isRichDocEmpty(lastBlock.body);
 
     if (!isLastBlockEmptyText) {
       // Tự động append một khối text trống ở dưới cùng
@@ -335,7 +340,12 @@ export function ChapterEditorPage() {
       blockType: type,
       position: targetIndex + 2,
       title: null,
-      body: type === 'RICH_TEXT' ? '<p></p>' : type === 'MARKDOWN' ? '' : null,
+      body:
+        type === 'RICH_TEXT'
+          ? JSON.stringify(createEmptyRichDocJson())
+          : type === 'MARKDOWN'
+          ? ''
+          : null,
       resourceId: null,
       questionId: null,
       flashcards: type === 'FLASHCARD' ? [{ front: '', back: '' }] : undefined,
@@ -432,7 +442,12 @@ export function ChapterEditorPage() {
           blockType: targetType,
           position: b.position,
           title: null,
-          body: targetType === 'RICH_TEXT' ? '<p></p>' : targetType === 'MARKDOWN' ? '' : null,
+          body:
+            targetType === 'RICH_TEXT'
+              ? JSON.stringify(createEmptyRichDocJson())
+              : targetType === 'MARKDOWN'
+              ? ''
+              : null,
           resourceId: null,
           questionId: null,
           flashcards: targetType === 'FLASHCARD' ? [{ front: '', back: '' }] : undefined,
@@ -679,6 +694,16 @@ export function ChapterEditorPage() {
     }
 
     try {
+      const normalizedBlocks = blocks.map((b) => {
+        if (b.blockType === 'RICH_TEXT') {
+          const bodyStr = b.body || '';
+          const isJson = isRichDocumentJsonString(bodyStr);
+          const jsonBody = isJson ? bodyStr : JSON.stringify(htmlToRichJson(bodyStr));
+          return { ...b, body: jsonBody };
+        }
+        return b;
+      });
+
       if (isNewMode) {
         // 1. Tạo chương mới
         const created = await createChapter({
@@ -706,7 +731,7 @@ export function ChapterEditorPage() {
           });
         }
 
-        // 4. Lưu nội dung draft vừa soạn vào chương mới
+        // 4. Lưu nội dung draft vừa soạn vào chương mới (với body đã là JSON)
         if (created.id) {
           await saveDraft({
             chapterId: created.id,
@@ -714,7 +739,7 @@ export function ChapterEditorPage() {
               baseVersionNo: 1,
               title: title.trim(),
               description: '',
-              blocks,
+              blocks: normalizedBlocks,
             },
           });
 
@@ -728,14 +753,14 @@ export function ChapterEditorPage() {
           navigate(`/courses/${courseId}/manage/content/${created.id}`, { replace: true });
         }
       } else {
-        // Lưu chương hiện có
+        // Lưu chương hiện có (với body đã là JSON)
         const updated = await saveDraft({
           chapterId,
           body: {
             baseVersionNo,
             title: title.trim(),
             description: chapter?.description || '',
-            blocks,
+            blocks: normalizedBlocks,
           },
         });
 

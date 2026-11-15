@@ -13,6 +13,8 @@ export * from './components/ResourceDrawer';
 export * from './components/ChapterVersionsModal';
 export * from './components/ChapterPreviewModal';
 export * from './components/UnsavedChangesDialog';
+export * from './components/RichTextDocumentRenderer';
+export * from './lib/richTextDocument';
 export * from './pages/ChapterListPage';
 export * from './pages/ChapterEditorPage';
 export * from './pages/ResourceManagementPage';

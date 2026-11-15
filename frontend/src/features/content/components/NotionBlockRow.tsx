@@ -28,6 +28,7 @@ import {
   DropdownMenuSeparator,
 } from '@/shared/ui';
 import type { BlockDto, BlockType } from '../api/contentApi';
+import { richJsonToHtml, htmlToRichJson, isRichDocEmpty } from '../lib/richTextDocument';
 import { MarkdownEditor } from './MarkdownEditor';
 import { MediaBlockEditor } from './MediaBlockEditor';
 import { FileBlockEditor } from './FileBlockEditor';
@@ -90,7 +91,7 @@ export function NotionBlockRow({
   useEffect(() => {
     if (block.blockType === 'RICH_TEXT' && editableRef.current && !isInternalChangeRef.current) {
       const currentHtml = editableRef.current.innerHTML;
-      const targetHtml = block.body || '';
+      const targetHtml = richJsonToHtml(block.body);
       if (currentHtml !== targetHtml) {
         editableRef.current.innerHTML = targetHtml;
       }
@@ -109,7 +110,9 @@ export function NotionBlockRow({
     if (editableRef.current) {
       isInternalChangeRef.current = true;
       const html = editableRef.current.innerHTML;
-      onUpdate({ ...block, body: html });
+      const docJson = htmlToRichJson(html);
+      const bodyJson = JSON.stringify(docJson);
+      onUpdate({ ...block, body: bodyJson });
     }
   };
 
@@ -120,7 +123,7 @@ export function NotionBlockRow({
     // 2. Phím Backspace khi ô trống và không phải block duy nhất -> xóa block
     if (e.key === 'Backspace') {
       const text = editableRef.current?.innerText.trim() || '';
-      if (text === '' && totalBlocks > 1) {
+      if ((text === '' || isRichDocEmpty(block.body)) && totalBlocks > 1) {
         e.preventDefault();
         onDelete();
         return;
