@@ -1122,6 +1122,221 @@ export const handlers = [
     );
   }),
 
+  // Course Overview Dashboard (Figma node-id=28:7067)
+  http.get('*/api/v1/courses/:courseId/overview', ({ params, request }) => {
+    mockCourses = getStoredCourses();
+    const { courseId } = params;
+    const persona = readPersonaFromCookie(request);
+
+    if (courseId === '404' || courseId === 'not-found') {
+      return problemResponse(404, {
+        title: 'Khóa học không tồn tại',
+        status: 404,
+        code: 'COURSE_NOT_FOUND',
+        detail: 'Khóa học không tồn tại hoặc đã bị xóa.',
+      });
+    }
+
+    const foundCourse = mockCourses.find((c) => c.id === courseId);
+    const isOwner = foundCourse
+      ? foundCourse.owner?.id === mockUsers.user.id
+      : persona === 'user' && courseId === 'my-course-1';
+
+    const courseData = foundCourse || {
+      id: String(courseId),
+      name: 'Nhập môn Python - Từ Zero tới Hero',
+      description:
+        'Khóa học cung cấp lộ trình từ nền tảng cú pháp đến tư duy lập trình chuyên sâu, tích hợp thuật toán Spaced Repetition (SRS) giúp người học ghi nhớ kiến thức vĩnh viễn.',
+      coverUrl: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800',
+      accessMode: 'PUBLIC',
+      status: 'UPDATING',
+      isHidden: false,
+      isDeleted: false,
+      tags: ['Python', 'Backend', 'Thuật toán', 'Tự động hóa'],
+      createdAt: '2026-08-15T08:00:00Z',
+      updatedAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+      owner: {
+        id: mockUsers.user.id,
+        displayName: 'Quang Trần',
+        avatarUrl: null,
+      },
+      viewer: {
+        isOwner: Boolean(isOwner),
+        enrollmentStatus: null,
+        canReadContent: true,
+        canLearn: true,
+        hasNominated: false,
+      },
+    };
+
+    const chapters = mockChapters[String(courseId)] || [];
+    const totalChapters = chapters.length > 0 ? chapters.length : 24;
+    const publishedChapters = chapters.filter((c) => c.status === 'PUBLISHED').length || 22;
+    const draftChapters = totalChapters - publishedChapters;
+
+    return HttpResponse.json({
+      course: courseData,
+      stats: {
+        activeLearners: 1240,
+        activeLearnersChangeWeekly: 18,
+        completedLearners: 310,
+        completionRatePercent: 25,
+        completionTargetPercent: 30,
+        totalChapters,
+        publishedChapters,
+        draftChapters,
+        totalComments: 872,
+        newCommentsCount: 48,
+        avgResponseTimeHours: 2,
+        totalRatings: 320,
+        averageRating: 4.8,
+        fiveStarPercentage: 92,
+        totalRecommendations: 560,
+        systemRank: 3,
+      },
+      ranking: {
+        timeRange: 'ALL_TIME',
+        byStudents: {
+          rank: 12,
+          totalCourses: 1240,
+          percentileTop: 1.0,
+          classSize: 1240,
+        },
+        byRecommendations: {
+          rank: 3,
+          totalCourses: 1240,
+          isTop3: true,
+          totalRecommendations: 560,
+        },
+        byRatings: {
+          rank: 8,
+          totalCourses: 1240,
+          percentileTop: 0.6,
+          ratingsCount: 320,
+          averageRating: 4.8,
+        },
+      },
+      pendingSubmissions: [
+        {
+          id: 'sub-1',
+          studentName: 'Trần Minh Đức',
+          studentInitials: 'MĐ',
+          avatarBgColor: 'bg-[#0061d1]',
+          assignmentTitle: 'Bài tập 4: Đệ quy & Quy hoạch động',
+          timeAgo: '5 phút trước',
+        },
+        {
+          id: 'sub-2',
+          studentName: 'Lê Thu Trang',
+          studentInitials: 'TT',
+          avatarBgColor: 'bg-[#22b76a]',
+          assignmentTitle: 'Dự án: Xây dựng REST API với FastAPI',
+          timeAgo: '28 phút trước',
+        },
+        {
+          id: 'sub-3',
+          studentName: 'Nguyễn Hoàng Nam',
+          studentInitials: 'HN',
+          avatarBgColor: 'bg-[#39383f]',
+          assignmentTitle: 'Quiz 03: Xử lý ngoại lệ trong Python',
+          timeAgo: '1 giờ trước',
+        },
+        {
+          id: 'sub-4',
+          studentName: 'Vũ Đình Trọng',
+          studentInitials: 'ĐT',
+          avatarBgColor: 'bg-[#ff7a1a]',
+          assignmentTitle: 'Bài tập 2: Cấu trúc dữ liệu Dictionary & Set',
+          timeAgo: '2 giờ trước',
+        },
+        {
+          id: 'sub-5',
+          studentName: 'Phạm Khánh Linh',
+          studentInitials: 'KL',
+          avatarBgColor: 'bg-[#34343b]',
+          assignmentTitle: 'Capstone: Web Scraper đa luồng',
+          timeAgo: '4 giờ trước',
+        },
+      ],
+      pendingRequests: [
+        {
+          id: 'req-1',
+          studentName: 'Đặng Hải Yến',
+          studentInitials: 'HY',
+          avatarBgColor: 'bg-[#ff7a1a]',
+          studentRoleOrSchool: 'Học viên chuyển ngành • 15 phút trước',
+          timeAgo: '15 phút trước',
+        },
+        {
+          id: 'req-2',
+          studentName: 'Bùi Quốc Toàn',
+          studentInitials: 'QT',
+          avatarBgColor: 'bg-[#0061d1]',
+          studentRoleOrSchool: 'Kỹ sư Backend • 40 phút trước',
+          timeAgo: '40 phút trước',
+        },
+        {
+          id: 'req-3',
+          studentName: 'Hồ Ngọc Mai',
+          studentInitials: 'NM',
+          avatarBgColor: 'bg-[#22b76a]',
+          studentRoleOrSchool: 'Sinh viên ĐH Bách Khoa • 2 giờ trước',
+          timeAgo: '2 giờ trước',
+        },
+        {
+          id: 'req-4',
+          studentName: 'Đỗ Tuấn Khang',
+          studentInitials: 'TK',
+          avatarBgColor: 'bg-[#39383f]',
+          studentRoleOrSchool: 'Data Analyst • 3 giờ trước',
+          timeAgo: '3 giờ trước',
+        },
+        {
+          id: 'req-5',
+          studentName: 'Lương Minh Tuấn',
+          studentInitials: 'MT',
+          avatarBgColor: 'bg-[#34343b]',
+          studentRoleOrSchool: 'Học viên tự do • Hôm qua',
+          timeAgo: 'Hôm qua',
+        },
+      ],
+      reports: [
+        {
+          id: 'rep-1',
+          targetType: 'Khóa học',
+          excerpt: '"Khóa học bị trùng lặp kiến thức với khóa đã có trên diễn đàn mở mà không ghi nguồn..."',
+          reason: 'Trùng lặp nội dung',
+          reportedDate: '08/11/2026',
+          status: 'Chờ xử lý',
+        },
+        {
+          id: 'rep-2',
+          targetType: 'Bình luận',
+          excerpt: '"Spam liên kết quảng cáo nhóm telegram bên ngoài yêu cầu chuyển tiền..."',
+          reason: 'Nội dung phản cảm/Spam',
+          reportedDate: '05/11/2026',
+          status: 'Đã chấp nhận',
+        },
+        {
+          id: 'rep-3',
+          targetType: 'Bình luận',
+          excerpt: '"Học viên bình luận dùng từ ngữ kích động xúc phạm giảng viên trong phần thảo luận..."',
+          reason: 'Ngôn từ thù ghét',
+          reportedDate: '02/11/2026',
+          status: 'Đã từ chối',
+        },
+      ],
+    });
+  }),
+
+  http.post('*/api/v1/courses/:courseId/enrollment-requests/:requestId/approve', () => {
+    return new HttpResponse(null, { status: 200 });
+  }),
+
+  http.post('*/api/v1/courses/:courseId/enrollment-requests/:requestId/reject', () => {
+    return new HttpResponse(null, { status: 200 });
+  }),
+
   // Course Module Handlers (FR-CRS-01..16)
   http.get('*/api/v1/courses/:courseId', ({ params, request }) => {
     const { courseId } = params;

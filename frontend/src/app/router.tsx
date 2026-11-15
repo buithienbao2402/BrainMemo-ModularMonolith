@@ -19,6 +19,7 @@ import {
   CourseFormPage,
   CourseManagementLayout,
   CourseManagementHomePage,
+  CourseOverviewPage,
 } from '@/features/course';
 import {
   ChapterListPage,
@@ -163,7 +164,11 @@ export const appRoutes: RouteObject[] = [
           },
           {
             path: '/courses/:courseId/manage',
-            element: <Navigate to="content" replace />,
+            element: <CourseOverviewPage />,
+          },
+          {
+            path: '/courses/:courseId/manage/overview',
+            element: <CourseOverviewPage />,
           },
           {
             path: '/courses/:courseId/manage/content',

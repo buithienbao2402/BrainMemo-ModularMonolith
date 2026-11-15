@@ -19,6 +19,8 @@ export const queryKeys = {
     all: ['courses'] as const,
     list: (params?: Record<string, unknown>) => ['courses', 'list', params ?? {}] as const,
     detail: (courseId: string) => ['courses', 'detail', courseId] as const,
+    overview: (courseId: string, timeRange?: string) =>
+      ['courses', 'overview', courseId, timeRange ?? 'ALL_TIME'] as const,
     myCourses: (params?: Record<string, unknown>) =>
       ['courses', 'myCourses', params ?? {}] as const,
     myInvitations: () => ['courses', 'myInvitations'] as const,
