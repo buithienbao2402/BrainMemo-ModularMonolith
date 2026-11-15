@@ -77,8 +77,8 @@ public sealed class UpdateCourseCommandHandler(
 
         string targetName = request.Name ?? course.Name;
         string? targetDesc = request.Description ?? course.Description;
-        CourseAccessMode targetMode = request.AccessMode ?? course.AccessMode;
-        CourseStatus targetStatus = request.Status ?? course.Status;
+        CourseAccessMode targetMode = request.AccessMode.HasValue ? (CourseAccessMode)(int)request.AccessMode.Value : course.AccessMode;
+        CourseStatus targetStatus = request.Status.HasValue ? (CourseStatus)(int)request.Status.Value : course.Status;
         IReadOnlyList<string> targetTags = request.Tags ?? course.Tags.Select(t => t.Tag).ToArray();
 
         Result updateResult = course.Update(targetName, targetDesc, targetMode, targetStatus, targetTags, now);

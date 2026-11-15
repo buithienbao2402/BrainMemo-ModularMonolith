@@ -18,4 +18,10 @@ public sealed class ChapterUnlock
     public Guid UserId { get; private set; }
     public uint PasscodeVersion { get; private set; }
     public DateTimeOffset UnlockedAt { get; private set; }
+
+    public void Update(uint passcodeVersion, DateTimeOffset now)
+    {
+        PasscodeVersion = passcodeVersion;
+        UnlockedAt = now;
+    }
 }

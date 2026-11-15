@@ -1,24 +1,23 @@
 using System.Security.Claims;
 using BrainMemo.Course.Api.DTOs;
-using BrainMemo.Course.Application.Abstractions;
 using BrainMemo.Course.Application.Commands.CreateCourse;
 using BrainMemo.Course.Application.Commands.DeleteCourse;
 using BrainMemo.Course.Application.Commands.UpdateCourse;
 using BrainMemo.Course.Application.Queries.GetCourse;
+using BrainMemo.Course.Application.Queries.GetCourseStats;
 using BrainMemo.Course.Contracts.Dtos;
-using BrainMemo.Course.Domain.Enums;
+using BrainMemo.Course.Contracts.Enums;
 using BrainMemo.SharedKernel.Results;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using CourseEntity = BrainMemo.Course.Domain.Entities.Course;
 
 namespace BrainMemo.Course.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/courses")]
-public sealed class CoursesController(ISender sender, ICourseRepository courseRepository) : ControllerBase
+public sealed class CoursesController(ISender sender) : ControllerBase
 {
     [Authorize]
     [HttpPost]
@@ -32,7 +31,7 @@ public sealed class CoursesController(ISender sender, ICourseRepository courseRe
             return Unauthorized(Error.Unauthenticated("Phiên đăng nhập không hợp lệ."));
         }
 
-        CourseAccessMode accessMode = ParseAccessMode(request.AccessMode) ?? CourseAccessMode.Public;
+        AccessMode accessMode = ParseAccessMode(request.AccessMode) ?? AccessMode.Public;
         CourseStatus status = ParseStatus(request.Status) ?? CourseStatus.Updating;
 
         CreateCourseCommand command = new(
@@ -83,7 +82,7 @@ public sealed class CoursesController(ISender sender, ICourseRepository courseRe
             return Unauthorized(Error.Unauthenticated("Phiên đăng nhập không hợp lệ."));
         }
 
-        CourseAccessMode? accessMode = ParseAccessMode(request.AccessMode);
+        AccessMode? accessMode = ParseAccessMode(request.AccessMode);
         CourseStatus? status = ParseStatus(request.Status);
 
         UpdateCourseCommand command = new(
@@ -136,19 +135,23 @@ public sealed class CoursesController(ISender sender, ICourseRepository courseRe
             return Unauthorized(Error.Unauthenticated("Phiên đăng nhập không hợp lệ."));
         }
 
-        CourseEntity? course = await courseRepository.GetByIdAsync(courseId, ct).ConfigureAwait(false);
-        if (course is null)
+        Result<CourseStatsDto> result = await sender.Send(new GetCourseStatsQuery(courseId, userId), ct).ConfigureAwait(false);
+        if (result.IsFailure)
         {
-            return NotFound(new Error("COURSE_NOT_FOUND", "Khóa học không tồn tại."));
+            if (result.Error.Code == "COURSE_NOT_FOUND")
+            {
+                return NotFound(result.Error);
+            }
+
+            if (result.Error.Code == ErrorCodes.Forbidden)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, result.Error);
+            }
+
+            return new ObjectResult(result.Error);
         }
 
-        if (course.OwnerUserId != userId)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, Error.Forbidden("Chỉ chủ khóa mới có quyền xem thống kê."));
-        }
-
-        CourseStatsDto stats = await courseRepository.GetCourseStatsAsync(courseId, ct).ConfigureAwait(false);
-        return Ok(stats);
+        return Ok(result.Value);
     }
 
     private bool TryGetCurrentUserId(out Guid userId)
@@ -160,7 +163,7 @@ public sealed class CoursesController(ISender sender, ICourseRepository courseRe
         return Guid.TryParse(raw, out userId);
     }
 
-    private static CourseAccessMode? ParseAccessMode(string? value)
+    private static AccessMode? ParseAccessMode(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
@@ -169,9 +172,9 @@ public sealed class CoursesController(ISender sender, ICourseRepository courseRe
 
         return value.Trim().ToUpperInvariant() switch
         {
-            "PUBLIC" => CourseAccessMode.Public,
-            "PRIVATE" => CourseAccessMode.Private,
-            "ONLY_ME" => CourseAccessMode.OnlyMe,
+            "PUBLIC" => AccessMode.Public,
+            "PRIVATE" => AccessMode.Private,
+            "ONLY_ME" => AccessMode.OnlyMe,
             _ => null,
         };
     }

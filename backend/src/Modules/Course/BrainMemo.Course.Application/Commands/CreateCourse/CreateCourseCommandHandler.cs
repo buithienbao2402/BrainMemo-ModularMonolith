@@ -78,8 +78,8 @@ public sealed class CreateCourseCommandHandler(
             request.Name,
             request.Description,
             permanentCoverKey,
-            request.AccessMode,
-            request.Status,
+            (CourseAccessMode)(int)request.AccessMode,
+            (BrainMemo.Course.Domain.Enums.CourseStatus)(int)request.Status,
             request.Tags,
             now);
 

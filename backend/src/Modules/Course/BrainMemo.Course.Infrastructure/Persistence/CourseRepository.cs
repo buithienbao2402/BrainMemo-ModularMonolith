@@ -52,6 +52,97 @@ public sealed class CourseRepository(CourseDbContext dbContext) : ICourseReposit
             .ConfigureAwait(false);
     }
 
+    public async Task AddEnrollmentAsync(Enrollment enrollment, CancellationToken ct = default)
+    {
+        await dbContext.Enrollments.AddAsync(enrollment, ct).ConfigureAwait(false);
+    }
+
+    public Task RemoveEnrollmentAsync(Enrollment enrollment, CancellationToken ct = default)
+    {
+        dbContext.Enrollments.Remove(enrollment);
+        return Task.CompletedTask;
+    }
+
+    public async Task<EnrollmentRequest?> GetPendingEnrollmentRequestAsync(Guid courseId, Guid userId, CancellationToken ct = default)
+    {
+        return await dbContext.EnrollmentRequests
+            .FirstOrDefaultAsync(r => r.CourseId == courseId && r.UserId == userId && r.Decision == EnrollmentDecision.Pending, ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<EnrollmentRequest?> GetEnrollmentRequestByIdAsync(Guid requestId, CancellationToken ct = default)
+    {
+        return await dbContext.EnrollmentRequests
+            .FirstOrDefaultAsync(r => r.Id == requestId, ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task AddEnrollmentRequestAsync(EnrollmentRequest request, CancellationToken ct = default)
+    {
+        await dbContext.EnrollmentRequests.AddAsync(request, ct).ConfigureAwait(false);
+    }
+
+    public async Task<PagedResult<Enrollment>> ListEnrollmentsPagedAsync(
+        Guid courseId,
+        BrainMemo.Course.Domain.Enums.EnrollmentStatus? status,
+        int page,
+        int pageSize,
+        CancellationToken ct = default)
+    {
+        IQueryable<Enrollment> query = dbContext.Enrollments
+            .Where(e => e.CourseId == courseId);
+
+        if (status.HasValue)
+        {
+            query = query.Where(e => e.Status == status.Value);
+        }
+
+        int totalCount = await query.CountAsync(ct).ConfigureAwait(false);
+        List<Enrollment> items = await query
+            .OrderByDescending(e => e.StatusChangedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+
+        return new PagedResult<Enrollment>(items, page, pageSize, totalCount);
+    }
+
+    public async Task<IReadOnlyList<Enrollment>> ListUserInvitationsAsync(Guid userId, CancellationToken ct = default)
+    {
+        return await dbContext.Enrollments
+            .Where(e => e.UserId == userId && e.Status == Domain.Enums.EnrollmentStatus.Invited)
+            .OrderByDescending(e => e.StatusChangedAt)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<PagedResult<EnrollmentRequest>> ListEnrollmentRequestsPagedAsync(
+        Guid courseId,
+        EnrollmentDecision? decision,
+        int page,
+        int pageSize,
+        CancellationToken ct = default)
+    {
+        IQueryable<EnrollmentRequest> query = dbContext.EnrollmentRequests
+            .Where(r => r.CourseId == courseId);
+
+        if (decision.HasValue)
+        {
+            query = query.Where(r => r.Decision == decision.Value);
+        }
+
+        int totalCount = await query.CountAsync(ct).ConfigureAwait(false);
+        List<EnrollmentRequest> items = await query
+            .OrderByDescending(r => r.RequestedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+
+        return new PagedResult<EnrollmentRequest>(items, page, pageSize, totalCount);
+    }
+
     public async Task<ChapterAccess?> GetChapterAccessAsync(Guid chapterId, CancellationToken ct = default)
     {
         return await dbContext.ChapterAccesses
@@ -59,11 +150,37 @@ public sealed class CourseRepository(CourseDbContext dbContext) : ICourseReposit
             .ConfigureAwait(false);
     }
 
+    public async Task AddChapterAccessAsync(ChapterAccess access, CancellationToken ct = default)
+    {
+        await dbContext.ChapterAccesses.AddAsync(access, ct).ConfigureAwait(false);
+    }
+
+    public Task RemoveChapterAccessAsync(ChapterAccess access, CancellationToken ct = default)
+    {
+        dbContext.ChapterAccesses.Remove(access);
+        return Task.CompletedTask;
+    }
+
     public async Task<ChapterUnlock?> GetChapterUnlockAsync(Guid chapterId, Guid userId, CancellationToken ct = default)
     {
         return await dbContext.ChapterUnlocks
             .FirstOrDefaultAsync(u => u.ChapterId == chapterId && u.UserId == userId, ct)
             .ConfigureAwait(false);
+    }
+
+    public async Task AddChapterUnlockAsync(ChapterUnlock unlock, CancellationToken ct = default)
+    {
+        await dbContext.ChapterUnlocks.AddAsync(unlock, ct).ConfigureAwait(false);
+    }
+
+    public async Task RemoveChapterUnlocksByChapterIdAsync(Guid chapterId, CancellationToken ct = default)
+    {
+        List<ChapterUnlock> unlocks = await dbContext.ChapterUnlocks
+            .Where(u => u.ChapterId == chapterId)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+
+        dbContext.ChapterUnlocks.RemoveRange(unlocks);
     }
 
     public async Task<bool> HasNominatedAsync(Guid courseId, Guid userId, CancellationToken ct = default)
