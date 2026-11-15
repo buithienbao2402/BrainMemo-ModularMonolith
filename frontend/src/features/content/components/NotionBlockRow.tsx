@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
   Plus,
   GripVertical,
@@ -29,6 +29,7 @@ import {
 } from '@/shared/ui';
 import type { BlockDto, BlockType } from '../api/contentApi';
 import { richJsonToHtml, htmlToRichJson, isRichDocEmpty } from '../lib/richTextDocument';
+import { isCaretAtTop, isCaretAtBottom, setCaretToStart, setCaretToEnd } from '../lib/editorSelection';
 import { MarkdownEditor } from './MarkdownEditor';
 import { MediaBlockEditor } from './MediaBlockEditor';
 import { FileBlockEditor } from './FileBlockEditor';
@@ -43,6 +44,7 @@ interface NotionBlockRowProps {
   totalBlocks: number;
   courseId: string;
   isFocused?: boolean;
+  focusDirection?: 'FROM_TOP' | 'FROM_BOTTOM' | null;
   isSelected?: boolean;
   onUpdate: (updatedBlock: BlockDto) => void;
   onDelete: () => void;
@@ -52,13 +54,19 @@ interface NotionBlockRowProps {
   onConvertType: (targetType: BlockType) => void;
   onDragStart?: (index: number) => void;
   onDragOver?: (e: React.DragEvent, index: number) => void;
-  onDrop?: (index: number) => void;
+  onDrop?: (targetIndex: number, position: 'TOP' | 'BOTTOM') => void;
   onOpenTypeMenu: (coords: { top: number; left: number }, blockId: string) => void;
   onOpenResourcePicker: (blockId: string) => void;
   onSelectionChange: (coords: { top: number; left: number } | null, blockId: string) => void;
   onFocusPrevBlock?: () => void;
   onFocusNextBlock?: () => void;
-  onToggleSelect?: (e: React.MouseEvent) => void;
+  onFocusBlock?: (blockId: string) => void;
+  onToggleSelect?: (e: React.MouseEvent | React.KeyboardEvent) => void;
+  onSelectBlock?: (
+    blockId: string,
+    index: number,
+    mode?: 'toggle' | 'range' | 'expand-up' | 'expand-down'
+  ) => void;
 }
 
 export function NotionBlockRow({
@@ -67,6 +75,7 @@ export function NotionBlockRow({
   totalBlocks,
   courseId,
   isFocused,
+  focusDirection,
   isSelected = false,
   onUpdate,
   onDelete,
@@ -82,10 +91,15 @@ export function NotionBlockRow({
   onSelectionChange,
   onFocusPrevBlock,
   onFocusNextBlock,
+  onFocusBlock,
   onToggleSelect,
+  onSelectBlock,
 }: NotionBlockRowProps) {
   const editableRef = useRef<HTMLDivElement>(null);
   const isInternalChangeRef = useRef(false);
+  const [dropIndicator, setDropIndicator] = useState<'TOP' | 'BOTTOM' | null>(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const isDraggingRef = useRef(false);
 
   // Sync content with server/state value for RICH_TEXT
   useEffect(() => {
@@ -99,12 +113,18 @@ export function NotionBlockRow({
     isInternalChangeRef.current = false;
   }, [block.body, block.blockType]);
 
-  // Handle focus
+  // Handle focus & caret placement
   useEffect(() => {
     if (isFocused && block.blockType === 'RICH_TEXT' && editableRef.current) {
-      editableRef.current.focus();
+      if (focusDirection === 'FROM_BOTTOM') {
+        setCaretToEnd(editableRef.current);
+      } else if (focusDirection === 'FROM_TOP') {
+        setCaretToStart(editableRef.current);
+      } else {
+        editableRef.current.focus();
+      }
     }
-  }, [isFocused, block.blockType]);
+  }, [isFocused, focusDirection, block.blockType]);
 
   const handleInput = () => {
     if (editableRef.current) {
@@ -117,10 +137,7 @@ export function NotionBlockRow({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    // 1. Nhấn Enter: KHÔNG tạo block mới, cho phép xuống dòng tự nhiên trong cùng khối text
-    // Trình duyệt tự sinh <p> hoặc <div> bên trong contentEditable.
-
-    // 2. Phím Backspace khi ô trống và không phải block duy nhất -> xóa block
+    // 1. Phím Backspace khi ô trống và không phải block duy nhất -> xóa block
     if (e.key === 'Backspace') {
       const text = editableRef.current?.innerText.trim() || '';
       if ((text === '' || isRichDocEmpty(block.body)) && totalBlocks > 1) {
@@ -130,19 +147,29 @@ export function NotionBlockRow({
       }
     }
 
-    // 3. Phím Mũi tên Lên / Xuống để di chuyển qua lại giữa các block
-    if (e.key === 'ArrowUp') {
-      const sel = window.getSelection();
-      if (sel && sel.anchorOffset === 0 && onFocusPrevBlock) {
-        // Con trỏ đang ở đầu block, chuyển lên block trước
-        onFocusPrevBlock();
+    // 2. Phím Shift + Mũi tên: Mở rộng bôi đen nhiều block
+    if (e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+      e.preventDefault();
+      if (onSelectBlock) {
+        onSelectBlock(block.id, index, e.key === 'ArrowUp' ? 'expand-up' : 'expand-down');
+      } else {
+        onToggleSelect?.(e);
       }
-    } else if (e.key === 'ArrowDown') {
-      const sel = window.getSelection();
-      const textLen = editableRef.current?.innerText.length || 0;
-      if (sel && sel.anchorOffset >= textLen && onFocusNextBlock) {
-        // Con trỏ đang ở cuối block, chuyển xuống block sau
+      return;
+    }
+
+    // 3. Phím Mũi tên Lên / Xuống để di chuyển tự do giữa các block
+    if (e.key === 'ArrowUp' && !e.shiftKey) {
+      if (editableRef.current && isCaretAtTop(editableRef.current) && onFocusPrevBlock) {
+        e.preventDefault();
+        onFocusPrevBlock();
+        return;
+      }
+    } else if (e.key === 'ArrowDown' && !e.shiftKey) {
+      if (editableRef.current && isCaretAtBottom(editableRef.current) && onFocusNextBlock) {
+        e.preventDefault();
         onFocusNextBlock();
+        return;
       }
     }
   };
@@ -169,6 +196,31 @@ export function NotionBlockRow({
       }
     }
     onSelectionChange(null, block.id);
+  };
+
+  // Drag over calculations
+  const handleDragOverRow = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    const rect = e.currentTarget.getBoundingClientRect();
+    const isTop = e.clientY < rect.top + rect.height / 2;
+    setDropIndicator(isTop ? 'TOP' : 'BOTTOM');
+    onDragOver?.(e, index);
+  };
+
+  const handleDragLeaveRow = (e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setDropIndicator(null);
+    }
+  };
+
+  const handleDropRow = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const targetPos = dropIndicator || 'BOTTOM';
+    setDropIndicator(null);
+    onDrop?.(index, targetPos);
   };
 
   // Meta helper
@@ -203,24 +255,33 @@ export function NotionBlockRow({
     <div
       data-testid={`block-item-${block.id}`}
       data-block-id={block.id}
-      draggable={false}
-      onDragOver={(e) => {
-        e.preventDefault();
-        onDragOver?.(e, index);
-      }}
-      onDrop={() => onDrop?.(index)}
+      onDragOver={handleDragOverRow}
+      onDragLeave={handleDragLeaveRow}
+      onDrop={handleDropRow}
       onClick={(e) => {
-        if (e.shiftKey && onToggleSelect) {
+        if (e.shiftKey) {
           e.preventDefault();
-          onToggleSelect(e);
+          if (onSelectBlock) {
+            onSelectBlock(block.id, index, 'range');
+          } else {
+            onToggleSelect?.(e);
+          }
         }
       }}
       className={`group relative flex items-start gap-1 py-1 rounded-xl transition-all ${
         isSelected
-          ? 'bg-[#ff7a1a]/10 ring-1 ring-[#ff7a1a]/40 shadow-xs'
-          : 'hover:bg-muted/10'
+          ? 'bg-[#ff7a1a]/15 ring-2 ring-[#ff7a1a]/50 shadow-xs'
+          : 'hover:bg-muted/15'
       }`}
     >
+      {/* Drop Indicator Lines */}
+      {dropIndicator === 'TOP' && (
+        <div className="absolute -top-1 left-4 right-4 h-1 bg-[#ff7a1a] rounded-full shadow-md z-30 pointer-events-none animate-in fade-in duration-100" />
+      )}
+      {dropIndicator === 'BOTTOM' && (
+        <div className="absolute -bottom-1 left-4 right-4 h-1 bg-[#ff7a1a] rounded-full shadow-md z-30 pointer-events-none animate-in fade-in duration-100" />
+      )}
+
       {/* 1. LEFT GUTTER CONTROLS (Hover visible) */}
       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity select-none pt-1 shrink-0 w-12 justify-end">
         {/* Nút +: Chèn thêm 1 khối xuống dưới khối đang chọn */}
@@ -237,24 +298,42 @@ export function NotionBlockRow({
           <Plus className="h-3.5 w-3.5" />
         </button>
 
-        {/* Nút ⠿: Dấu 6 chấm - Nắm kéo / Menu tùy chọn khối */}
-        <DropdownMenu>
+        {/* Nút ⠿: Dấu 6 chấm - Kéo thả di chuyển linh động & Click mở menu */}
+        <DropdownMenu
+          open={isMenuOpen}
+          onOpenChange={(open) => {
+            if (!isDraggingRef.current) {
+              setIsMenuOpen(open);
+            }
+          }}
+        >
           <DropdownMenuTrigger asChild>
             <button
               type="button"
               draggable
               onDragStart={(e) => {
+                isDraggingRef.current = true;
+                setIsMenuOpen(false);
                 e.dataTransfer.setData('text/plain', String(index));
+                e.dataTransfer.effectAllowed = 'move';
                 onDragStart?.(index);
               }}
-              title="Dấu 6 chấm: Kéo thả di chuyển hoặc click mở tùy chọn"
+              onDragEnd={() => {
+                setTimeout(() => {
+                  isDraggingRef.current = false;
+                }, 100);
+              }}
+              title="Dấu 6 chấm: Kéo thả di chuyển lên xuống hoặc click mở tùy chọn"
               aria-label={`Tùy chọn khối ${block.id}`}
               className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground cursor-grab active:cursor-grabbing transition-colors"
             >
               <GripVertical className="h-3.5 w-3.5" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-52 text-xs bg-[#1e1e24] border-border/80 text-foreground">
+          <DropdownMenuContent
+            align="start"
+            className="w-52 text-xs bg-popover border border-border text-popover-foreground shadow-2xl"
+          >
             {/* Đổi thứ tự: Di chuyển lên / xuống */}
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
@@ -263,7 +342,7 @@ export function NotionBlockRow({
                   <span>Đổi thứ tự</span>
                 </div>
               </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent className="w-40 bg-[#1e1e24] border-border/80 text-foreground">
+              <DropdownMenuSubContent className="w-40 bg-popover border border-border text-popover-foreground shadow-xl">
                 <DropdownMenuItem onClick={onMoveUp} disabled={index === 0}>
                   <ArrowUp className="h-3.5 w-3.5 mr-2" />
                   <span>Di chuyển lên</span>
@@ -279,11 +358,11 @@ export function NotionBlockRow({
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
                 <div className="flex items-center gap-2">
-                  <RefreshCw className="h-3.5 w-3.5 text-amber-400" />
+                  <RefreshCw className="h-3.5 w-3.5 text-amber-500" />
                   <span>Chuyển thành</span>
                 </div>
               </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent className="w-52 bg-[#1e1e24] border-border/80 text-foreground">
+              <DropdownMenuSubContent className="w-52 bg-popover border border-border text-popover-foreground shadow-xl">
                 <DropdownMenuItem onClick={() => onConvertType('RICH_TEXT')}>
                   <AlignLeft className="h-3.5 w-3.5 mr-2 text-blue-500" />
                   <span>Văn bản (Rich Text)</span>
@@ -353,6 +432,7 @@ export function NotionBlockRow({
               onKeyDown={handleKeyDown}
               onMouseUp={handleMouseUpOrKeyUp}
               onKeyUp={handleMouseUpOrKeyUp}
+              onFocus={() => onFocusBlock?.(block.id)}
               data-placeholder="Nhập nội dung văn bản..."
               className="min-h-[1.75rem] py-0.5 text-sm sm:text-base leading-relaxed text-foreground outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground/30 break-words
                 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:space-y-1 [&_ul]:my-2

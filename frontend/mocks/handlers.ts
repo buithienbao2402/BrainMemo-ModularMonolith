@@ -342,6 +342,7 @@ export interface MockChapterItem {
   description: string | null;
   status: 'DRAFT' | 'PUBLISHED';
   accessMode: string;
+  passcode?: string | null;
   hasUnpublishedChanges: boolean;
   lastVersionNo: number;
   publishedVersionNo: number | null;
@@ -1926,6 +1927,7 @@ export const handlers = [
     return HttpResponse.json(
       {
         accessMode: chapter.accessMode || 'PUBLIC',
+        passcode: chapter.passcode || '',
         passcodeVersion: 1,
       },
       { status: 200 }
@@ -1951,6 +1953,7 @@ export const handlers = [
     }
     if (body.accessMode) {
       chapter.accessMode = body.accessMode;
+      chapter.passcode = body.passcode || null;
       saveStoredChapters(mockChapters);
     }
     return new HttpResponse(null, { status: 204 });

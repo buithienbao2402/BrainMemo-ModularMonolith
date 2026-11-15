@@ -29,7 +29,7 @@ export function ChapterAccessPanel({
   useEffect(() => {
     if (isOpen) {
       setSelectedMode(initialMode);
-      setPasscode(initialPasscode);
+      setPasscode(initialPasscode || '');
       setShowPassword(false);
       setErrorMessage('');
     }
@@ -61,9 +61,9 @@ export function ChapterAccessPanel({
 
       {/* Drawer Container on Right */}
       <div className="fixed inset-y-0 right-0 max-w-full flex pl-10 pointer-events-auto">
-        <div className="w-screen max-w-sm sm:max-w-md bg-[#16161a] border-l border-border/80 text-foreground flex flex-col shadow-2xl animate-in slide-in-from-right duration-200">
+        <div className="w-screen max-w-sm sm:max-w-md bg-card dark:bg-[#16161a] border-l border-border text-foreground flex flex-col shadow-2xl animate-in slide-in-from-right duration-200">
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-5 border-b border-border/60">
+          <div className="flex items-center justify-between px-6 py-5 border-b border-border/80">
             <div className="flex items-center gap-2.5">
               <div className="p-1.5 rounded-lg bg-[#ff7a1a]/15 text-[#ff7a1a]">
                 <Lock className="h-5 w-5" />
@@ -76,7 +76,7 @@ export function ChapterAccessPanel({
               type="button"
               onClick={onClose}
               aria-label="Đóng panel chế độ truy cập"
-              className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/40 transition-colors"
+              className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/80 transition-colors"
             >
               <X className="h-5 w-5" />
             </button>
@@ -93,7 +93,7 @@ export function ChapterAccessPanel({
               className={`p-4 rounded-xl border cursor-pointer transition-all ${
                 selectedMode === 'PUBLIC'
                   ? 'border-[#ff7a1a] bg-[#ff7a1a]/5 ring-1 ring-[#ff7a1a]/30'
-                  : 'border-border/70 bg-card/60 hover:border-border hover:bg-card/90'
+                  : 'border-border/70 bg-card/60 dark:bg-card/40 hover:border-border hover:bg-muted/30'
               }`}
             >
               <div className="flex items-start gap-3">
@@ -130,7 +130,7 @@ export function ChapterAccessPanel({
               className={`p-4 rounded-xl border cursor-pointer transition-all ${
                 selectedMode === 'PROTECTED'
                   ? 'border-[#ff7a1a] bg-[#ff7a1a]/5 ring-1 ring-[#ff7a1a]/30'
-                  : 'border-border/70 bg-card/60 hover:border-border hover:bg-card/90'
+                  : 'border-border/70 bg-card/60 dark:bg-card/40 hover:border-border hover:bg-muted/30'
               }`}
             >
               <div className="flex items-start gap-3">
@@ -171,16 +171,33 @@ export function ChapterAccessPanel({
                   Mật khẩu chương
                 </label>
                 <div className="relative">
+                  {/* Dùng type="text" có WebkitTextSecurity để chống browser lưu mật khẩu */}
                   <input
                     id="chapter-passcode-input"
-                    type={showPassword ? 'text' : 'password'}
+                    name="bm_chapter_access_key"
+                    type="text"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                    data-lpignore="true"
+                    data-1p-ignore="true"
+                    data-form-type="other"
+                    style={
+                      showPassword
+                        ? undefined
+                        : ({
+                            WebkitTextSecurity: 'disc',
+                            textSecurity: 'disc',
+                          } as React.CSSProperties)
+                    }
                     value={passcode}
                     onChange={(e) => {
                       setPasscode(e.target.value);
                       if (errorMessage) setErrorMessage('');
                     }}
                     placeholder="Nhập mật khẩu chương..."
-                    className="w-full rounded-lg border border-border/80 bg-card px-3.5 py-2.5 pr-10 text-sm font-mono text-foreground placeholder:text-muted-foreground/40 focus:border-[#ff7a1a] focus:ring-1 focus:ring-[#ff7a1a] outline-none transition-colors"
+                    className="w-full rounded-lg border border-border/80 bg-background px-3.5 py-2.5 pr-10 text-sm font-mono text-foreground placeholder:text-muted-foreground/40 focus:border-[#ff7a1a] focus:ring-1 focus:ring-[#ff7a1a] outline-none transition-colors"
                   />
                   <button
                     type="button"
@@ -221,7 +238,7 @@ export function ChapterAccessPanel({
           </div>
 
           {/* Footer Actions */}
-          <div className="px-6 py-4 border-t border-border/60 bg-card/30 flex items-center justify-end gap-3">
+          <div className="px-6 py-4 border-t border-border/80 bg-muted/20 flex items-center justify-end gap-3">
             <Button
               type="button"
               variant="outline"

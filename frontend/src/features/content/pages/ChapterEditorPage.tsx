@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
   MoreVertical,
@@ -55,7 +56,7 @@ import {
   isRichDocumentJsonString,
   htmlToRichJson,
 } from '../lib/richTextDocument';
-import { ApiProblemError } from '@/shared/api';
+import { ApiProblemError, queryKeys } from '@/shared/api';
 
 function generateBlockId(): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -85,6 +86,7 @@ export function ChapterEditorPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { pushToast } = useToast();
+  const queryClient = useQueryClient();
 
   const isNewMode = !chapterId || chapterId === 'new';
   const afterChapterId = searchParams.get('after');
@@ -101,9 +103,11 @@ export function ChapterEditorPage() {
   const [passcode, setPasscode] = useState<string>('');
   const [isDirty, setIsDirty] = useState(false);
   const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
+  const [focusDirection, setFocusDirection] = useState<'FROM_TOP' | 'FROM_BOTTOM' | null>(null);
 
   // Multi-select blocks state
   const [selectedBlockIds, setSelectedBlockIds] = useState<Set<string>>(new Set());
+  const lastSelectedIdxRef = useRef<number | null>(null);
 
   // Drag and drop block state
   const draggedIndexRef = useRef<number | null>(null);
@@ -203,7 +207,7 @@ export function ChapterEditorPage() {
       setTitle(initTitle);
       const mode = ((chapter as any)?.accessMode as any) || 'PUBLIC';
       setAccessMode(mode);
-      setPasscode(((chapter as any)?.passcode as any) || '');
+      setPasscode((prev) => (chapter as any)?.passcode || prev || '');
       setBaseVersionNo(chapter.lastVersionNo || 1);
 
       let loadedBlocks: BlockDto[] = [];
@@ -415,15 +419,28 @@ export function ChapterEditorPage() {
     e.preventDefault();
   };
 
-  const handleDrop = (targetIndex: number) => {
+  const handleDrop = (targetIndex: number, position: 'TOP' | 'BOTTOM' = 'BOTTOM') => {
     const sourceIndex = draggedIndexRef.current;
-    if (sourceIndex === null || sourceIndex === targetIndex) return;
+    if (sourceIndex === null) return;
+    if (sourceIndex === targetIndex) {
+      draggedIndexRef.current = null;
+      return;
+    }
 
     pushUndoSnapshot(title, blocks);
     const nextList = [...blocks];
     const [moved] = nextList.splice(sourceIndex, 1);
     if (!moved) return;
-    nextList.splice(targetIndex, 0, moved);
+
+    let destinationIndex = targetIndex;
+    if (sourceIndex < targetIndex) {
+      destinationIndex = position === 'TOP' ? targetIndex - 1 : targetIndex;
+    } else {
+      destinationIndex = position === 'TOP' ? targetIndex : targetIndex + 1;
+    }
+
+    destinationIndex = Math.max(0, Math.min(destinationIndex, nextList.length));
+    nextList.splice(destinationIndex, 0, moved);
 
     const guaranteed = ensureTrailingEmptyTextBlock(nextList);
     setBlocks(guaranteed);
@@ -462,19 +479,72 @@ export function ChapterEditorPage() {
   const handleFocusPrevBlock = (currentIndex: number) => {
     if (currentIndex > 0) {
       const prevBlock = blocks[currentIndex - 1];
-      if (prevBlock) setFocusedBlockId(prevBlock.id);
+      if (prevBlock) {
+        setFocusDirection('FROM_BOTTOM');
+        setFocusedBlockId(prevBlock.id);
+      }
     }
   };
 
   const handleFocusNextBlock = (currentIndex: number) => {
     if (currentIndex < blocks.length - 1) {
       const nextBlock = blocks[currentIndex + 1];
-      if (nextBlock) setFocusedBlockId(nextBlock.id);
+      if (nextBlock) {
+        setFocusDirection('FROM_TOP');
+        setFocusedBlockId(nextBlock.id);
+      }
     }
   };
 
-  // Select / Multi-select block toggle
-  const handleToggleSelectBlock = (blockId: string) => {
+  // Select / Multi-select block handling
+  const handleSelectBlock = (
+    blockId: string,
+    index: number,
+    mode?: 'toggle' | 'range' | 'expand-up' | 'expand-down'
+  ) => {
+    if (mode === 'expand-up' && index > 0) {
+      const prevBlock = blocks[index - 1];
+      if (prevBlock) {
+        setSelectedBlockIds((prev) => {
+          const next = new Set(prev);
+          next.add(blockId);
+          next.add(prevBlock.id);
+          return next;
+        });
+        setFocusDirection('FROM_BOTTOM');
+        setFocusedBlockId(prevBlock.id);
+      }
+      return;
+    }
+
+    if (mode === 'expand-down' && index < blocks.length - 1) {
+      const nextBlock = blocks[index + 1];
+      if (nextBlock) {
+        setSelectedBlockIds((prev) => {
+          const next = new Set(prev);
+          next.add(blockId);
+          next.add(nextBlock.id);
+          return next;
+        });
+        setFocusDirection('FROM_TOP');
+        setFocusedBlockId(nextBlock.id);
+      }
+      return;
+    }
+
+    if (mode === 'range' && lastSelectedIdxRef.current !== null) {
+      const start = Math.min(lastSelectedIdxRef.current, index);
+      const end = Math.max(lastSelectedIdxRef.current, index);
+      const newSelected = new Set(selectedBlockIds);
+      for (let i = start; i <= end; i++) {
+        const blk = blocks[i];
+        if (blk) newSelected.add(blk.id);
+      }
+      setSelectedBlockIds(newSelected);
+      return;
+    }
+
+    lastSelectedIdxRef.current = index;
     setSelectedBlockIds((prev) => {
       const next = new Set(prev);
       if (next.has(blockId)) {
@@ -500,6 +570,24 @@ export function ChapterEditorPage() {
   // Floating text format commands
   const handleExecuteFormatCommand = (command: string, arg?: string) => {
     document.execCommand(command, false, arg);
+    setIsDirty(true);
+  };
+
+  // Apply heading (H1 - H6, p)
+  const handleApplyHeading = (level: 1 | 2 | 3 | 4 | 5 | 6 | 'p') => {
+    const tag = level === 'p' ? '<p>' : `<h${level}>`;
+    document.execCommand('formatBlock', false, tag);
+    const sel = window.getSelection();
+    if (sel?.anchorNode) {
+      const parent =
+        sel.anchorNode.nodeType === Node.TEXT_NODE
+          ? sel.anchorNode.parentElement
+          : (sel.anchorNode as HTMLElement);
+      const editable = parent?.closest('[contenteditable="true"]') as HTMLElement | null;
+      if (editable) {
+        editable.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }
     setIsDirty(true);
   };
 
@@ -560,91 +648,6 @@ export function ChapterEditorPage() {
     setIsDirty(true);
   };
 
-  // Thao tác chỉnh sửa bảng (Thêm/xóa hàng, thêm/xóa cột, xóa bảng)
-  const handleTableAction = (
-    action:
-      | 'ADD_ROW_ABOVE'
-      | 'ADD_ROW_BELOW'
-      | 'DELETE_ROW'
-      | 'ADD_COL_LEFT'
-      | 'ADD_COL_RIGHT'
-      | 'DELETE_COL'
-      | 'DELETE_TABLE'
-  ) => {
-    const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0) return;
-    const node = sel.anchorNode;
-    const parent = node?.nodeType === Node.TEXT_NODE ? node.parentElement : (node as HTMLElement);
-
-    const cell = parent?.closest('td, th') as HTMLTableCellElement | null;
-    const row = parent?.closest('tr') as HTMLTableRowElement | null;
-    const table = parent?.closest('table') as HTMLTableElement | null;
-
-    if (!table) return;
-
-    if (action === 'DELETE_TABLE') {
-      table.remove();
-      setIsDirty(true);
-      return;
-    }
-
-    if (!row || !cell) return;
-
-    const cellIndex = cell.cellIndex;
-    const colCount = row.cells.length;
-
-    if (action === 'ADD_ROW_ABOVE' || action === 'ADD_ROW_BELOW') {
-      const newRow = document.createElement('tr');
-      for (let i = 0; i < colCount; i++) {
-        const td = document.createElement('td');
-        td.className = 'border border-border/80 p-2.5';
-        td.innerHTML = '<br>';
-        newRow.appendChild(td);
-      }
-      if (action === 'ADD_ROW_ABOVE') {
-        row.parentNode?.insertBefore(newRow, row);
-      } else {
-        row.parentNode?.insertBefore(newRow, row.nextSibling);
-      }
-    } else if (action === 'DELETE_ROW') {
-      const tbody = row.closest('tbody, thead');
-      if (tbody && tbody.children.length <= 1) {
-        table.remove();
-      } else {
-        row.remove();
-      }
-    } else if (action === 'ADD_COL_LEFT' || action === 'ADD_COL_RIGHT') {
-      const insertAt = action === 'ADD_COL_LEFT' ? cellIndex : cellIndex + 1;
-      const allRows = table.querySelectorAll('tr');
-      allRows.forEach((r) => {
-        const isHeader = r.closest('thead') !== null;
-        const newCell = document.createElement(isHeader ? 'th' : 'td');
-        newCell.className = isHeader
-          ? 'border border-border/80 p-2.5 text-left font-semibold'
-          : 'border border-border/80 p-2.5';
-        newCell.innerHTML = isHeader ? 'Cột mới' : '<br>';
-        if (insertAt >= r.cells.length) {
-          r.appendChild(newCell);
-        } else {
-          r.insertBefore(newCell, r.cells[insertAt] ?? null);
-        }
-      });
-    } else if (action === 'DELETE_COL') {
-      const allRows = table.querySelectorAll('tr');
-      if (colCount <= 1) {
-        table.remove();
-      } else {
-        allRows.forEach((r) => {
-          if (r.cells[cellIndex]) {
-            r.deleteCell(cellIndex);
-          }
-        });
-      }
-    }
-
-    setIsDirty(true);
-  };
-
   // Áp dụng chế độ truy cập từ Panel
   const handleApplyAccess = async (newMode: 'PUBLIC' | 'PROTECTED', newPasscode: string) => {
     setAccessMode(newMode);
@@ -656,6 +659,17 @@ export function ChapterEditorPage() {
           accessMode: newMode,
           passcode: newMode === 'PROTECTED' ? newPasscode : undefined,
         });
+        queryClient.setQueryData(
+          queryKeys.content.chapterDraft(courseId, chapterId),
+          (old: any) =>
+            old
+              ? {
+                  ...old,
+                  accessMode: newMode,
+                  passcode: newPasscode,
+                }
+              : old
+        );
         pushToast({
           title: 'Cập nhật chế độ truy cập thành công',
           description: `Chương đã chuyển sang chế độ ${
@@ -985,7 +999,7 @@ export function ChapterEditorPage() {
                   <MoreVertical className="h-4 w-4" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52 text-xs bg-[#1e1e24] border-border/80 text-foreground">
+              <DropdownMenuContent align="end" className="w-52 text-xs bg-popover border border-border text-popover-foreground shadow-xl">
                 {/* 1. Chế độ truy cập */}
                 <DropdownMenuItem
                   onClick={() => setIsAccessPanelOpen(true)}
@@ -1080,6 +1094,7 @@ export function ChapterEditorPage() {
               totalBlocks={blocks.length}
               courseId={courseId}
               isFocused={focusedBlockId === block.id}
+              focusDirection={focusedBlockId === block.id ? focusDirection : null}
               isSelected={selectedBlockIds.has(block.id)}
               onUpdate={handleUpdateBlock}
               onDelete={() => handleDeleteBlock(block.id)}
@@ -1105,7 +1120,12 @@ export function ChapterEditorPage() {
               }}
               onFocusPrevBlock={() => handleFocusPrevBlock(index)}
               onFocusNextBlock={() => handleFocusNextBlock(index)}
-              onToggleSelect={() => handleToggleSelectBlock(block.id)}
+              onFocusBlock={(blockId) => {
+                setFocusedBlockId(blockId);
+                setFocusDirection(null);
+              }}
+              onToggleSelect={() => handleSelectBlock(block.id, index, 'toggle')}
+              onSelectBlock={handleSelectBlock}
             />
           ))}
         </div>
@@ -1124,9 +1144,9 @@ export function ChapterEditorPage() {
         <FloatingTextFormatToolbar
           position={activeSelection?.coords || null}
           onCommand={handleExecuteFormatCommand}
+          onApplyHeading={handleApplyHeading}
           onToggleCode={handleToggleCode}
           onInsertTable={handleInsertTableCustom}
-          onTableAction={handleTableAction}
           onClose={() => setActiveSelection(null)}
         />
       )}
