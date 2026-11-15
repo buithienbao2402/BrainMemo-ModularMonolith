@@ -441,8 +441,9 @@ export function NotionBlockRow({
                 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:space-y-1 [&_ol]:my-2
                 [&_li]:my-0.5
                 [&_table]:border-collapse [&_table]:w-full [&_table]:my-3 [&_table]:border [&_table]:border-border/80
-                [&_th]:border [&_th]:border-border/80 [&_th]:p-2.5 [&_th]:bg-muted/40 [&_th]:text-left [&_th]:font-semibold
-                [&_td]:border [&_td]:border-border/80 [&_td]:p-2.5
+                [&_thead]:bg-muted/40
+                [&_th]:border [&_th]:border-border/80 [&_th]:p-2.5 [&_th]:bg-muted/40 [&_th]:text-left [&_th]:font-semibold [&_th]:min-w-[70px] [&_th_p]:my-0 [&_th_p]:leading-normal
+                [&_td]:border [&_td]:border-border/80 [&_td]:p-2.5 [&_td]:min-w-[70px] [&_td_p]:my-0 [&_td_p]:leading-normal
                 [&_code]:bg-muted/80 [&_code]:text-[#ff7a1a] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:font-mono [&_code]:text-xs [&_code]:border [&_code]:border-border/60
                 [&_pre]:bg-muted/50 [&_pre]:p-3 [&_pre]:rounded-lg [&_pre]:font-mono [&_pre]:text-xs [&_pre]:my-2 [&_pre]:overflow-x-auto
                 [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:font-serif [&_h1]:my-2

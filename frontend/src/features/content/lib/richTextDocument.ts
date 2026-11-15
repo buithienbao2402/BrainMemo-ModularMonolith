@@ -194,41 +194,75 @@ export function htmlToRichJson(html: string): RichDocumentJson {
 
   const content: RichTextNode[] = [];
 
-  function processBlockNode(node: Node): RichTextNode | null {
+  function processNode(node: Node, target: RichTextNode[]): void {
     if (node.nodeType === Node.TEXT_NODE) {
       const text = node.textContent?.trim();
-      if (!text) return null;
-      return {
-        type: 'paragraph',
-        content: [{ type: 'text', text }],
-      };
+      if (text) {
+        target.push({
+          type: 'paragraph',
+          content: [{ type: 'text', text }],
+        });
+      }
+      return;
     }
 
-    if (node.nodeType !== Node.ELEMENT_NODE) return null;
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
     const el = node as HTMLElement;
     const tag = el.tagName.toUpperCase();
 
-    // Headings H1..H6
+    // 1. Table
+    if (tag === 'TABLE') {
+      const rows: RichTextNode[] = [];
+      const trList = el.querySelectorAll('tr');
+      trList.forEach((tr) => {
+        const cells: RichTextNode[] = [];
+        tr.querySelectorAll('th, td').forEach((cell) => {
+          const isHeader = cell.tagName.toUpperCase() === 'TH' || tr.closest('thead') !== null;
+          const inline = parseInlineNodes(cell);
+          cells.push({
+            type: isHeader ? 'tableHeader' : 'tableCell',
+            content: [{ type: 'paragraph', content: inline }],
+          });
+        });
+        if (cells.length > 0) {
+          rows.push({
+            type: 'tableRow',
+            content: cells,
+          });
+        }
+      });
+      if (rows.length > 0) {
+        target.push({
+          type: 'table',
+          content: rows,
+        });
+      }
+      return;
+    }
+
+    // 2. Headings H1..H6
     if (/^H[1-6]$/.test(tag)) {
       const level = parseInt(tag.charAt(1), 10);
       const inline = parseInlineNodes(el);
-      return {
+      target.push({
         type: 'heading',
         attrs: { level },
         content: inline,
-      };
+      });
+      return;
     }
 
-    // Paragraph or Div
-    if (tag === 'P' || tag === 'DIV') {
-      const inline = parseInlineNodes(el);
-      return {
-        type: 'paragraph',
-        content: inline,
-      };
+    // 3. Code block
+    if (tag === 'PRE') {
+      const codeEl = el.querySelector('code') || el;
+      target.push({
+        type: 'codeBlock',
+        content: [{ type: 'text', text: codeEl.textContent || '' }],
+      });
+      return;
     }
 
-    // Lists
+    // 4. Bullet list
     if (tag === 'UL') {
       const items: RichTextNode[] = [];
       for (let i = 0; i < el.children.length; i++) {
@@ -241,12 +275,16 @@ export function htmlToRichJson(html: string): RichDocumentJson {
           });
         }
       }
-      return {
-        type: 'bulletList',
-        content: items,
-      };
+      if (items.length > 0) {
+        target.push({
+          type: 'bulletList',
+          content: items,
+        });
+      }
+      return;
     }
 
+    // 5. Ordered list
     if (tag === 'OL') {
       const items: RichTextNode[] = [];
       for (let i = 0; i < el.children.length; i++) {
@@ -259,63 +297,43 @@ export function htmlToRichJson(html: string): RichDocumentJson {
           });
         }
       }
-      return {
-        type: 'orderedList',
-        content: items,
-      };
-    }
-
-    // Code block
-    if (tag === 'PRE') {
-      const codeEl = el.querySelector('code') || el;
-      return {
-        type: 'codeBlock',
-        content: [{ type: 'text', text: codeEl.textContent || '' }],
-      };
-    }
-
-    // Table
-    if (tag === 'TABLE') {
-      const rows: RichTextNode[] = [];
-      const trList = el.querySelectorAll('tr');
-      trList.forEach((tr) => {
-        const cells: RichTextNode[] = [];
-        tr.querySelectorAll('th, td').forEach((cell) => {
-          const isHeader = cell.tagName.toUpperCase() === 'TH';
-          const inline = parseInlineNodes(cell);
-          cells.push({
-            type: isHeader ? 'tableHeader' : 'tableCell',
-            content: [{ type: 'paragraph', content: inline }],
-          });
+      if (items.length > 0) {
+        target.push({
+          type: 'orderedList',
+          content: items,
         });
-        rows.push({
-          type: 'tableRow',
-          content: cells,
-        });
-      });
-      return {
-        type: 'table',
-        content: rows,
-      };
+      }
+      return;
     }
 
-    // Default inline wrapped in paragraph
+    // 6. Generic block / container (DIV, P, SECTION, ARTICLE, etc.)
+    // Check if it contains block-level elements inside
+    const hasNestedBlocks = el.querySelector('table, ul, ol, pre, h1, h2, h3, h4, h5, h6, div, p') !== null;
+    if (hasNestedBlocks) {
+      // Unpack container: process each child node recursively
+      for (let i = 0; i < el.childNodes.length; i++) {
+        const child = el.childNodes[i];
+        if (child) {
+          processNode(child, target);
+        }
+      }
+      return;
+    }
+
+    // Leaf element containing only inline nodes
     const inline = parseInlineNodes(el);
     if (inline.length > 0) {
-      return {
+      target.push({
         type: 'paragraph',
         content: inline,
-      };
+      });
     }
-
-    return null;
   }
 
   for (let i = 0; i < body.childNodes.length; i++) {
     const child = body.childNodes[i];
     if (child) {
-      const block = processBlockNode(child);
-      if (block) content.push(block);
+      processNode(child, content);
     }
   }
 
@@ -429,23 +447,48 @@ export function richJsonToHtml(docOrJson: RichDocumentJson | string | null | und
         return `<pre class="bg-muted/50 p-3 rounded-lg font-mono text-xs my-2 overflow-x-auto"><code>${text}</code></pre>`;
       }
       case 'table': {
-        const rows = (node.content || []).map((tr) => {
-          const cells = (tr.content || [])
-            .map((cell) => {
-              const isHeader = cell.type === 'tableHeader';
-              const cellTag = isHeader ? 'th' : 'td';
-              const cls = isHeader
-                ? 'border border-border/80 p-2.5 bg-muted/40 text-left font-semibold'
-                : 'border border-border/80 p-2.5';
-              const inner = (cell.content || []).map(renderBlock).join('');
-              return `<${cellTag} class="${cls}">${inner}</${cellTag}>`;
-            })
-            .join('');
-          return `<tr>${cells}</tr>`;
+        const headerRows: string[] = [];
+        const bodyRows: string[] = [];
+
+        (node.content || []).forEach((row) => {
+          const cells = (row.content || []).map((cell) => {
+            const isHeader = cell.type === 'tableHeader';
+            const cellTag = isHeader ? 'th' : 'td';
+            const cls = isHeader
+              ? 'border border-border/80 p-2.5 bg-muted/40 text-left font-semibold'
+              : 'border border-border/80 p-2.5';
+
+            // Clean inline content without wrapping in block <p>
+            const paragraphs = cell.content || [];
+            let cellInnerHtml = '';
+            if (paragraphs.length === 0) {
+              cellInnerHtml = '<br>';
+            } else if (paragraphs.length === 1 && paragraphs[0]?.type === 'paragraph') {
+              const inlineHtml = (paragraphs[0]?.content || []).map(renderInlineNodeToHtml).join('');
+              cellInnerHtml = inlineHtml || '<br>';
+            } else {
+              cellInnerHtml = paragraphs.map(renderBlock).join('');
+            }
+            return `<${cellTag} class="${cls}">${cellInnerHtml}</${cellTag}>`;
+          });
+
+          const isHeaderRow = (row.content || []).some((c) => c.type === 'tableHeader');
+          if (isHeaderRow) {
+            headerRows.push(`<tr class="bg-muted/40">${cells.join('')}</tr>`);
+          } else {
+            bodyRows.push(`<tr>${cells.join('')}</tr>`);
+          }
         });
-        return `<table class="border-collapse w-full my-3 border border-border/80"><tbody>${rows.join(
-          ''
-        )}</tbody></table>`;
+
+        let tableInner = '';
+        if (headerRows.length > 0) {
+          tableInner += `<thead>${headerRows.join('')}</thead>`;
+        }
+        if (bodyRows.length > 0 || headerRows.length === 0) {
+          tableInner += `<tbody>${bodyRows.join('')}</tbody>`;
+        }
+
+        return `<table class="border-collapse w-full my-3 border border-border/80">${tableInner}</table>`;
       }
       default:
         return '';

@@ -193,7 +193,16 @@ export function FloatingTextFormatToolbar({
       if (action === 'ADD_ROW_ABOVE') {
         rowEl.parentNode?.insertBefore(newRow, rowEl);
       } else {
-        rowEl.parentNode?.insertBefore(newRow, rowEl.nextSibling);
+        if (rowEl.closest('thead')) {
+          const tbody = tableEl.querySelector('tbody');
+          if (tbody) {
+            tbody.insertBefore(newRow, tbody.firstChild);
+          } else {
+            rowEl.parentNode?.insertBefore(newRow, rowEl.nextSibling);
+          }
+        } else {
+          rowEl.parentNode?.insertBefore(newRow, rowEl.nextSibling);
+        }
       }
     } else if (action === 'DELETE_ROW') {
       if (tableEl.querySelectorAll('tr').length <= 1) {

@@ -144,4 +144,85 @@ describe('RichText Document AST & JSON Serialization', () => {
     rerender(<RichTextDocumentRenderer doc="<p>Văn bản legacy HTML</p>" />);
     expect(screen.getByText('Văn bản legacy HTML')).toBeInTheDocument();
   });
+
+  it('correctly parses tables wrapped inside container divs without losing table structure', () => {
+    const htmlWithWrapperDiv = `
+      <div>
+        <table class="border-collapse w-full my-3 border border-border/80">
+          <thead>
+            <tr class="bg-muted/40">
+              <th class="border border-border/80 p-2.5 text-left font-semibold">Cột A</th>
+              <th class="border border-border/80 p-2.5 text-left font-semibold">Cột B</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="border border-border/80 p-2.5">Giá trị 1</td>
+              <td class="border border-border/80 p-2.5">Giá trị 2</td>
+            </tr>
+          </tbody>
+        </table>
+        <p></p>
+      </div>
+    `;
+
+    const docJson = htmlToRichJson(htmlWithWrapperDiv);
+    const tableNode = docJson.content.find((n) => n.type === 'table');
+    expect(tableNode).toBeDefined();
+    expect(tableNode?.content?.length).toBe(2);
+
+    // Verify round-trip preserves table structure with thead, tbody, th, and td
+    const htmlOutput = richJsonToHtml(docJson);
+    expect(htmlOutput).toContain('<thead>');
+    expect(htmlOutput).toContain('<tbody>');
+    expect(htmlOutput).toContain('<th class="border border-border/80 p-2.5 bg-muted/40 text-left font-semibold">Cột A</th>');
+    expect(htmlOutput).toContain('<td class="border border-border/80 p-2.5">Giá trị 1</td>');
+  });
+
+  it('RichTextDocumentRenderer renders tables with proper semantic headers, borders, and cells', () => {
+    const tableDoc: RichDocumentJson = {
+      type: 'doc',
+      version: 1,
+      content: [
+        {
+          type: 'table',
+          content: [
+            {
+              type: 'tableRow',
+              content: [
+                {
+                  type: 'tableHeader',
+                  content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Mã số' }] }],
+                },
+                {
+                  type: 'tableHeader',
+                  content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Tên bài giảng' }] }],
+                },
+              ],
+            },
+            {
+              type: 'tableRow',
+              content: [
+                {
+                  type: 'tableCell',
+                  content: [{ type: 'paragraph', content: [{ type: 'text', text: 'BM-01' }] }],
+                },
+                {
+                  type: 'tableCell',
+                  content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Giới thiệu' }] }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    render(<RichTextDocumentRenderer doc={tableDoc} />);
+    expect(screen.getByRole('table')).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Mã số' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Tên bài giảng' })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: 'BM-01' })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: 'Giới thiệu' })).toBeInTheDocument();
+  });
 });

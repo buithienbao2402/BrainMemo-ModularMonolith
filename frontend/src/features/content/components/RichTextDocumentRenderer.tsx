@@ -192,26 +192,65 @@ export function RichTextDocumentRenderer({ doc, className }: RichTextDocumentRen
       }
 
       case 'table': {
+        const headerRows: RichTextNode[] = [];
+        const bodyRows: RichTextNode[] = [];
+        (node.content || []).forEach((row) => {
+          const hasHeader = (row.content || []).some((cell) => cell.type === 'tableHeader');
+          if (hasHeader) {
+            headerRows.push(row);
+          } else {
+            bodyRows.push(row);
+          }
+        });
+
+        const renderCellContent = (cell: RichTextNode, prefix: string) => {
+          const paragraphs = cell.content || [];
+          if (paragraphs.length === 0) return null;
+          return paragraphs.map((p, pi) => (
+            <div key={`${prefix}-p-${pi}`} className="leading-normal">
+              {(p.content || []).map((inline, ii) => renderInline(inline, `${prefix}-${pi}-${ii}`))}
+            </div>
+          ));
+        };
+
         return (
           <div key={key} className="overflow-x-auto my-3">
             <table className="border-collapse w-full border border-border/80 text-sm">
+              {headerRows.length > 0 && (
+                <thead>
+                  {headerRows.map((row, ri) => (
+                    <tr key={`h-${ri}`} className="bg-muted/40">
+                      {(row.content || []).map((cell, ci) => (
+                        <th
+                          key={ci}
+                          className="border border-border/80 p-2.5 bg-muted/40 text-left font-semibold text-foreground"
+                        >
+                          {renderCellContent(cell, `h-${ri}-${ci}`)}
+                        </th>
+                      ))}
+                    </tr>
+                  ))}
+                </thead>
+              )}
               <tbody>
-                {(node.content || []).map((row, ri) => (
-                  <tr key={ri}>
-                    {(row.content || []).map((cell, ci) => {
-                      const isHeader = cell.type === 'tableHeader';
-                      const Tag = isHeader ? 'th' : 'td';
-                      const cellClasses = isHeader
-                        ? 'border border-border/80 p-2.5 bg-muted/40 text-left font-semibold text-foreground'
-                        : 'border border-border/80 p-2.5 text-foreground/90';
-                      return (
-                        <Tag key={ci} className={cellClasses}>
-                          {(cell.content || []).map((p, pi) => renderBlock(p, `${ri}-${ci}-${pi}`))}
-                        </Tag>
-                      );
-                    })}
-                  </tr>
-                ))}
+                {(bodyRows.length > 0 ? bodyRows : headerRows.length === 0 ? node.content || [] : []).map(
+                  (row, ri) => (
+                    <tr key={`b-${ri}`}>
+                      {(row.content || []).map((cell, ci) => {
+                        const isHeader = cell.type === 'tableHeader';
+                        const Tag = isHeader ? 'th' : 'td';
+                        const cellClasses = isHeader
+                          ? 'border border-border/80 p-2.5 bg-muted/40 text-left font-semibold text-foreground'
+                          : 'border border-border/80 p-2.5 text-foreground/90';
+                        return (
+                          <Tag key={ci} className={cellClasses}>
+                            {renderCellContent(cell, `b-${ri}-${ci}`)}
+                          </Tag>
+                        );
+                      })}
+                    </tr>
+                  )
+                )}
               </tbody>
             </table>
           </div>

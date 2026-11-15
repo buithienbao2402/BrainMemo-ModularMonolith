@@ -712,7 +712,7 @@ export function ChapterEditorPage() {
   const handleInsertTableCustom = (rows: number, cols: number) => {
     let headerThs = '';
     for (let c = 1; c <= cols; c++) {
-      headerThs += `<th class="border border-border/80 p-2.5 text-left font-semibold">Cột ${c}</th>`;
+      headerThs += `<th class="border border-border/80 p-2.5 bg-muted/40 text-left font-semibold">Cột ${c}</th>`;
     }
 
     let bodyRows = '';
@@ -736,6 +736,14 @@ export function ChapterEditorPage() {
     `;
 
     document.execCommand('insertHTML', false, tableHtml);
+    const sel = window.getSelection();
+    const anchorNode = sel?.anchorNode;
+    const editableEl = (
+      anchorNode instanceof HTMLElement ? anchorNode : anchorNode?.parentElement
+    )?.closest<HTMLElement>('[contenteditable="true"]');
+    if (editableEl) {
+      editableEl.dispatchEvent(new Event('input', { bubbles: true }));
+    }
     setIsDirty(true);
   };
 
@@ -799,9 +807,21 @@ export function ChapterEditorPage() {
     }
 
     try {
+      // Synchronize live DOM HTML from contenteditable elements before saving
+      const blockElements = document.querySelectorAll<HTMLElement>('[data-block-id]');
+      const domContentByBlockId = new Map<string, string>();
+      blockElements.forEach((el) => {
+        const blockId = el.getAttribute('data-block-id');
+        const editable = el.querySelector<HTMLElement>('[contenteditable="true"]');
+        if (blockId && editable) {
+          domContentByBlockId.set(blockId, editable.innerHTML);
+        }
+      });
+
       const normalizedBlocks = blocks.map((b) => {
         if (b.blockType === 'RICH_TEXT') {
-          const bodyStr = b.body || '';
+          const liveHtml = domContentByBlockId.get(b.id);
+          const bodyStr = liveHtml !== undefined ? liveHtml : (b.body || '');
           const isJson = isRichDocumentJsonString(bodyStr);
           const jsonBody = isJson ? bodyStr : JSON.stringify(htmlToRichJson(bodyStr));
           return { ...b, body: jsonBody };
