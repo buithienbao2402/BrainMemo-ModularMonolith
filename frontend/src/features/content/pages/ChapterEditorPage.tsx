@@ -105,9 +105,16 @@ export function ChapterEditorPage() {
   const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
   const [focusDirection, setFocusDirection] = useState<'FROM_TOP' | 'FROM_BOTTOM' | null>(null);
 
-  // Multi-select blocks state
+  // Multi-select blocks state & Marquee selection box
   const [selectedBlockIds, setSelectedBlockIds] = useState<Set<string>>(new Set());
-  const lastSelectedIdxRef = useRef<number | null>(null);
+  const [marqueeRect, setMarqueeRect] = useState<{
+    startX: number;
+    startY: number;
+    currentX: number;
+    currentY: number;
+  } | null>(null);
+  const isMarqueeDraggingRef = useRef(false);
+  const marqueeStartPosRef = useRef<{ x: number; y: number } | null>(null);
 
   // Drag and drop block state
   const draggedIndexRef = useRef<number | null>(null);
@@ -309,6 +316,101 @@ export function ChapterEditorPage() {
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, [title, blocks, selectedBlockIds]);
 
+  // Marquee / Box Selection effect
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!marqueeStartPosRef.current) return;
+
+      const dx = e.clientX - marqueeStartPosRef.current.x;
+      const dy = e.clientY - marqueeStartPosRef.current.y;
+
+      if (!isMarqueeDraggingRef.current) {
+        if (Math.hypot(dx, dy) >= 6) {
+          isMarqueeDraggingRef.current = true;
+          window.getSelection()?.removeAllRanges();
+        } else {
+          return;
+        }
+      }
+
+      const selLeft = Math.min(marqueeStartPosRef.current.x, e.clientX);
+      const selTop = Math.min(marqueeStartPosRef.current.y, e.clientY);
+      const selRight = Math.max(marqueeStartPosRef.current.x, e.clientX);
+      const selBottom = Math.max(marqueeStartPosRef.current.y, e.clientY);
+
+      setMarqueeRect({
+        startX: marqueeStartPosRef.current.x,
+        startY: marqueeStartPosRef.current.y,
+        currentX: e.clientX,
+        currentY: e.clientY,
+      });
+
+      const blockElements = document.querySelectorAll<HTMLElement>('[data-block-id]');
+      const matchedIds = new Set<string>();
+
+      blockElements.forEach((el) => {
+        const rect = el.getBoundingClientRect();
+        const isOverlap = !(
+          rect.right < selLeft ||
+          rect.left > selRight ||
+          rect.bottom < selTop ||
+          rect.top > selBottom
+        );
+        if (isOverlap) {
+          const id = el.getAttribute('data-block-id');
+          if (id) matchedIds.add(id);
+        }
+      });
+
+      setSelectedBlockIds(matchedIds);
+    };
+
+    const handleMouseUp = (e: MouseEvent) => {
+      if (marqueeStartPosRef.current && !isMarqueeDraggingRef.current) {
+        const target = e.target as HTMLElement;
+        const isClickOnBlockGrip = target.closest('[data-drag-handle="true"]');
+        const isClickInsideModal = target.closest('[role="dialog"], [role="menu"]');
+        if (!isClickOnBlockGrip && !isClickInsideModal) {
+          const blockEl = target.closest('[data-block-id]');
+          if (!blockEl) {
+            setSelectedBlockIds(new Set());
+          }
+        }
+      }
+
+      marqueeStartPosRef.current = null;
+      isMarqueeDraggingRef.current = false;
+      setMarqueeRect(null);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [blocks]);
+
+  const handleCanvasMouseDown = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (
+      target.closest('input') ||
+      target.closest('textarea') ||
+      target.closest('button') ||
+      target.closest('[role="dialog"]') ||
+      target.closest('[role="menu"]') ||
+      target.closest('[data-no-marquee]') ||
+      (target.isContentEditable &&
+        target.innerText.trim().length > 0 &&
+        e.clientX > target.getBoundingClientRect().left + 30)
+    ) {
+      return;
+    }
+
+    marqueeStartPosRef.current = { x: e.clientX, y: e.clientY };
+    isMarqueeDraggingRef.current = false;
+  };
+
   // Navigation exit guard
   const handleExitToChapterList = () => {
     if (isDirty) {
@@ -396,23 +498,52 @@ export function ChapterEditorPage() {
   };
 
   const handleMoveBlock = (index: number, direction: 'UP' | 'DOWN') => {
-    const targetIndex = direction === 'UP' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= blocks.length) return;
+    const block = blocks[index];
+    if (!block) return;
+
+    let movingBlocks: BlockDto[];
+    if (selectedBlockIds.has(block.id) && selectedBlockIds.size > 1) {
+      movingBlocks = blocks.filter((b) => selectedBlockIds.has(b.id));
+    } else {
+      movingBlocks = [block];
+    }
+
+    const movingBlockIds = new Set(movingBlocks.map((b) => b.id));
+    const firstMovingIdx = blocks.findIndex((b) => movingBlockIds.has(b.id));
+    const lastMovingIdx =
+      blocks.length - 1 - [...blocks].reverse().findIndex((b) => movingBlockIds.has(b.id));
+
+    if (direction === 'UP' && firstMovingIdx <= 0) return;
+    if (direction === 'DOWN' && lastMovingIdx >= blocks.length - 1) return;
 
     pushUndoSnapshot(title, blocks);
-    const nextList = [...blocks];
-    const [moved] = nextList.splice(index, 1);
-    if (!moved) return;
-    nextList.splice(targetIndex, 0, moved);
 
-    const guaranteed = ensureTrailingEmptyTextBlock(nextList);
+    const remainingBlocks = blocks.filter((b) => !movingBlockIds.has(b.id));
+
+    if (direction === 'UP') {
+      const blockAboveFirst = blocks[firstMovingIdx - 1];
+      if (!blockAboveFirst) return;
+      const targetIdxInRemaining = remainingBlocks.findIndex((b) => b.id === blockAboveFirst.id);
+      remainingBlocks.splice(targetIdxInRemaining, 0, ...movingBlocks);
+    } else {
+      const blockBelowLast = blocks[lastMovingIdx + 1];
+      if (!blockBelowLast) return;
+      const targetIdxInRemaining = remainingBlocks.findIndex((b) => b.id === blockBelowLast.id);
+      remainingBlocks.splice(targetIdxInRemaining + 1, 0, ...movingBlocks);
+    }
+
+    const guaranteed = ensureTrailingEmptyTextBlock(remainingBlocks);
     setBlocks(guaranteed);
     setIsDirty(true);
   };
 
-  // Drag and Drop block reordering
+  // Drag and Drop block reordering (Hỗ trợ kéo thả 1 hoặc nhiều block cùng lúc)
   const handleDragStart = (index: number) => {
     draggedIndexRef.current = index;
+    const block = blocks[index];
+    if (block && !selectedBlockIds.has(block.id)) {
+      setSelectedBlockIds(new Set([block.id]));
+    }
   };
 
   const handleDragOver = (e: React.DragEvent, _targetIndex: number) => {
@@ -422,27 +553,43 @@ export function ChapterEditorPage() {
   const handleDrop = (targetIndex: number, position: 'TOP' | 'BOTTOM' = 'BOTTOM') => {
     const sourceIndex = draggedIndexRef.current;
     if (sourceIndex === null) return;
-    if (sourceIndex === targetIndex) {
+
+    const draggedBlock = blocks[sourceIndex];
+    if (!draggedBlock) return;
+
+    let movingBlocks: BlockDto[];
+    if (selectedBlockIds.has(draggedBlock.id)) {
+      movingBlocks = blocks.filter((b) => selectedBlockIds.has(b.id));
+    } else {
+      movingBlocks = [draggedBlock];
+      setSelectedBlockIds(new Set([draggedBlock.id]));
+    }
+
+    if (movingBlocks.length === 0) return;
+
+    const targetBlock = blocks[targetIndex];
+    if (!targetBlock) return;
+
+    if (movingBlocks.some((b) => b.id === targetBlock.id)) {
       draggedIndexRef.current = null;
       return;
     }
 
     pushUndoSnapshot(title, blocks);
-    const nextList = [...blocks];
-    const [moved] = nextList.splice(sourceIndex, 1);
-    if (!moved) return;
 
-    let destinationIndex = targetIndex;
-    if (sourceIndex < targetIndex) {
-      destinationIndex = position === 'TOP' ? targetIndex - 1 : targetIndex;
-    } else {
-      destinationIndex = position === 'TOP' ? targetIndex : targetIndex + 1;
+    const movingBlockIds = new Set(movingBlocks.map((b) => b.id));
+    const remainingBlocks = blocks.filter((b) => !movingBlockIds.has(b.id));
+
+    const targetIdxInRemaining = remainingBlocks.findIndex((b) => b.id === targetBlock.id);
+    if (targetIdxInRemaining === -1) {
+      draggedIndexRef.current = null;
+      return;
     }
 
-    destinationIndex = Math.max(0, Math.min(destinationIndex, nextList.length));
-    nextList.splice(destinationIndex, 0, moved);
+    const insertIndex = position === 'TOP' ? targetIdxInRemaining : targetIdxInRemaining + 1;
+    remainingBlocks.splice(insertIndex, 0, ...movingBlocks);
 
-    const guaranteed = ensureTrailingEmptyTextBlock(nextList);
+    const guaranteed = ensureTrailingEmptyTextBlock(remainingBlocks);
     setBlocks(guaranteed);
     draggedIndexRef.current = null;
     setIsDirty(true);
@@ -494,66 +641,6 @@ export function ChapterEditorPage() {
         setFocusedBlockId(nextBlock.id);
       }
     }
-  };
-
-  // Select / Multi-select block handling
-  const handleSelectBlock = (
-    blockId: string,
-    index: number,
-    mode?: 'toggle' | 'range' | 'expand-up' | 'expand-down'
-  ) => {
-    if (mode === 'expand-up' && index > 0) {
-      const prevBlock = blocks[index - 1];
-      if (prevBlock) {
-        setSelectedBlockIds((prev) => {
-          const next = new Set(prev);
-          next.add(blockId);
-          next.add(prevBlock.id);
-          return next;
-        });
-        setFocusDirection('FROM_BOTTOM');
-        setFocusedBlockId(prevBlock.id);
-      }
-      return;
-    }
-
-    if (mode === 'expand-down' && index < blocks.length - 1) {
-      const nextBlock = blocks[index + 1];
-      if (nextBlock) {
-        setSelectedBlockIds((prev) => {
-          const next = new Set(prev);
-          next.add(blockId);
-          next.add(nextBlock.id);
-          return next;
-        });
-        setFocusDirection('FROM_TOP');
-        setFocusedBlockId(nextBlock.id);
-      }
-      return;
-    }
-
-    if (mode === 'range' && lastSelectedIdxRef.current !== null) {
-      const start = Math.min(lastSelectedIdxRef.current, index);
-      const end = Math.max(lastSelectedIdxRef.current, index);
-      const newSelected = new Set(selectedBlockIds);
-      for (let i = start; i <= end; i++) {
-        const blk = blocks[i];
-        if (blk) newSelected.add(blk.id);
-      }
-      setSelectedBlockIds(newSelected);
-      return;
-    }
-
-    lastSelectedIdxRef.current = index;
-    setSelectedBlockIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(blockId)) {
-        next.delete(blockId);
-      } else {
-        next.add(blockId);
-      }
-      return next;
-    });
   };
 
   // Block type popup menu selection (Khi bấm dấu +)
@@ -1039,7 +1126,10 @@ export function ChapterEditorPage() {
       </header>
 
       {/* 2. NOTION CANVAS CONTAINER */}
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-12 py-10 space-y-6">
+      <main
+        onMouseDown={handleCanvasMouseDown}
+        className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-12 py-10 space-y-6 relative"
+      >
         {/* DÒNG TO ĐẦU TIÊN: Tiêu đề chương (Không có mô tả tóm tắt) */}
         <div className="pl-12">
           <input
@@ -1057,7 +1147,7 @@ export function ChapterEditorPage() {
 
         {/* Thanh công cụ khi chọn nhiều block */}
         {selectedBlockIds.size > 1 && (
-          <div className="ml-12 flex items-center justify-between p-2.5 rounded-xl border border-[#ff7a1a]/30 bg-[#ff7a1a]/10 text-xs">
+          <div className="ml-12 flex items-center justify-between p-2.5 rounded-xl border border-blue-500/30 bg-blue-500/10 text-xs">
             <span className="font-semibold text-foreground">
               Đã chọn {selectedBlockIds.size} khối nội dung
             </span>
@@ -1124,12 +1214,26 @@ export function ChapterEditorPage() {
                 setFocusedBlockId(blockId);
                 setFocusDirection(null);
               }}
-              onToggleSelect={() => handleSelectBlock(block.id, index, 'toggle')}
-              onSelectBlock={handleSelectBlock}
+              onSelectThisBlock={(blockId) => {
+                setSelectedBlockIds(new Set([blockId]));
+              }}
             />
           ))}
         </div>
       </main>
+
+      {/* MARQUEE SELECTION RECTANGLE (Bôi đen nhiều block với con trỏ chuột) */}
+      {marqueeRect && (
+        <div
+          className="fixed pointer-events-none z-50 rounded border border-blue-500/70 bg-blue-500/20"
+          style={{
+            left: `${Math.min(marqueeRect.startX, marqueeRect.currentX)}px`,
+            top: `${Math.min(marqueeRect.startY, marqueeRect.currentY)}px`,
+            width: `${Math.abs(marqueeRect.currentX - marqueeRect.startX)}px`,
+            height: `${Math.abs(marqueeRect.currentY - marqueeRect.startY)}px`,
+          }}
+        />
+      )}
 
       {/* 3. MENU CHỌN LOẠI BLOCK (KHI BẤM DẤU +) */}
       <SlashCommandMenu

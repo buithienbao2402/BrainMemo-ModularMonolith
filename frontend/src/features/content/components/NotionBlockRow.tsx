@@ -61,12 +61,7 @@ interface NotionBlockRowProps {
   onFocusPrevBlock?: () => void;
   onFocusNextBlock?: () => void;
   onFocusBlock?: (blockId: string) => void;
-  onToggleSelect?: (e: React.MouseEvent | React.KeyboardEvent) => void;
-  onSelectBlock?: (
-    blockId: string,
-    index: number,
-    mode?: 'toggle' | 'range' | 'expand-up' | 'expand-down'
-  ) => void;
+  onSelectThisBlock?: (blockId: string) => void;
 }
 
 export function NotionBlockRow({
@@ -92,8 +87,7 @@ export function NotionBlockRow({
   onFocusPrevBlock,
   onFocusNextBlock,
   onFocusBlock,
-  onToggleSelect,
-  onSelectBlock,
+  onSelectThisBlock,
 }: NotionBlockRowProps) {
   const editableRef = useRef<HTMLDivElement>(null);
   const isInternalChangeRef = useRef(false);
@@ -147,18 +141,7 @@ export function NotionBlockRow({
       }
     }
 
-    // 2. Phím Shift + Mũi tên: Mở rộng bôi đen nhiều block
-    if (e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
-      e.preventDefault();
-      if (onSelectBlock) {
-        onSelectBlock(block.id, index, e.key === 'ArrowUp' ? 'expand-up' : 'expand-down');
-      } else {
-        onToggleSelect?.(e);
-      }
-      return;
-    }
-
-    // 3. Phím Mũi tên Lên / Xuống để di chuyển tự do giữa các block
+    // 2. Phím Mũi tên Lên / Xuống để di chuyển tự do giữa các block
     if (e.key === 'ArrowUp' && !e.shiftKey) {
       if (editableRef.current && isCaretAtTop(editableRef.current) && onFocusPrevBlock) {
         e.preventDefault();
@@ -255,22 +238,22 @@ export function NotionBlockRow({
     <div
       data-testid={`block-item-${block.id}`}
       data-block-id={block.id}
+      draggable={isSelected}
+      onDragStart={(e) => {
+        const target = e.target as HTMLElement;
+        if (target.isContentEditable && target === document.activeElement) {
+          return;
+        }
+        e.dataTransfer.setData('text/plain', block.id);
+        e.dataTransfer.effectAllowed = 'move';
+        onDragStart?.(index);
+      }}
       onDragOver={handleDragOverRow}
       onDragLeave={handleDragLeaveRow}
       onDrop={handleDropRow}
-      onClick={(e) => {
-        if (e.shiftKey) {
-          e.preventDefault();
-          if (onSelectBlock) {
-            onSelectBlock(block.id, index, 'range');
-          } else {
-            onToggleSelect?.(e);
-          }
-        }
-      }}
       className={`group relative flex items-start gap-1 py-1 rounded-xl transition-all ${
         isSelected
-          ? 'bg-[#ff7a1a]/15 ring-2 ring-[#ff7a1a]/50 shadow-xs'
+          ? 'bg-blue-500/15 ring-2 ring-blue-500/50 dark:bg-blue-600/25 dark:ring-blue-400/50 shadow-xs'
           : 'hover:bg-muted/15'
       }`}
     >
@@ -282,8 +265,14 @@ export function NotionBlockRow({
         <div className="absolute -bottom-1 left-4 right-4 h-1 bg-[#ff7a1a] rounded-full shadow-md z-30 pointer-events-none animate-in fade-in duration-100" />
       )}
 
-      {/* 1. LEFT GUTTER CONTROLS (Hover visible) */}
-      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity select-none pt-1 shrink-0 w-12 justify-end">
+      {/* 1. LEFT GUTTER CONTROLS (Hover visible, or visible when selected) */}
+      <div
+        className={`flex items-center gap-0.5 ${
+          isSelected
+            ? 'opacity-100'
+            : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'
+        } transition-opacity select-none pt-1 shrink-0 w-12 justify-end`}
+      >
         {/* Nút +: Chèn thêm 1 khối xuống dưới khối đang chọn */}
         <button
           type="button"
@@ -299,41 +288,43 @@ export function NotionBlockRow({
         </button>
 
         {/* Nút ⠿: Dấu 6 chấm - Kéo thả di chuyển linh động & Click mở menu */}
-        <DropdownMenu
-          open={isMenuOpen}
-          onOpenChange={(open) => {
-            if (!isDraggingRef.current) {
-              setIsMenuOpen(open);
-            }
-          }}
-        >
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              draggable
-              onDragStart={(e) => {
-                isDraggingRef.current = true;
-                setIsMenuOpen(false);
-                e.dataTransfer.setData('text/plain', String(index));
-                e.dataTransfer.effectAllowed = 'move';
-                onDragStart?.(index);
-              }}
-              onDragEnd={() => {
-                setTimeout(() => {
-                  isDraggingRef.current = false;
-                }, 100);
-              }}
-              title="Dấu 6 chấm: Kéo thả di chuyển lên xuống hoặc click mở tùy chọn"
-              aria-label={`Tùy chọn khối ${block.id}`}
-              className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground cursor-grab active:cursor-grabbing transition-colors"
-            >
-              <GripVertical className="h-3.5 w-3.5" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="start"
-            className="w-52 text-xs bg-popover border border-border text-popover-foreground shadow-2xl"
+        <div className="relative">
+          <button
+            type="button"
+            draggable
+            data-drag-handle="true"
+            onDragStart={(e) => {
+              isDraggingRef.current = true;
+              setIsMenuOpen(false);
+              e.dataTransfer.setData('text/plain', block.id);
+              e.dataTransfer.effectAllowed = 'move';
+              onDragStart?.(index);
+            }}
+            onDragEnd={() => {
+              setTimeout(() => {
+                isDraggingRef.current = false;
+              }, 100);
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelectThisBlock?.(block.id);
+              setIsMenuOpen((prev) => !prev);
+            }}
+            title="Dấu 6 chấm: Kéo thả di chuyển lên xuống hoặc click mở tùy chọn"
+            aria-label={`Tùy chọn khối ${block.id}`}
+            className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground cursor-grab active:cursor-grabbing transition-colors"
           >
+            <GripVertical className="h-3.5 w-3.5" />
+          </button>
+
+          <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+            <DropdownMenuTrigger asChild>
+              <span className="sr-only" tabIndex={-1} />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="start"
+              className="w-52 text-xs bg-popover border border-border text-popover-foreground shadow-2xl"
+            >
             {/* Đổi thứ tự: Di chuyển lên / xuống */}
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
@@ -418,6 +409,7 @@ export function NotionBlockRow({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        </div>
       </div>
 
       {/* 2. BLOCK CONTENT CANVAS */}
