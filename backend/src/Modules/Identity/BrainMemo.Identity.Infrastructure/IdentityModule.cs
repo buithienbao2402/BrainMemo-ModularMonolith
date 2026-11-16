@@ -3,6 +3,7 @@ using BrainMemo.BuildingBlocks.Abstractions.Persistence;
 using BrainMemo.Identity.Application.Abstractions;
 using BrainMemo.Identity.Application.Options;
 using BrainMemo.Identity.Contracts;
+using BrainMemo.Identity.Infrastructure.BackgroundJobs;
 using BrainMemo.Identity.Infrastructure.Contracts;
 using BrainMemo.Identity.Infrastructure.Options;
 using BrainMemo.Identity.Infrastructure.Persistence;
@@ -47,10 +48,12 @@ public sealed class IdentityModule : IModule
         services.AddScoped<IdentityPostCommitEventQueue>();
         services.AddScoped<IPostCommitEventQueue>(sp => sp.GetRequiredService<IdentityPostCommitEventQueue>());
         services.AddScoped<IIdentityAuthRepository, IdentityAuthRepository>();
+        services.AddScoped<IIdentityAdminRepository, IdentityAdminRepository>();
         services.AddScoped<IUnitOfWork, IdentityUnitOfWork>();
         services.AddScoped<IIdentityContract, IdentityContractService>();
         services.TryAddSingleton<IPasswordHasher, BCryptPasswordHasher>();
         services.TryAddSingleton<ITokenCryptoService, Sha256TokenCryptoService>();
         services.TryAddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
+        services.AddHostedService<UnlockExpiredAccountsWorker>();
     }
 }

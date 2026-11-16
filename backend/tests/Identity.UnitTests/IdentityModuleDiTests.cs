@@ -40,6 +40,7 @@ public sealed class IdentityModuleDiTests
         Assert.NotNull(scope.ServiceProvider.GetService<IdentityDbContext>());
         Assert.NotNull(scope.ServiceProvider.GetService<IIdentityContract>());
         Assert.NotNull(scope.ServiceProvider.GetService<IIdentityAuthRepository>());
+        Assert.NotNull(scope.ServiceProvider.GetService<IIdentityAdminRepository>());
         Assert.NotNull(scope.ServiceProvider.GetService<IPostCommitEventQueue>());
         Assert.NotNull(scope.ServiceProvider.GetService<IPasswordHasher>());
         Assert.NotNull(scope.ServiceProvider.GetService<ITokenCryptoService>());
