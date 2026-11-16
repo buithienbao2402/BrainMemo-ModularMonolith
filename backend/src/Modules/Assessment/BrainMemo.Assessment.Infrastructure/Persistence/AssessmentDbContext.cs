@@ -17,6 +17,9 @@ public class AssessmentDbContext : DbContext
     public DbSet<AssessmentComponent> AssessmentComponents => Set<AssessmentComponent>();
     public DbSet<AssessmentConfig> AssessmentConfigs => Set<AssessmentConfig>();
     public DbSet<GradeRecord> GradeRecords => Set<GradeRecord>();
+    public DbSet<Clo> Clos => Set<Clo>();
+    public DbSet<Plo> Plos => Set<Plo>();
+    public DbSet<ComponentOutcomeWeight> ComponentOutcomeWeights => Set<ComponentOutcomeWeight>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {

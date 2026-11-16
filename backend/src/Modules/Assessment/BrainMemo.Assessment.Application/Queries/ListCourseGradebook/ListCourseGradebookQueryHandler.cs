@@ -73,6 +73,10 @@ public sealed class ListCourseGradebookQueryHandler(
             }
         }
 
+        var clos = await repository.GetClosByCourseIdAsync(request.CourseId, cancellationToken).ConfigureAwait(false);
+        var plos = await repository.GetPlosByCourseIdAsync(request.CourseId, cancellationToken).ConfigureAwait(false);
+        var outcomeWeights = await repository.GetOutcomeWeightsByCourseIdAsync(request.CourseId, cancellationToken).ConfigureAwait(false);
+
         var now = DateTimeOffset.UtcNow;
         var resultList = new List<GradebookResponseDto>();
 
@@ -97,7 +101,10 @@ public sealed class ListCourseGradebookQueryHandler(
                 studentRecords,
                 dueDates,
                 learner,
-                now);
+                now,
+                clos,
+                plos,
+                outcomeWeights);
 
             resultList.Add(gb);
         }

@@ -5,8 +5,8 @@ public sealed record GradebookResponseDto(
     IReadOnlyList<GradebookComponentItemDto> Components,
     decimal? TotalGrade,
     string? Classification,
-    IReadOnlyList<object>? CloAchievements = null,
-    IReadOnlyList<object>? PloAchievements = null,
+    IReadOnlyList<CloAchievementDto>? CloAchievements = null,
+    IReadOnlyList<PloAchievementDto>? PloAchievements = null,
     bool AllCloAchieved = false);
 
 public sealed record GradebookLearnerDto(

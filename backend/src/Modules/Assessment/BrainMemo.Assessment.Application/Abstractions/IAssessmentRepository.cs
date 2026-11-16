@@ -22,5 +22,19 @@ public interface IAssessmentRepository
     Task<IReadOnlyList<GradeRecord>> GetGradeRecordsForComponentAsync(Guid courseId, Guid componentId, CancellationToken ct = default);
     Task<IReadOnlyList<GradeRecord>> GetPendingGradingRecordsAsync(Guid courseId, string? kind = null, int page = 1, int pageSize = 20, CancellationToken ct = default);
     Task<int> CountPendingGradingRecordsAsync(Guid courseId, string? kind = null, CancellationToken ct = default);
+    Task<IReadOnlyList<Clo>> GetClosByCourseIdAsync(Guid courseId, CancellationToken ct = default);
+    Task<Clo?> GetCloByIdAsync(Guid id, CancellationToken ct = default);
+    Task<Clo?> GetCloByCourseAndCodeAsync(Guid courseId, string code, CancellationToken ct = default);
+    Task AddCloAsync(Clo clo, CancellationToken ct = default);
+    Task DeleteCloAsync(Clo clo, CancellationToken ct = default);
+    Task<bool> HasOutcomeWeightsForCloAsync(Guid cloId, CancellationToken ct = default);
+    Task<IReadOnlyList<Plo>> GetPlosByCourseIdAsync(Guid courseId, CancellationToken ct = default);
+    Task<Plo?> GetPloByIdAsync(Guid id, CancellationToken ct = default);
+    Task<Plo?> GetPloByCourseAndCodeAsync(Guid courseId, string code, CancellationToken ct = default);
+    Task AddPloAsync(Plo plo, CancellationToken ct = default);
+    Task DeletePloAsync(Plo plo, CancellationToken ct = default);
+    Task<IReadOnlyList<ComponentOutcomeWeight>> GetOutcomeWeightsByCourseIdAsync(Guid courseId, CancellationToken ct = default);
+    Task<IReadOnlyList<ComponentOutcomeWeight>> GetOutcomeWeightsByComponentIdAsync(Guid componentId, CancellationToken ct = default);
+    Task ReplaceComponentOutcomeWeightsAsync(Guid componentId, IEnumerable<ComponentOutcomeWeight> weights, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
 }

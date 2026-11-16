@@ -332,6 +332,38 @@ public class GradingStrategyTests
         public Task<IReadOnlyList<GradeRecord>> GetGradeRecordsForComponentAsync(Guid courseId, Guid componentId, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<GradeRecord>>(SavedRecord != null ? new[] { SavedRecord } : Array.Empty<GradeRecord>());
 
+        public Task<IReadOnlyList<Clo>> GetClosByCourseIdAsync(Guid courseId, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<Clo>>(Array.Empty<Clo>());
+
+        public Task<Clo?> GetCloByIdAsync(Guid id, CancellationToken ct = default) => Task.FromResult<Clo?>(null);
+
+        public Task<Clo?> GetCloByCourseAndCodeAsync(Guid courseId, string code, CancellationToken ct = default) => Task.FromResult<Clo?>(null);
+
+        public Task AddCloAsync(Clo clo, CancellationToken ct = default) => Task.CompletedTask;
+
+        public Task DeleteCloAsync(Clo clo, CancellationToken ct = default) => Task.CompletedTask;
+
+        public Task<bool> HasOutcomeWeightsForCloAsync(Guid cloId, CancellationToken ct = default) => Task.FromResult(false);
+
+        public Task<IReadOnlyList<Plo>> GetPlosByCourseIdAsync(Guid courseId, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<Plo>>(Array.Empty<Plo>());
+
+        public Task<Plo?> GetPloByIdAsync(Guid id, CancellationToken ct = default) => Task.FromResult<Plo?>(null);
+
+        public Task<Plo?> GetPloByCourseAndCodeAsync(Guid courseId, string code, CancellationToken ct = default) => Task.FromResult<Plo?>(null);
+
+        public Task AddPloAsync(Plo plo, CancellationToken ct = default) => Task.CompletedTask;
+
+        public Task DeletePloAsync(Plo plo, CancellationToken ct = default) => Task.CompletedTask;
+
+        public Task<IReadOnlyList<ComponentOutcomeWeight>> GetOutcomeWeightsByCourseIdAsync(Guid courseId, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<ComponentOutcomeWeight>>(Array.Empty<ComponentOutcomeWeight>());
+
+        public Task<IReadOnlyList<ComponentOutcomeWeight>> GetOutcomeWeightsByComponentIdAsync(Guid componentId, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<ComponentOutcomeWeight>>(Array.Empty<ComponentOutcomeWeight>());
+
+        public Task ReplaceComponentOutcomeWeightsAsync(Guid componentId, IEnumerable<ComponentOutcomeWeight> weights, CancellationToken ct = default) => Task.CompletedTask;
+
         public Task SaveChangesAsync(CancellationToken ct = default) => Task.CompletedTask;
     }
 }

@@ -58,6 +58,34 @@ public sealed class UpsertComponentCommandHandler(
             comp.Update(block.Title, maxScore, request.CourseWeight);
         }
 
+        if (request.CloWeights != null)
+        {
+            var clos = await repository.GetClosByCourseIdAsync(request.CourseId, cancellationToken).ConfigureAwait(false);
+            var validCloIds = clos.Select(c => c.Id).ToHashSet();
+
+            var newWeights = new List<ComponentOutcomeWeight>();
+            foreach (var item in request.CloWeights)
+            {
+                if (item.Weight <= 0)
+                {
+                    return Result.Failure<ComponentDto>(Error.Validation("Trọng số CLO phải lớn hơn 0."));
+                }
+
+                if (!validCloIds.Contains(item.CloId))
+                {
+                    return Result.Failure<ComponentDto>(Error.Validation($"CLO '{item.CloId}' không thuộc khóa học này."));
+                }
+
+                newWeights.Add(new ComponentOutcomeWeight(
+                    id: Guid.NewGuid(),
+                    componentId: comp.Id,
+                    cloId: item.CloId,
+                    weight: item.Weight));
+            }
+
+            await repository.ReplaceComponentOutcomeWeightsAsync(comp.Id, newWeights, cancellationToken).ConfigureAwait(false);
+        }
+
         await repository.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return Result.Success(new ComponentDto(

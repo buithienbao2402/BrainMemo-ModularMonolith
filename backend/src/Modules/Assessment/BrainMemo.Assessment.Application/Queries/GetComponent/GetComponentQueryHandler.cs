@@ -16,13 +16,17 @@ public sealed class GetComponentQueryHandler(
         var comp = await repository.GetComponentByCourseAndBlockIdAsync(request.CourseId, request.BlockId, cancellationToken).ConfigureAwait(false);
         if (comp != null)
         {
+            var weights = await repository.GetOutcomeWeightsByComponentIdAsync(comp.Id, cancellationToken).ConfigureAwait(false);
+            var cloWeights = weights.Select(w => new ComponentCloWeightDto(w.CloId, w.Weight)).ToList();
+
             return Result.Success(new ComponentDto(
                 BlockId: comp.SourceBlockId,
                 SourceKind: comp.SourceKind,
                 Title: comp.Title,
                 MaxScore: comp.MaxScore,
                 CourseWeight: comp.CourseWeight,
-                IsComponent: true));
+                IsComponent: true,
+                CloWeights: cloWeights));
         }
 
         // Check if block exists in Content

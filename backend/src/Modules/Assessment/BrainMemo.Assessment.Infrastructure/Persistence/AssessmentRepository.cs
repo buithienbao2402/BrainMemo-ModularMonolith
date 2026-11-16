@@ -216,6 +216,107 @@ public class AssessmentRepository : IAssessmentRepository
         return await query.CountAsync(ct);
     }
 
+    public async Task<IReadOnlyList<Clo>> GetClosByCourseIdAsync(Guid courseId, CancellationToken ct = default)
+    {
+        return await _db.Clos
+            .Where(c => c.CourseId == courseId)
+            .OrderBy(c => c.Code)
+            .ToListAsync(ct);
+    }
+
+    public async Task<Clo?> GetCloByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        return await _db.Clos.FirstOrDefaultAsync(c => c.Id == id, ct);
+    }
+
+    public async Task<Clo?> GetCloByCourseAndCodeAsync(Guid courseId, string code, CancellationToken ct = default)
+    {
+        return await _db.Clos
+            .FirstOrDefaultAsync(c => c.CourseId == courseId && c.Code == code, ct);
+    }
+
+    public async Task AddCloAsync(Clo clo, CancellationToken ct = default)
+    {
+        await _db.Clos.AddAsync(clo, ct);
+    }
+
+    public Task DeleteCloAsync(Clo clo, CancellationToken ct = default)
+    {
+        _db.Clos.Remove(clo);
+        return Task.CompletedTask;
+    }
+
+    public async Task<bool> HasOutcomeWeightsForCloAsync(Guid cloId, CancellationToken ct = default)
+    {
+        return await _db.ComponentOutcomeWeights.AnyAsync(w => w.CloId == cloId, ct);
+    }
+
+    public async Task<IReadOnlyList<Plo>> GetPlosByCourseIdAsync(Guid courseId, CancellationToken ct = default)
+    {
+        return await _db.Plos
+            .Where(p => p.CourseId == courseId)
+            .OrderBy(p => p.Code)
+            .ToListAsync(ct);
+    }
+
+    public async Task<Plo?> GetPloByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        return await _db.Plos.FirstOrDefaultAsync(p => p.Id == id, ct);
+    }
+
+    public async Task<Plo?> GetPloByCourseAndCodeAsync(Guid courseId, string code, CancellationToken ct = default)
+    {
+        return await _db.Plos
+            .FirstOrDefaultAsync(p => p.CourseId == courseId && p.Code == code, ct);
+    }
+
+    public async Task AddPloAsync(Plo plo, CancellationToken ct = default)
+    {
+        await _db.Plos.AddAsync(plo, ct);
+    }
+
+    public Task DeletePloAsync(Plo plo, CancellationToken ct = default)
+    {
+        _db.Plos.Remove(plo);
+        return Task.CompletedTask;
+    }
+
+    public async Task<IReadOnlyList<ComponentOutcomeWeight>> GetOutcomeWeightsByCourseIdAsync(Guid courseId, CancellationToken ct = default)
+    {
+        var componentIds = await _db.AssessmentComponents
+            .Where(c => c.CourseId == courseId)
+            .Select(c => c.Id)
+            .ToListAsync(ct);
+
+        return await _db.ComponentOutcomeWeights
+            .Where(w => componentIds.Contains(w.ComponentId))
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<ComponentOutcomeWeight>> GetOutcomeWeightsByComponentIdAsync(Guid componentId, CancellationToken ct = default)
+    {
+        return await _db.ComponentOutcomeWeights
+            .Where(w => w.ComponentId == componentId)
+            .ToListAsync(ct);
+    }
+
+    public async Task ReplaceComponentOutcomeWeightsAsync(
+        Guid componentId,
+        IEnumerable<ComponentOutcomeWeight> weights,
+        CancellationToken ct = default)
+    {
+        var existing = await _db.ComponentOutcomeWeights
+            .Where(w => w.ComponentId == componentId)
+            .ToListAsync(ct);
+
+        if (existing.Count > 0)
+        {
+            _db.ComponentOutcomeWeights.RemoveRange(existing);
+        }
+
+        await _db.ComponentOutcomeWeights.AddRangeAsync(weights, ct);
+    }
+
     public async Task SaveChangesAsync(CancellationToken ct = default)
     {
         await _db.SaveChangesAsync(ct);

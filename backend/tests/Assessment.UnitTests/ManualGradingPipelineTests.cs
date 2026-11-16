@@ -179,6 +179,71 @@ public class ManualGradingPipelineTests
         public Task<IReadOnlyList<GradeRecord>> GetGradeRecordsForComponentAsync(Guid courseId, Guid componentId, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<GradeRecord>>(Records.Where(r => r.CourseId == courseId && r.ComponentId == componentId).ToList());
 
+        public List<Clo> Clos { get; } = new();
+        public List<Plo> Plos { get; } = new();
+        public List<ComponentOutcomeWeight> OutcomeWeights { get; } = new();
+
+        public Task<IReadOnlyList<Clo>> GetClosByCourseIdAsync(Guid courseId, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<Clo>>(Clos.Where(c => c.CourseId == courseId).ToList());
+
+        public Task<Clo?> GetCloByIdAsync(Guid id, CancellationToken ct = default) =>
+            Task.FromResult(Clos.FirstOrDefault(c => c.Id == id));
+
+        public Task<Clo?> GetCloByCourseAndCodeAsync(Guid courseId, string code, CancellationToken ct = default) =>
+            Task.FromResult(Clos.FirstOrDefault(c => c.CourseId == courseId && c.Code == code));
+
+        public Task AddCloAsync(Clo clo, CancellationToken ct = default)
+        {
+            Clos.Add(clo);
+            return Task.CompletedTask;
+        }
+
+        public Task DeleteCloAsync(Clo clo, CancellationToken ct = default)
+        {
+            Clos.Remove(clo);
+            return Task.CompletedTask;
+        }
+
+        public Task<bool> HasOutcomeWeightsForCloAsync(Guid cloId, CancellationToken ct = default) =>
+            Task.FromResult(OutcomeWeights.Any(w => w.CloId == cloId));
+
+        public Task<IReadOnlyList<Plo>> GetPlosByCourseIdAsync(Guid courseId, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<Plo>>(Plos.Where(p => p.CourseId == courseId).ToList());
+
+        public Task<Plo?> GetPloByIdAsync(Guid id, CancellationToken ct = default) =>
+            Task.FromResult(Plos.FirstOrDefault(p => p.Id == id));
+
+        public Task<Plo?> GetPloByCourseAndCodeAsync(Guid courseId, string code, CancellationToken ct = default) =>
+            Task.FromResult(Plos.FirstOrDefault(p => p.CourseId == courseId && p.Code == code));
+
+        public Task AddPloAsync(Plo plo, CancellationToken ct = default)
+        {
+            Plos.Add(plo);
+            return Task.CompletedTask;
+        }
+
+        public Task DeletePloAsync(Plo plo, CancellationToken ct = default)
+        {
+            Plos.Remove(plo);
+            return Task.CompletedTask;
+        }
+
+        public Task<IReadOnlyList<ComponentOutcomeWeight>> GetOutcomeWeightsByCourseIdAsync(Guid courseId, CancellationToken ct = default)
+        {
+            var compIds = Components.Where(c => c.CourseId == courseId).Select(c => c.Id).ToHashSet();
+            return Task.FromResult<IReadOnlyList<ComponentOutcomeWeight>>(OutcomeWeights.Where(w => compIds.Contains(w.ComponentId)).ToList());
+        }
+
+        public Task<IReadOnlyList<ComponentOutcomeWeight>> GetOutcomeWeightsByComponentIdAsync(Guid componentId, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<ComponentOutcomeWeight>>(OutcomeWeights.Where(w => w.ComponentId == componentId).ToList());
+
+        public Task ReplaceComponentOutcomeWeightsAsync(Guid componentId, IEnumerable<ComponentOutcomeWeight> weights, CancellationToken ct = default)
+        {
+            OutcomeWeights.RemoveAll(w => w.ComponentId == componentId);
+            OutcomeWeights.AddRange(weights);
+            return Task.CompletedTask;
+        }
+
         public Task SaveChangesAsync(CancellationToken ct = default) => Task.CompletedTask;
     }
 

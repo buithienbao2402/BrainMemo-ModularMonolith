@@ -60,6 +60,10 @@ public sealed class GetStudentGradebookQueryHandler(
             userSummary?.Email,
             null);
 
+        var clos = await repository.GetClosByCourseIdAsync(request.CourseId, cancellationToken).ConfigureAwait(false);
+        var plos = await repository.GetPlosByCourseIdAsync(request.CourseId, cancellationToken).ConfigureAwait(false);
+        var outcomeWeights = await repository.GetOutcomeWeightsByCourseIdAsync(request.CourseId, cancellationToken).ConfigureAwait(false);
+
         var now = DateTimeOffset.UtcNow;
         var gradebook = GradebookCalculator.ComputeGradebook(
             config,
@@ -68,7 +72,10 @@ public sealed class GetStudentGradebookQueryHandler(
             studentRecords,
             dueDates,
             learner,
-            now);
+            now,
+            clos,
+            plos,
+            outcomeWeights);
 
         // Upsert COMPONENT_FINAL
         foreach (var compItem in gradebook.Components)
