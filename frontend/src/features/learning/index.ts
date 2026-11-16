@@ -1,6 +1,7 @@
 export * from './api/learningApi';
 export * from './api/quizApi';
 export * from './api/commentsApi';
+export * from './api/assignmentApi';
 export * from './components/LearningSyllabusSidebar';
 export * from './components/BlockRenderer';
 export * from './components/QuizBlockCard';
@@ -12,3 +13,4 @@ export * from './pages/LearningPlayerPage';
 export * from './pages/QuizPlayerPage';
 export * from './pages/QuizResultPage';
 export * from './pages/MyBookmarksPage';
+export * from './pages/AssignmentPlayerPage';

@@ -3599,4 +3599,300 @@ export const handlers = [
       isPassed: true,
     });
   }),
+
+  // ==================== ASSIGNMENTS & ASSESSMENT MOCKS ====================
+  // Get my assignment submission
+  http.get('*/api/v1/courses/:courseId/assignments/:blockId/submission', ({ params }) => {
+    return HttpResponse.json({
+      id: 'sub-assignment-demo-1',
+      courseId: String(params.courseId),
+      blockId: String(params.blockId),
+      userId: mockUsers.user.id,
+      status: 'DRAFT',
+      textContent: 'Bài làm nháp của em...',
+      files: [],
+      isLate: false,
+      submittedAt: null,
+      score: null,
+      feedback: null,
+    });
+  }),
+
+  // Save assignment draft
+  http.put('*/api/v1/courses/:courseId/assignments/:blockId/submission/draft', async ({ request, params }) => {
+    const body = (await request.json()) as any;
+    return HttpResponse.json({
+      id: 'sub-assignment-demo-1',
+      courseId: String(params.courseId),
+      blockId: String(params.blockId),
+      userId: mockUsers.user.id,
+      status: 'DRAFT',
+      textContent: body?.textContent || '',
+      files: (body?.fileUploadKeys || []).map((k: string) => ({
+        storageKey: k,
+        originalFilename: k.replace(/^upload_\d+_\d+_/, ''),
+        sizeBytes: 1024,
+        contentType: 'application/pdf',
+      })),
+      isLate: false,
+      submittedAt: null,
+      score: null,
+      feedback: null,
+    });
+  }),
+
+  // Submit assignment
+  http.post('*/api/v1/courses/:courseId/assignments/:blockId/submission/submit', ({ params }) => {
+    return HttpResponse.json({
+      id: 'sub-assignment-demo-1',
+      courseId: String(params.courseId),
+      blockId: String(params.blockId),
+      userId: mockUsers.user.id,
+      status: 'SUBMITTED',
+      textContent: 'Bài làm hoàn thiện đã nộp.',
+      files: [],
+      isLate: false,
+      submittedAt: new Date().toISOString(),
+      score: null,
+      feedback: null,
+    });
+  }),
+
+  // Assessment config
+  http.get('*/api/v1/courses/:courseId/assessment/config', () => {
+    return HttpResponse.json({
+      passThreshold: 5.0,
+      scoreSelectionRule: 'HIGHEST',
+      ploEnabled: false,
+      gradeScale: null,
+      achievementLevels: null,
+    });
+  }),
+
+  http.put('*/api/v1/courses/:courseId/assessment/config', async ({ request }) => {
+    const body = await request.json();
+    return HttpResponse.json(body);
+  }),
+
+  // Assessable blocks
+  http.get('*/api/v1/courses/:courseId/assessment/assessable-blocks', () => {
+    return HttpResponse.json([
+      {
+        blockId: 'block-quiz-1',
+        sourceKind: 'QUIZ',
+        title: 'Kiểm tra trắc nghiệm & tự luận Chương 1',
+        maxScore: 10,
+        courseWeight: 30,
+        isComponent: true,
+        cloWeights: null,
+      },
+      {
+        blockId: 'assignment-block-1',
+        sourceKind: 'ASSIGNMENT',
+        title: 'Bài tập lớn: Thiết kế CSDL',
+        maxScore: 100,
+        courseWeight: 70,
+        isComponent: true,
+        cloWeights: null,
+      },
+    ]);
+  }),
+
+  // Upsert component
+  http.put('*/api/v1/courses/:courseId/assessment/components/:blockId', async ({ params, request }) => {
+    const body = (await request.json()) as any;
+    return HttpResponse.json({
+      blockId: String(params.blockId),
+      sourceKind: 'QUIZ',
+      title: 'Hợp phần điểm',
+      maxScore: 10,
+      courseWeight: body?.courseWeight ?? 50,
+      isComponent: true,
+      cloWeights: body?.cloWeights || null,
+    });
+  }),
+
+  // Delete component
+  http.delete('*/api/v1/courses/:courseId/assessment/components/:blockId', () => {
+    return HttpResponse.json({ success: true });
+  }),
+
+  // Grading queue
+  http.get('*/api/v1/courses/:courseId/assessment/grading-queue', () => {
+    return HttpResponse.json([
+      {
+        kind: 'QUIZ_ATTEMPT',
+        sourceId: 'attempt-quiz-essay-1',
+        blockId: 'block-quiz-1',
+        blockTitle: 'Kiểm tra trắc nghiệm & tự luận Chương 1',
+        learner: {
+          id: mockUsers.user.id,
+          displayName: 'Quang Trần',
+          email: 'quang.tran@brainmemo.vn',
+        },
+        submittedAt: new Date(Date.now() - 7200000).toISOString(),
+      },
+      {
+        kind: 'ASSIGNMENT',
+        sourceId: 'sub-assignment-demo-1',
+        blockId: 'assignment-block-1',
+        blockTitle: 'Bài tập lớn: Thiết kế CSDL',
+        learner: {
+          id: mockUsers.user.id,
+          displayName: 'Quang Trần',
+          email: 'quang.tran@brainmemo.vn',
+        },
+        submittedAt: new Date(Date.now() - 3600000).toISOString(),
+      },
+    ]);
+  }),
+
+  // Review quiz attempt
+  http.get('*/api/v1/assessment/quiz-attempts/:attemptId/review', ({ params }) => {
+    return HttpResponse.json({
+      attemptId: String(params.attemptId),
+      courseId: 'course-1',
+      quizBlockId: 'block-quiz-1',
+      userId: mockUsers.user.id,
+      totalScore: 5,
+      maxScore: 10,
+      isFullyGraded: false,
+      questions: [
+        {
+          questionId: 'q-essay-1',
+          position: 1,
+          questionType: 'ESSAY',
+          stem: '<p>Trình bày kiến trúc Modular Monolith và ưu điểm so với Microservices?</p>',
+          maxPoints: 5,
+          pointsEarned: 0,
+          referenceAnswer: 'Modular Monolith tổ chức mã nguồn theo các ranh giới nghiệp vụ độc lập bên trong cùng 1 process deploy duy nhất.',
+          studentAnswerText: 'Modular Monolith giúp quản lý cấu trúc tốt mà không chịu chi phí mạng của microservices.',
+          feedback: null,
+        },
+      ],
+    });
+  }),
+
+  // Submit manual quiz grades
+  http.put('*/api/v1/assessment/quiz-attempts/:attemptId/manual-grades', () => {
+    return HttpResponse.json({ success: true, isFullyGraded: true });
+  }),
+
+  // Review assignment submission
+  http.get('*/api/v1/assessment/submissions/:submissionId/grading', ({ params }) => {
+    return HttpResponse.json({
+      id: String(params.submissionId),
+      status: 'SUBMITTED',
+      textContent: 'Bài làm phân tích quan hệ thực thể của học viên.',
+      files: [
+        {
+          storageKey: 'storage_erd_file_1',
+          originalFilename: 'ERD_Database_Diagram.pdf',
+          sizeBytes: 154850,
+          contentType: 'application/pdf',
+        },
+      ],
+      isLate: false,
+      submittedAt: new Date(Date.now() - 3600000).toISOString(),
+      score: null,
+      feedback: null,
+    });
+  }),
+
+  // Grade assignment submission
+  http.put('*/api/v1/assessment/submissions/:submissionId/grade', async ({ request, params }) => {
+    const body = (await request.json()) as any;
+    return HttpResponse.json({
+      id: String(params.submissionId),
+      status: 'GRADED',
+      score: body?.score ?? 95,
+      feedback: body?.feedback ?? 'Làm rất tốt!',
+    });
+  }),
+
+  // Learner gradebook (me)
+  http.get('*/api/v1/courses/:courseId/assessment/gradebook/me', () => {
+    return HttpResponse.json({
+      learner: {
+        id: mockUsers.user.id,
+        displayName: 'Quang Trần',
+        email: mockUsers.user.email,
+      },
+      components: [
+        {
+          blockId: 'block-quiz-1',
+          title: 'Kiểm tra trắc nghiệm & tự luận Chương 1',
+          maxScore: 10,
+          courseWeight: 30,
+          final: 8.5,
+          highest: 8.5,
+          latest: 8.5,
+          average: 8.5,
+          isPassed: true,
+          feedback: 'Làm tốt phần tự luận.',
+          status: 'GRADED',
+        },
+        {
+          blockId: 'assignment-block-1',
+          title: 'Bài tập lớn: Thiết kế CSDL',
+          maxScore: 100,
+          courseWeight: 70,
+          final: 90,
+          highest: 90,
+          latest: 90,
+          average: 90,
+          isPassed: true,
+          feedback: 'Thiết kế chuẩn hóa tốt.',
+          status: 'GRADED',
+        },
+      ],
+      totalGrade: 8.85,
+      classification: 'GIOI',
+      allCloAchieved: true,
+    });
+  }),
+
+  // Course gradebook
+  http.get('*/api/v1/courses/:courseId/assessment/gradebook', () => {
+    return HttpResponse.json([
+      {
+        learner: {
+          id: mockUsers.user.id,
+          displayName: 'Quang Trần',
+          email: mockUsers.user.email,
+        },
+        components: [
+          {
+            blockId: 'block-quiz-1',
+            title: 'Kiểm tra trắc nghiệm & tự luận Chương 1',
+            maxScore: 10,
+            courseWeight: 30,
+            final: 8.5,
+            highest: 8.5,
+            latest: 8.5,
+            average: 8.5,
+            isPassed: true,
+            feedback: 'Làm tốt phần tự luận.',
+            status: 'GRADED',
+          },
+          {
+            blockId: 'assignment-block-1',
+            title: 'Bài tập lớn: Thiết kế CSDL',
+            maxScore: 100,
+            courseWeight: 70,
+            final: 90,
+            highest: 90,
+            latest: 90,
+            average: 90,
+            isPassed: true,
+            feedback: 'Thiết kế chuẩn hóa tốt.',
+            status: 'GRADED',
+          },
+        ],
+        totalGrade: 8.85,
+        classification: 'GIOI',
+        allCloAchieved: true,
+      },
+    ]);
+  }),
 ];

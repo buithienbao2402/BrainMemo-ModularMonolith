@@ -51,6 +51,25 @@ export const queryKeys = {
       ['learning', 'quizAttempts', courseId, blockId] as const,
     quizAttempt: (attemptId: string) =>
       ['learning', 'quizAttempt', attemptId] as const,
+    assignmentSubmission: (courseId: string, blockId: string) =>
+      ['learning', 'assignmentSubmission', courseId, blockId] as const,
+    pendingSubmissions: (courseId: string) =>
+      ['learning', 'pendingSubmissions', courseId] as const,
+  },
+  assessment: {
+    all: ['assessment'] as const,
+    config: (courseId: string) => ['assessment', 'config', courseId] as const,
+    assessableBlocks: (courseId: string) => ['assessment', 'assessableBlocks', courseId] as const,
+    component: (courseId: string, blockId: string) => ['assessment', 'component', courseId, blockId] as const,
+    gradingQueue: (courseId: string, params?: Record<string, unknown>) =>
+      ['assessment', 'gradingQueue', courseId, params ?? {}] as const,
+    quizAttemptReview: (attemptId: string) => ['assessment', 'quizAttemptReview', attemptId] as const,
+    submissionForGrading: (submissionId: string) => ['assessment', 'submissionForGrading', submissionId] as const,
+    gradebookMe: (courseId: string) => ['assessment', 'gradebookMe', courseId] as const,
+    studentGradebook: (courseId: string, userId: string) => ['assessment', 'studentGradebook', courseId, userId] as const,
+    courseGradebook: (courseId: string, params?: Record<string, unknown>) =>
+      ['assessment', 'courseGradebook', courseId, params ?? {}] as const,
+    componentScores: (courseId: string, blockId: string) => ['assessment', 'componentScores', courseId, blockId] as const,
   },
   notifications: {
     all: ['notifications'] as const,

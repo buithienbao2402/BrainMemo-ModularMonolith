@@ -28,7 +28,15 @@ import {
   MyBookmarksPage,
   QuizPlayerPage,
   QuizResultPage,
+  AssignmentPlayerPage,
 } from '@/features/learning';
+import {
+  AssessmentConfigPage,
+  GradingQueuePage,
+  ManualGradingPage,
+  CourseGradebookPage,
+  LearnerGradebookPage,
+} from '@/features/assessment';
 import {
   ChapterListPage,
   ChapterEditorPage,
@@ -87,6 +95,22 @@ export const appRoutes: RouteObject[] = [
             element: (
               <RequireAuth>
                 <QuizResultPage />
+              </RequireAuth>
+            ),
+          },
+          {
+            path: '/courses/:courseId/assignments/:blockId',
+            element: (
+              <RequireAuth>
+                <AssignmentPlayerPage />
+              </RequireAuth>
+            ),
+          },
+          {
+            path: '/courses/:courseId/gradebook',
+            element: (
+              <RequireAuth>
+                <LearnerGradebookPage />
               </RequireAuth>
             ),
           },
@@ -232,6 +256,22 @@ export const appRoutes: RouteObject[] = [
           {
             path: '/courses/:courseId/manage/questions',
             element: <QuestionBankPage />,
+          },
+          {
+            path: '/courses/:courseId/manage/assessment',
+            element: <AssessmentConfigPage />,
+          },
+          {
+            path: '/courses/:courseId/manage/grading',
+            element: <GradingQueuePage />,
+          },
+          {
+            path: '/courses/:courseId/manage/grading/:kind/:id',
+            element: <ManualGradingPage />,
+          },
+          {
+            path: '/courses/:courseId/manage/gradebook',
+            element: <CourseGradebookPage />,
           },
         ],
       },
