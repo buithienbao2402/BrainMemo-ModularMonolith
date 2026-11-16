@@ -27,6 +27,9 @@
     <ProjectReference Include="..\..\Modules\Assessment\BrainMemo.Assessment.Api\BrainMemo.Assessment.Api.csproj" />
     <ProjectReference Include="..\..\Modules\Assessment\BrainMemo.Assessment.Contracts\BrainMemo.Assessment.Contracts.csproj" />
     <ProjectReference Include="..\..\Modules\Assessment\BrainMemo.Assessment.Infrastructure\BrainMemo.Assessment.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Moderation\BrainMemo.Moderation.Api\BrainMemo.Moderation.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Moderation\BrainMemo.Moderation.Contracts\BrainMemo.Moderation.Contracts.csproj" />
+    <ProjectReference Include="..\..\Modules\Moderation\BrainMemo.Moderation.Infrastructure\BrainMemo.Moderation.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
