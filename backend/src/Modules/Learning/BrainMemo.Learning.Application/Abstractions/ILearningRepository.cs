@@ -30,5 +30,14 @@ public interface ILearningRepository
     Task<int> CountRootCommentsAsync(Guid courseId, Guid? chapterId = null, CancellationToken ct = default);
     Task<int> CountPinnedCommentsAsync(Guid courseId, CancellationToken ct = default);
 
+    Task<QuizAttempt?> GetQuizAttemptByIdAsync(Guid attemptId, CancellationToken ct = default);
+    Task<QuizAttempt?> GetActiveQuizAttemptAsync(Guid userId, Guid quizBlockId, CancellationToken ct = default);
+    Task<int> CountQuizAttemptsAsync(Guid userId, Guid quizBlockId, CancellationToken ct = default);
+    Task<IReadOnlyList<QuizAttempt>> ListQuizAttemptsAsync(Guid userId, Guid quizBlockId, CancellationToken ct = default);
+    Task AddQuizAttemptWithAnswersAsync(QuizAttempt attempt, IReadOnlyList<QuizAttemptAnswer> answers, CancellationToken ct = default);
+    Task<IReadOnlyList<QuizAttemptAnswer>> GetQuizAttemptAnswersAsync(Guid attemptId, CancellationToken ct = default);
+    Task<QuizAttemptAnswer?> GetQuizAttemptAnswerAsync(Guid attemptId, Guid questionId, CancellationToken ct = default);
+    Task<IReadOnlyList<QuizAttempt>> ListExpiredInProgressAttemptsAsync(DateTimeOffset now, CancellationToken ct = default);
+
     Task SaveChangesAsync(CancellationToken ct = default);
 }

@@ -218,6 +218,70 @@ public sealed class LearningRepository(LearningDbContext dbContext) : ILearningR
             .ConfigureAwait(false);
     }
 
+    public async Task<QuizAttempt?> GetQuizAttemptByIdAsync(Guid attemptId, CancellationToken ct = default)
+    {
+        return await dbContext.QuizAttempts
+            .FirstOrDefaultAsync(q => q.Id == attemptId, ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<QuizAttempt?> GetActiveQuizAttemptAsync(Guid userId, Guid quizBlockId, CancellationToken ct = default)
+    {
+        return await dbContext.QuizAttempts
+            .FirstOrDefaultAsync(q => q.UserId == userId && q.QuizBlockId == quizBlockId && q.Status == "IN_PROGRESS", ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<int> CountQuizAttemptsAsync(Guid userId, Guid quizBlockId, CancellationToken ct = default)
+    {
+        return await dbContext.QuizAttempts
+            .Where(q => q.UserId == userId && q.QuizBlockId == quizBlockId)
+            .CountAsync(ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyList<QuizAttempt>> ListQuizAttemptsAsync(Guid userId, Guid quizBlockId, CancellationToken ct = default)
+    {
+        return await dbContext.QuizAttempts
+            .Where(q => q.UserId == userId && q.QuizBlockId == quizBlockId)
+            .OrderBy(q => q.AttemptNo)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task AddQuizAttemptWithAnswersAsync(QuizAttempt attempt, IReadOnlyList<QuizAttemptAnswer> answers, CancellationToken ct = default)
+    {
+        await dbContext.QuizAttempts.AddAsync(attempt, ct).ConfigureAwait(false);
+        if (answers.Count > 0)
+        {
+            await dbContext.QuizAttemptAnswers.AddRangeAsync(answers, ct).ConfigureAwait(false);
+        }
+    }
+
+    public async Task<IReadOnlyList<QuizAttemptAnswer>> GetQuizAttemptAnswersAsync(Guid attemptId, CancellationToken ct = default)
+    {
+        return await dbContext.QuizAttemptAnswers
+            .Where(a => a.AttemptId == attemptId)
+            .OrderBy(a => a.QuestionPosition)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<QuizAttemptAnswer?> GetQuizAttemptAnswerAsync(Guid attemptId, Guid questionId, CancellationToken ct = default)
+    {
+        return await dbContext.QuizAttemptAnswers
+            .FirstOrDefaultAsync(a => a.AttemptId == attemptId && a.QuestionId == questionId, ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyList<QuizAttempt>> ListExpiredInProgressAttemptsAsync(DateTimeOffset now, CancellationToken ct = default)
+    {
+        return await dbContext.QuizAttempts
+            .Where(q => q.Status == "IN_PROGRESS" && q.DeadlineAt < now)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+    }
+
     public async Task SaveChangesAsync(CancellationToken ct = default)
     {
         await dbContext.SaveChangesAsync(ct).ConfigureAwait(false);

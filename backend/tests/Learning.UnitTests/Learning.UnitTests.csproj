@@ -16,6 +16,7 @@
     <ProjectReference Include="..\..\src\Modules\Course\BrainMemo.Course.Contracts\BrainMemo.Course.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Modules\Content\BrainMemo.Content.Contracts\BrainMemo.Content.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Modules\Identity\BrainMemo.Identity.Contracts\BrainMemo.Identity.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Assessment\BrainMemo.Assessment.Contracts\BrainMemo.Assessment.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -18,6 +18,8 @@ public class LearningDbContext : DbContext
     public DbSet<CourseCompletion> CourseCompletions => Set<CourseCompletion>();
     public DbSet<Bookmark> Bookmarks => Set<Bookmark>();
     public DbSet<Comment> Comments => Set<Comment>();
+    public DbSet<QuizAttempt> QuizAttempts => Set<QuizAttempt>();
+    public DbSet<QuizAttemptAnswer> QuizAttemptAnswers => Set<QuizAttemptAnswer>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {

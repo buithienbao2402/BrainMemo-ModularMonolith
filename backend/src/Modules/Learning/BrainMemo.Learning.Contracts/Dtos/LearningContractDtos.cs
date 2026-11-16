@@ -53,9 +53,34 @@ public sealed record QuizAttemptSummaryDto(
 
 public sealed record AttemptForGradingDto(
     Guid AttemptId,
+    Guid CourseId,
     Guid QuizBlockId,
     Guid UserId,
-    IReadOnlyList<object> QuestionSnapshots);
+    decimal? PassScorePercent,
+    IReadOnlyList<GradingQuestionItemDto> Questions);
+
+public sealed record GradingQuestionItemDto(
+    Guid QuestionId,
+    int Position,
+    string QuestionType,
+    bool AllowMultiple,
+    decimal MaxPoints,
+    IReadOnlyList<GradingOptionItemDto> Options,
+    string? ReferenceAnswer,
+    GradingAnswerPayloadDto? StudentAnswer);
+
+public sealed record GradingOptionItemDto(
+    Guid Id,
+    int Position,
+    string Content,
+    string? MatchContent,
+    int? BlankNo,
+    bool IsCorrect);
+
+public sealed record GradingAnswerPayloadDto(
+    IReadOnlyList<Guid>? SelectedOptionIds,
+    string? TextAnswer,
+    IReadOnlyDictionary<Guid, string>? Matches);
 
 public sealed record AssignmentSubmissionDto(
     Guid SubmissionId,
