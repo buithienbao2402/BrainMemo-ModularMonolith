@@ -60,8 +60,8 @@ export function BookmarkButton({
           ? 'bg-primary/10 border-primary/40 text-primary font-semibold'
           : 'text-muted-foreground hover:text-foreground'
       }`}
-      title={isBookmarked ? 'Bỏ lưu bài học' : 'Lưu bài học để đọc lại'}
-      aria-label={isBookmarked ? 'Bỏ lưu bài học' : 'Lưu bài học để đọc lại'}
+      title={isBookmarked ? 'Đã lưu bài học' : 'Lưu bài học để đọc lại'}
+      aria-label={isBookmarked ? 'Đã lưu' : 'Lưu bài'}
     >
       <Bookmark className={`h-3.5 w-3.5 ${isBookmarked ? 'fill-current text-primary' : ''}`} />
       <span>{isBookmarked ? 'Đã lưu' : 'Lưu bài'}</span>
