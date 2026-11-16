@@ -3358,4 +3358,238 @@ export const handlers = [
   http.delete('*/api/v1/courses/:courseId/quizzes/:blockId/exceptions/:userId', () => {
     return new HttpResponse(null, { status: 204 });
   }),
+
+  // Quiz Attempts (SCR-LRN-02, SCR-LRN-03, SCR-LRN-04)
+  http.get('*/courses/:courseId/quizzes/:blockId/attempts', () => {
+    return HttpResponse.json([
+      {
+        attemptId: 'att-sample-1',
+        quizBlockId: 'block-quiz-1',
+        userId: '11111111-1111-4111-8111-111111111111',
+        status: 'GRADED',
+        totalScore: 8.5,
+        maxScore: 10,
+        startedAt: '2026-11-15T08:00:00Z',
+        submittedAt: '2026-11-15T08:35:00Z',
+      },
+    ]);
+  }),
+  http.get('*/api/v1/courses/:courseId/quizzes/:blockId/attempts', () => {
+    return HttpResponse.json([
+      {
+        attemptId: 'att-sample-1',
+        quizBlockId: 'block-quiz-1',
+        userId: '11111111-1111-4111-8111-111111111111',
+        status: 'GRADED',
+        totalScore: 8.5,
+        maxScore: 10,
+        startedAt: '2026-11-15T08:00:00Z',
+        submittedAt: '2026-11-15T08:35:00Z',
+      },
+    ]);
+  }),
+
+  http.post('*/courses/:courseId/quizzes/:blockId/attempts', () => {
+    return HttpResponse.json({
+      id: 'att-in-progress-1',
+      quizBlockId: 'block-quiz-1',
+      courseId: 'sample-course-1',
+      attemptNo: 2,
+      status: 'IN_PROGRESS',
+      startedAt: new Date().toISOString(),
+      deadlineAt: new Date(Date.now() + 45 * 60 * 1000).toISOString(),
+      totalScore: null,
+      maxScore: 10,
+      questions: [
+        {
+          id: 'q-mc-1',
+          position: 1,
+          questionType: 'MULTIPLE_CHOICE',
+          stem: 'Thủ đô của Việt Nam là gì?',
+          maxPoints: 5,
+          allowMultiple: false,
+          options: [
+            { id: 'opt-1', position: 1, content: 'Hà Nội' },
+            { id: 'opt-2', position: 2, content: 'Hồ Chí Minh' },
+          ],
+        },
+        {
+          id: 'q-tf-1',
+          position: 2,
+          questionType: 'TRUE_FALSE',
+          stem: 'HTML là một ngôn ngữ lập trình.',
+          maxPoints: 5,
+          allowMultiple: false,
+          options: [
+            { id: 'opt-tf-1', position: 1, content: 'Đúng' },
+            { id: 'opt-tf-2', position: 2, content: 'Sai' },
+          ],
+        },
+      ],
+    });
+  }),
+  http.post('*/api/v1/courses/:courseId/quizzes/:blockId/attempts', () => {
+    return HttpResponse.json({
+      id: 'att-in-progress-1',
+      quizBlockId: 'block-quiz-1',
+      courseId: 'sample-course-1',
+      attemptNo: 2,
+      status: 'IN_PROGRESS',
+      startedAt: new Date().toISOString(),
+      deadlineAt: new Date(Date.now() + 45 * 60 * 1000).toISOString(),
+      totalScore: null,
+      maxScore: 10,
+      questions: [
+        {
+          id: 'q-mc-1',
+          position: 1,
+          questionType: 'MULTIPLE_CHOICE',
+          stem: 'Thủ đô của Việt Nam là gì?',
+          maxPoints: 5,
+          allowMultiple: false,
+          options: [
+            { id: 'opt-1', position: 1, content: 'Hà Nội' },
+            { id: 'opt-2', position: 2, content: 'Hồ Chí Minh' },
+          ],
+        },
+        {
+          id: 'q-tf-1',
+          position: 2,
+          questionType: 'TRUE_FALSE',
+          stem: 'HTML là một ngôn ngữ lập trình.',
+          maxPoints: 5,
+          allowMultiple: false,
+          options: [
+            { id: 'opt-tf-1', position: 1, content: 'Đúng' },
+            { id: 'opt-tf-2', position: 2, content: 'Sai' },
+          ],
+        },
+      ],
+    });
+  }),
+
+  http.get('*/quiz-attempts/:attemptId', ({ params }) => {
+    const isResult = params.attemptId === 'att-result-1';
+    return HttpResponse.json({
+      id: String(params.attemptId),
+      quizBlockId: 'block-quiz-1',
+      courseId: 'sample-course-1',
+      attemptNo: 1,
+      status: isResult ? 'GRADED' : 'IN_PROGRESS',
+      startedAt: '2026-11-15T08:00:00Z',
+      deadlineAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+      submittedAt: isResult ? '2026-11-15T08:25:00Z' : null,
+      totalScore: isResult ? 10 : null,
+      maxScore: 10,
+      questions: [
+        {
+          id: 'q-mc-1',
+          position: 1,
+          questionType: 'MULTIPLE_CHOICE',
+          stem: 'Thủ đô của Việt Nam là gì?',
+          maxPoints: 5,
+          allowMultiple: false,
+          options: [
+            { id: 'opt-1', position: 1, content: 'Hà Nội', isCorrect: isResult ? true : undefined },
+            { id: 'opt-2', position: 2, content: 'Hồ Chí Minh', isCorrect: isResult ? false : undefined },
+          ],
+          explanation: isResult ? 'Hà Nội là thủ đô của nước CHXHCN Việt Nam.' : undefined,
+          studentAnswer: isResult ? { selectedOptionIds: ['opt-1'], isCorrect: true, pointsEarned: 5 } : undefined,
+        },
+        {
+          id: 'q-tf-1',
+          position: 2,
+          questionType: 'TRUE_FALSE',
+          stem: 'HTML là một ngôn ngữ lập trình.',
+          maxPoints: 5,
+          allowMultiple: false,
+          options: [
+            { id: 'opt-tf-1', position: 1, content: 'Đúng', isCorrect: isResult ? false : undefined },
+            { id: 'opt-tf-2', position: 2, content: 'Sai', isCorrect: isResult ? true : undefined },
+          ],
+          explanation: isResult ? 'HTML là ngôn ngữ đánh dấu siêu văn bản, không phải ngôn ngữ lập trình.' : undefined,
+          studentAnswer: isResult ? { selectedOptionIds: ['opt-tf-2'], isCorrect: true, pointsEarned: 5 } : undefined,
+        },
+      ],
+    });
+  }),
+  http.get('*/api/v1/quiz-attempts/:attemptId', ({ params }) => {
+    const isResult = params.attemptId === 'att-result-1';
+    return HttpResponse.json({
+      id: String(params.attemptId),
+      quizBlockId: 'block-quiz-1',
+      courseId: 'sample-course-1',
+      attemptNo: 1,
+      status: isResult ? 'GRADED' : 'IN_PROGRESS',
+      startedAt: '2026-11-15T08:00:00Z',
+      deadlineAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+      submittedAt: isResult ? '2026-11-15T08:25:00Z' : null,
+      totalScore: isResult ? 10 : null,
+      maxScore: 10,
+      questions: [
+        {
+          id: 'q-mc-1',
+          position: 1,
+          questionType: 'MULTIPLE_CHOICE',
+          stem: 'Thủ đô của Việt Nam là gì?',
+          maxPoints: 5,
+          allowMultiple: false,
+          options: [
+            { id: 'opt-1', position: 1, content: 'Hà Nội', isCorrect: isResult ? true : undefined },
+            { id: 'opt-2', position: 2, content: 'Hồ Chí Minh', isCorrect: isResult ? false : undefined },
+          ],
+          explanation: isResult ? 'Hà Nội là thủ đô của nước CHXHCN Việt Nam.' : undefined,
+          studentAnswer: isResult ? { selectedOptionIds: ['opt-1'], isCorrect: true, pointsEarned: 5 } : undefined,
+        },
+        {
+          id: 'q-tf-1',
+          position: 2,
+          questionType: 'TRUE_FALSE',
+          stem: 'HTML là một ngôn ngữ lập trình.',
+          maxPoints: 5,
+          allowMultiple: false,
+          options: [
+            { id: 'opt-tf-1', position: 1, content: 'Đúng', isCorrect: isResult ? false : undefined },
+            { id: 'opt-tf-2', position: 2, content: 'Sai', isCorrect: isResult ? true : undefined },
+          ],
+          explanation: isResult ? 'HTML là ngôn ngữ đánh dấu siêu văn bản, không phải ngôn ngữ lập trình.' : undefined,
+          studentAnswer: isResult ? { selectedOptionIds: ['opt-tf-2'], isCorrect: true, pointsEarned: 5 } : undefined,
+        },
+      ],
+    });
+  }),
+
+  http.put('*/quiz-attempts/:attemptId/answers/:questionId', () => {
+    return HttpResponse.json({
+      savedAt: new Date().toISOString(),
+      isCorrect: null,
+      pointsEarned: null,
+    });
+  }),
+  http.put('*/api/v1/quiz-attempts/:attemptId/answers/:questionId', () => {
+    return HttpResponse.json({
+      savedAt: new Date().toISOString(),
+      isCorrect: null,
+      pointsEarned: null,
+    });
+  }),
+
+  http.post('*/quiz-attempts/:attemptId/submit', ({ params }) => {
+    return HttpResponse.json({
+      attemptId: String(params.attemptId),
+      status: 'GRADED',
+      totalScore: 10,
+      maxScore: 10,
+      isPassed: true,
+    });
+  }),
+  http.post('*/api/v1/quiz-attempts/:attemptId/submit', ({ params }) => {
+    return HttpResponse.json({
+      attemptId: String(params.attemptId),
+      status: 'GRADED',
+      totalScore: 10,
+      maxScore: 10,
+      isPassed: true,
+    });
+  }),
 ];

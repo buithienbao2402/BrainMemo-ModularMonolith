@@ -52,7 +52,7 @@
 | T-S7-BE-01 | BE-01 + BE-02 | DONE | Antigravity (BE) | dev/kim-thuan | **Question Bank & Quiz Authoring (Batched):** Ngân hàng câu hỏi 6 loại + Cấu hình bài thi trong chương + Bốc đề thi + API Quiz gắn với chương (`GET /courses/{id}/chapters/{chapterId}/quizzes`) (98/98 tests pass, build clean) |
 | T-S7-BE-02 | BE-03..05 | DONE | Antigravity (BE) | dev/kim-thuan | **Quiz Engine & Auto-Grading (Batched):** Làm bài, autosave, deadline worker + Bộ chấm tự động ADR-04 + Nộp bài TX1/TX2 |
 | T-S7-FE-01 | FE-01 + FE-02 | DONE | Antigravity (FE) | dev/kim-thuan | **FE Question Bank & Quiz Authoring (Batched):** SCR-CNT-04, 05, 06, 08, 09 (5/5 tests pass, 0 type error) |
-| T-S7-FE-02 | FE-03 | TODO | – | – | **FE Quiz Player:** SCR-LRN-02, 03, 04 (Làm quiz, đếm giờ, autosave, nộp bài) |
+| T-S7-FE-02 | FE-03 | DONE | Antigravity (FE) | dev/kim-thuan | **FE Quiz Player:** SCR-LRN-02, 03, 04 (4/4 tests pass, 0 type error) |
 | T-S7-INT-01 | INT-01 | TODO | – | – | Tích hợp S7 + e2e |
 | **S8 – Bài tập & Bảng điểm** | | | | | |
 | T-S8-BE-01 | BE-01 + BE-02 | TODO | – | – | **Assignments & Manual Grading Pipeline (Batched):** Nộp bài tập commit tệp + Hàng đợi chấm thi & Chấm tay tự luận DEC-03 + API Bài tập nộp chưa chấm (`GET /courses/{id}/submissions/pending`) |

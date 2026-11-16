@@ -26,6 +26,8 @@ import {
 import {
   LearningPlayerPage,
   MyBookmarksPage,
+  QuizPlayerPage,
+  QuizResultPage,
 } from '@/features/learning';
 import {
   ChapterListPage,
@@ -71,6 +73,38 @@ export const appRoutes: RouteObject[] = [
           {
             path: '/courses/:courseId/learn/:chapterId',
             element: <LearningPlayerPage />,
+          },
+          {
+            path: '/courses/:courseId/quiz-attempts/:attemptId',
+            element: (
+              <RequireAuth>
+                <QuizPlayerPage />
+              </RequireAuth>
+            ),
+          },
+          {
+            path: '/courses/:courseId/quiz-attempts/:attemptId/result',
+            element: (
+              <RequireAuth>
+                <QuizResultPage />
+              </RequireAuth>
+            ),
+          },
+          {
+            path: '/quiz-attempts/:attemptId',
+            element: (
+              <RequireAuth>
+                <QuizPlayerPage />
+              </RequireAuth>
+            ),
+          },
+          {
+            path: '/quiz-attempts/:attemptId/result',
+            element: (
+              <RequireAuth>
+                <QuizResultPage />
+              </RequireAuth>
+            ),
           },
           {
             path: '/users/:userId',

@@ -14,6 +14,7 @@ import {
 import { Button } from '@/shared/ui';
 import type { LearnBlockDto } from '../api/learningApi';
 import { useCompleteBlockMutation, useAnswerPracticeQuestionMutation } from '../api/learningApi';
+import { QuizBlockCard } from './QuizBlockCard';
 
 interface BlockRendererProps {
   courseId: string;
@@ -380,6 +381,22 @@ export function BlockRenderer({ courseId, block, canSaveProgress }: BlockRendere
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* 9. QUIZ (SCR-LRN-02) */}
+        {block.blockType === 'QUIZ' && (
+          <div className="not-prose pt-1">
+            <QuizBlockCard
+              courseId={courseId}
+              blockId={block.id}
+              title={block.title || 'Bài kiểm tra đánh giá'}
+              description={block.body}
+              timeLimitMinutes={(block.quizSummary as any)?.timeLimitMinutes}
+              maxAttempts={(block.quizSummary as any)?.maxAttempts}
+              passScorePercent={(block.quizSummary as any)?.passScorePercent}
+              hasPassword={(block.quizSummary as any)?.hasPassword}
+            />
           </div>
         )}
       </div>
