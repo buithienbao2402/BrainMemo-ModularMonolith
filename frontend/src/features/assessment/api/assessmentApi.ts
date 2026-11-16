@@ -234,6 +234,34 @@ export function useUpsertComponent(courseId: string, blockId: string) {
   });
 }
 
+export function useUpsertComponentWeight(courseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      blockId,
+      payload,
+    }: {
+      blockId: string;
+      payload: UpsertComponentRequest;
+    }): Promise<ComponentDto> => {
+      return unwrapApi(
+        (apiClient as any).PUT('/courses/{courseId}/assessment/components/{blockId}', {
+          params: { path: { courseId, blockId } },
+          body: payload,
+        }),
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.assessment.assessableBlocks(courseId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.assessment.courseGradebook(courseId),
+      });
+    },
+  });
+}
+
 export function useDeleteComponent(courseId: string, blockId: string) {
   const queryClient = useQueryClient();
   return useMutation({

@@ -3853,6 +3853,25 @@ export const handlers = [
       ],
       totalGrade: 8.85,
       classification: 'GIOI',
+      cloAchievements: [
+        {
+          cloId: 'clo-1',
+          code: 'CLO1',
+          pct: 88.0,
+          level: 'XUẤT SẮC',
+          achieved: true,
+          contributions: [],
+        },
+        {
+          cloId: 'clo-2',
+          code: 'CLO2',
+          pct: 76.0,
+          level: 'GIỎI',
+          achieved: true,
+          contributions: [],
+        },
+      ],
+      ploAchievements: [],
       allCloAchieved: true,
     });
   }),

@@ -14,7 +14,7 @@ import { useToast } from '@/shared/ui/toastContext';
 import {
   useAssessableBlocks,
   useClos,
-  useUpsertComponent,
+  useUpsertComponentWeight,
   type ComponentDto,
 } from '../api/assessmentApi';
 
@@ -25,7 +25,7 @@ export function OutcomeMappingMatrixPage() {
   const { data: assessableBlocks = [], isLoading: isBlocksLoading } = useAssessableBlocks(courseId);
   const { data: clos = [], isLoading: isClosLoading } = useClos(courseId);
 
-  const upsertMutation = useUpsertComponent(courseId, '');
+  const upsertMutation = useUpsertComponentWeight(courseId);
 
   // Matrix state: blockId -> { courseWeight: number, cloWeights: Record<string, number> }
   const [matrixState, setMatrixState] = useState<
@@ -107,8 +107,11 @@ export function OutcomeMappingMatrixPage() {
 
         // Use custom mutation endpoint per blockId
         await upsertMutation.mutateAsync({
-          courseWeight: item.courseWeight,
-          cloWeights: cloWeightsArray,
+          blockId: block.blockId,
+          payload: {
+            courseWeight: item.courseWeight,
+            cloWeights: cloWeightsArray,
+          },
         });
       }
 
