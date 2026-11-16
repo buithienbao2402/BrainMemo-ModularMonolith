@@ -159,6 +159,26 @@ public class ManualGradingPipelineTests
         public Task<IReadOnlyList<GradeRecord>> GetGradeRecordsForCourseAsync(Guid courseId, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<GradeRecord>>(Records.Where(r => r.CourseId == courseId).ToList());
 
+        public Task<IReadOnlyList<AssessmentComponent>> GetComponentsByCourseIdAsync(Guid courseId, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<AssessmentComponent>>(Components.Where(c => c.CourseId == courseId).ToList());
+
+        public Task DeleteComponentAsync(AssessmentComponent component, CancellationToken ct = default)
+        {
+            Components.Remove(component);
+            return Task.CompletedTask;
+        }
+
+        public Task<bool> HasGradeRecordsForComponentAsync(Guid componentId, CancellationToken ct = default) =>
+            Task.FromResult(Records.Any(r => r.ComponentId == componentId));
+
+        public Task<AssessmentConfig> GetOrCreateConfigAsync(Guid courseId, CancellationToken ct = default) =>
+            Task.FromResult(new AssessmentConfig(Guid.NewGuid(), courseId));
+
+        public Task AddConfigAsync(AssessmentConfig config, CancellationToken ct = default) => Task.CompletedTask;
+
+        public Task<IReadOnlyList<GradeRecord>> GetGradeRecordsForComponentAsync(Guid courseId, Guid componentId, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<GradeRecord>>(Records.Where(r => r.CourseId == courseId && r.ComponentId == componentId).ToList());
+
         public Task SaveChangesAsync(CancellationToken ct = default) => Task.CompletedTask;
     }
 

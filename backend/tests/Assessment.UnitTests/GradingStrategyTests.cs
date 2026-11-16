@@ -317,6 +317,21 @@ public class GradingStrategyTests
         public Task<IReadOnlyList<GradeRecord>> GetGradeRecordsForCourseAsync(Guid courseId, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<GradeRecord>>(SavedRecord != null ? new[] { SavedRecord } : Array.Empty<GradeRecord>());
 
+        public Task<IReadOnlyList<AssessmentComponent>> GetComponentsByCourseIdAsync(Guid courseId, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<AssessmentComponent>>(ComponentToReturn != null ? new[] { ComponentToReturn } : Array.Empty<AssessmentComponent>());
+
+        public Task DeleteComponentAsync(AssessmentComponent component, CancellationToken ct = default) => Task.CompletedTask;
+
+        public Task<bool> HasGradeRecordsForComponentAsync(Guid componentId, CancellationToken ct = default) => Task.FromResult(false);
+
+        public Task<AssessmentConfig> GetOrCreateConfigAsync(Guid courseId, CancellationToken ct = default) =>
+            Task.FromResult(new AssessmentConfig(Guid.NewGuid(), courseId));
+
+        public Task AddConfigAsync(AssessmentConfig config, CancellationToken ct = default) => Task.CompletedTask;
+
+        public Task<IReadOnlyList<GradeRecord>> GetGradeRecordsForComponentAsync(Guid courseId, Guid componentId, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<GradeRecord>>(SavedRecord != null ? new[] { SavedRecord } : Array.Empty<GradeRecord>());
+
         public Task SaveChangesAsync(CancellationToken ct = default) => Task.CompletedTask;
     }
 }

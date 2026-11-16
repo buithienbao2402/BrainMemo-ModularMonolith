@@ -10,10 +10,16 @@ public interface IAssessmentRepository
     Task<AssessmentComponent?> GetComponentByIdAsync(Guid componentId, CancellationToken ct = default);
     Task<AssessmentComponent?> GetComponentByCourseAndBlockIdAsync(Guid courseId, Guid sourceBlockId, CancellationToken ct = default);
     Task<AssessmentComponent> GetOrCreateDefaultComponentAsync(Guid courseId, string sourceKind, Guid sourceBlockId, string title, decimal maxScore, decimal courseWeight = 1.0m, CancellationToken ct = default);
+    Task<IReadOnlyList<AssessmentComponent>> GetComponentsByCourseIdAsync(Guid courseId, CancellationToken ct = default);
+    Task DeleteComponentAsync(AssessmentComponent component, CancellationToken ct = default);
+    Task<bool> HasGradeRecordsForComponentAsync(Guid componentId, CancellationToken ct = default);
     Task<AssessmentConfig?> GetConfigByCourseIdAsync(Guid courseId, CancellationToken ct = default);
+    Task<AssessmentConfig> GetOrCreateConfigAsync(Guid courseId, CancellationToken ct = default);
+    Task AddConfigAsync(AssessmentConfig config, CancellationToken ct = default);
     Task UpsertGradeRecordAsync(GradeRecord record, CancellationToken ct = default);
     Task<IReadOnlyList<GradeRecord>> GetGradeRecordsForStudentAsync(Guid courseId, Guid userId, CancellationToken ct = default);
     Task<IReadOnlyList<GradeRecord>> GetGradeRecordsForCourseAsync(Guid courseId, CancellationToken ct = default);
+    Task<IReadOnlyList<GradeRecord>> GetGradeRecordsForComponentAsync(Guid courseId, Guid componentId, CancellationToken ct = default);
     Task<IReadOnlyList<GradeRecord>> GetPendingGradingRecordsAsync(Guid courseId, string? kind = null, int page = 1, int pageSize = 20, CancellationToken ct = default);
     Task<int> CountPendingGradingRecordsAsync(Guid courseId, string? kind = null, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);

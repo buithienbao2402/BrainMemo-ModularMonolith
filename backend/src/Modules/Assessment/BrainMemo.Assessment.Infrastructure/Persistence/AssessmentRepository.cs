@@ -69,10 +69,56 @@ public class AssessmentRepository : IAssessmentRepository
         return component;
     }
 
+    public async Task<IReadOnlyList<AssessmentComponent>> GetComponentsByCourseIdAsync(Guid courseId, CancellationToken ct = default)
+    {
+        return await _db.AssessmentComponents
+            .Where(c => c.CourseId == courseId)
+            .OrderBy(c => c.CreatedAt)
+            .ToListAsync(ct);
+    }
+
+    public Task DeleteComponentAsync(AssessmentComponent component, CancellationToken ct = default)
+    {
+        _db.AssessmentComponents.Remove(component);
+        return Task.CompletedTask;
+    }
+
+    public async Task<bool> HasGradeRecordsForComponentAsync(Guid componentId, CancellationToken ct = default)
+    {
+        return await _db.GradeRecords.AnyAsync(g => g.ComponentId == componentId, ct);
+    }
+
     public async Task<AssessmentConfig?> GetConfigByCourseIdAsync(Guid courseId, CancellationToken ct = default)
     {
         return await _db.AssessmentConfigs
             .FirstOrDefaultAsync(c => c.CourseId == courseId, ct);
+    }
+
+    public async Task<AssessmentConfig> GetOrCreateConfigAsync(Guid courseId, CancellationToken ct = default)
+    {
+        var existing = await GetConfigByCourseIdAsync(courseId, ct);
+        if (existing != null)
+        {
+            return existing;
+        }
+
+        var config = new AssessmentConfig(
+            id: Guid.NewGuid(),
+            courseId: courseId,
+            passThreshold: 50.0m,
+            scoreSelectionRule: "HIGHEST",
+            gradeScaleJson: null,
+            achievementLevelsJson: null,
+            bloomScaleJson: null,
+            ploEnabled: false);
+
+        await _db.AssessmentConfigs.AddAsync(config, ct);
+        return config;
+    }
+
+    public async Task AddConfigAsync(AssessmentConfig config, CancellationToken ct = default)
+    {
+        await _db.AssessmentConfigs.AddAsync(config, ct);
     }
 
     public async Task UpsertGradeRecordAsync(GradeRecord record, CancellationToken ct = default)
@@ -81,6 +127,20 @@ public class AssessmentRepository : IAssessmentRepository
         if (existing == null && record.SourceAttemptId.HasValue)
         {
             existing = await _db.GradeRecords.FirstOrDefaultAsync(g => g.SourceAttemptId == record.SourceAttemptId, ct);
+        }
+
+        if (existing == null && record.SourceSubmissionId.HasValue)
+        {
+            existing = await _db.GradeRecords.FirstOrDefaultAsync(g => g.SourceSubmissionId == record.SourceSubmissionId, ct);
+        }
+
+        if (existing == null && record.RecordType == Domain.Enums.GradeRecordType.ComponentFinal)
+        {
+            existing = await _db.GradeRecords.FirstOrDefaultAsync(g =>
+                g.CourseId == record.CourseId &&
+                g.UserId == record.UserId &&
+                g.ComponentId == record.ComponentId &&
+                g.RecordType == Domain.Enums.GradeRecordType.ComponentFinal, ct);
         }
 
         if (existing == null)
@@ -104,6 +164,13 @@ public class AssessmentRepository : IAssessmentRepository
     {
         return await _db.GradeRecords
             .Where(g => g.CourseId == courseId)
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<GradeRecord>> GetGradeRecordsForComponentAsync(Guid courseId, Guid componentId, CancellationToken ct = default)
+    {
+        return await _db.GradeRecords
+            .Where(g => g.CourseId == courseId && g.ComponentId == componentId)
             .ToListAsync(ct);
     }
 
