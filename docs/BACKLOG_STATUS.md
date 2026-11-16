@@ -41,7 +41,7 @@
 | T-S4-INT-01 | INT-01 | DONE | Antigravity (INT) | dev/kim-thuan | **Tích hợp S4 + e2e:** Ghi danh Public → Đọc → Tiến độ + Private xin vào → Duyệt → Đọc; Chương Protected cần passcode (100% tests pass) |
 | **S5 – Discovery** | | | | | |
 | T-S5-BE-01 | BE-01..03 | DONE | Antigravity (BE) | dev/kim-thuan | **Discovery Module Trọn gói (Batched):** Read model `dsc_*`, Event handlers, API Home/Search lọc & sắp xếp, Rebuild CLI + API Xếp hạng khóa học theo học viên/đề cử/đánh giá (`GET /courses/{id}/ranking`) (8/8 tests pass, 0 warning 0 error) |
-| T-S5-FE-01 | FE-01 | TODO | – | – | **FE Discovery (Batched):** SCR-DSC-01, SCR-DSC-02 |
+| T-S5-FE-01 | FE-01 | DONE | Antigravity (FE) | dev/kim-thuan | **FE Discovery (Batched):** SCR-DSC-01, SCR-DSC-02 (7/7 tests pass, 0 type error) |
 | T-S5-INT-01 | INT-01 | TODO | – | – | Tích hợp S5 + e2e |
 | **S6 – Bình luận & Đề cử** | | | | | |
 | T-S6-BE-01 | BE-01 + BE-02 | TODO | – | – | **Comments & In-App Notifications (Batched):** Bình luận đa cấp, ghim + Luồng thông báo tự động bảng 3.4.6.1 + Thống kê bình luận (`comments/summary`) |

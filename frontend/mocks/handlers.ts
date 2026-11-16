@@ -655,6 +655,13 @@ export let mockBookmarks: Array<{
     updatedAt: new Date().toISOString(),
   },
 ];
+export let mockSearchHistory: Array<{
+  queryText: string;
+  createdAt: string;
+}> = [
+  { queryText: 'React', createdAt: new Date(Date.now() - 3600000).toISOString() },
+  { queryText: 'Dotnet', createdAt: new Date(Date.now() - 7200000).toISOString() },
+];
 export let passcodeAttempts: Record<string, number> = {};
 
 export function getStoredEnrollments(): Record<string, MockEnrollmentItem[]> {
@@ -761,6 +768,10 @@ export function resetMockCourses(): void {
       chapterTitle: 'Chương 1: Giới thiệu kiến trúc Modular Monolith',
       updatedAt: new Date().toISOString(),
     },
+  ];
+  mockSearchHistory = [
+    { queryText: 'React', createdAt: new Date(Date.now() - 3600000).toISOString() },
+    { queryText: 'Dotnet', createdAt: new Date(Date.now() - 7200000).toISOString() },
   ];
   passcodeAttempts = {};
   if (typeof window !== 'undefined' && window.localStorage) {
@@ -2627,5 +2638,221 @@ export const handlers = [
 
   http.get('*/api/v1/me/bookmarks', () => {
     return HttpResponse.json(mockBookmarks, { status: 200 });
+  }),
+
+  // ==========================================
+  // DISCOVERY HANDLERS (SCR-DSC-01, SCR-DSC-02)
+  // ==========================================
+  http.get('*/discovery/home', () => {
+    mockCourses = getStoredCourses();
+    const eligible = mockCourses.filter((c) => !c.isDeleted && !c.isHidden && c.accessMode !== 'ONLY_ME');
+    const recentlyUpdated = [...eligible].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, 10);
+    const recommended = [...eligible].sort(() => 0.5 - Math.random()).slice(0, 8);
+    const inProgress = eligible.slice(0, 3).map((c) => ({
+      ...c,
+      progressPercent: 45,
+    }));
+
+    return HttpResponse.json({
+      recentlyUpdated,
+      recommended,
+      inProgress,
+    });
+  }),
+  http.get('*/api/v1/discovery/home', () => {
+    mockCourses = getStoredCourses();
+    const eligible = mockCourses.filter((c) => !c.isDeleted && !c.isHidden && c.accessMode !== 'ONLY_ME');
+    const recentlyUpdated = [...eligible].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, 10);
+    const recommended = [...eligible].sort(() => 0.5 - Math.random()).slice(0, 8);
+    const inProgress = eligible.slice(0, 3).map((c) => ({
+      ...c,
+      progressPercent: 45,
+    }));
+
+    return HttpResponse.json({
+      recentlyUpdated,
+      recommended,
+      inProgress,
+    });
+  }),
+
+  http.get('*/discovery/courses', ({ request }) => {
+    const url = new URL(request.url);
+    const q = (url.searchParams.get('q') || '').trim().toLowerCase();
+    const tag = (url.searchParams.get('tag') || '').trim().toLowerCase();
+    const accessMode = url.searchParams.get('accessMode');
+    const status = url.searchParams.get('status');
+    const sort = url.searchParams.get('sort') || 'RECENTLY_UPDATED';
+    const page = parseInt(url.searchParams.get('page') || '1', 10);
+    const pageSize = parseInt(url.searchParams.get('pageSize') || '12', 10);
+
+    if (q && !mockSearchHistory.some((h) => h.queryText.toLowerCase() === q)) {
+      mockSearchHistory.unshift({ queryText: q, createdAt: new Date().toISOString() });
+    }
+
+    mockCourses = getStoredCourses();
+    let items = mockCourses.filter((c) => !c.isDeleted && !c.isHidden && c.accessMode !== 'ONLY_ME');
+
+    if (q) {
+      items = items.filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) ||
+          (c.description && c.description.toLowerCase().includes(q)) ||
+          (c.owner?.displayName && c.owner.displayName.toLowerCase().includes(q))
+      );
+    }
+
+    if (tag) {
+      items = items.filter((c) => c.tags?.some((t) => t.toLowerCase() === tag));
+    }
+
+    if (accessMode) {
+      items = items.filter((c) => c.accessMode === accessMode);
+    }
+
+    if (status) {
+      items = items.filter((c) => c.status === status);
+    }
+
+    if (sort === 'MOST_LEARNERS') {
+      items.sort((a, b) => (b.learnerCount ?? 0) - (a.learnerCount ?? 0));
+    } else if (sort === 'MOST_NOMINATED') {
+      items.sort((a, b) => ((b as any).nominationCount ?? 0) - ((a as any).nominationCount ?? 0));
+    } else if (sort === 'MOST_REVIEWED') {
+      items.sort((a, b) => (b.ratingCount ?? 0) - (a.ratingCount ?? 0));
+    } else {
+      items.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    }
+
+    const totalItems = items.length;
+    const totalPages = Math.ceil(totalItems / pageSize) || 1;
+    const paginatedItems = items.slice((page - 1) * pageSize, page * pageSize);
+
+    return HttpResponse.json({
+      items: paginatedItems,
+      meta: {
+        page,
+        pageSize,
+        totalItems,
+        totalPages,
+      },
+    });
+  }),
+  http.get('*/api/v1/discovery/courses', ({ request }) => {
+    const url = new URL(request.url);
+    const q = (url.searchParams.get('q') || '').trim().toLowerCase();
+    const tag = (url.searchParams.get('tag') || '').trim().toLowerCase();
+    const accessMode = url.searchParams.get('accessMode');
+    const status = url.searchParams.get('status');
+    const sort = url.searchParams.get('sort') || 'RECENTLY_UPDATED';
+    const page = parseInt(url.searchParams.get('page') || '1', 10);
+    const pageSize = parseInt(url.searchParams.get('pageSize') || '12', 10);
+
+    if (q && !mockSearchHistory.some((h) => h.queryText.toLowerCase() === q)) {
+      mockSearchHistory.unshift({ queryText: q, createdAt: new Date().toISOString() });
+    }
+
+    mockCourses = getStoredCourses();
+    let items = mockCourses.filter((c) => !c.isDeleted && !c.isHidden && c.accessMode !== 'ONLY_ME');
+
+    if (q) {
+      items = items.filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) ||
+          (c.description && c.description.toLowerCase().includes(q)) ||
+          (c.owner?.displayName && c.owner.displayName.toLowerCase().includes(q))
+      );
+    }
+
+    if (tag) {
+      items = items.filter((c) => c.tags?.some((t) => t.toLowerCase() === tag));
+    }
+
+    if (accessMode) {
+      items = items.filter((c) => c.accessMode === accessMode);
+    }
+
+    if (status) {
+      items = items.filter((c) => c.status === status);
+    }
+
+    if (sort === 'MOST_LEARNERS') {
+      items.sort((a, b) => (b.learnerCount ?? 0) - (a.learnerCount ?? 0));
+    } else if (sort === 'MOST_NOMINATED') {
+      items.sort((a, b) => ((b as any).nominationCount ?? 0) - ((a as any).nominationCount ?? 0));
+    } else if (sort === 'MOST_REVIEWED') {
+      items.sort((a, b) => (b.ratingCount ?? 0) - (a.ratingCount ?? 0));
+    } else {
+      items.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    }
+
+    const totalItems = items.length;
+    const totalPages = Math.ceil(totalItems / pageSize) || 1;
+    const paginatedItems = items.slice((page - 1) * pageSize, page * pageSize);
+
+    return HttpResponse.json({
+      items: paginatedItems,
+      meta: {
+        page,
+        pageSize,
+        totalItems,
+        totalPages,
+      },
+    });
+  }),
+
+  http.get('*/discovery/search-history', () => {
+    return HttpResponse.json(mockSearchHistory);
+  }),
+  http.get('*/api/v1/discovery/search-history', () => {
+    return HttpResponse.json(mockSearchHistory);
+  }),
+
+  http.get('*/discovery/top10', () => {
+    mockCourses = getStoredCourses();
+    const eligible = mockCourses.filter((c) => !c.isDeleted && !c.isHidden && c.accessMode !== 'ONLY_ME');
+    const top10 = eligible.slice(0, 10).map((course, idx) => ({
+      rank: idx + 1,
+      count: (course.learnerCount ?? 100) + (10 - idx) * 15,
+      course,
+    }));
+    return HttpResponse.json(top10);
+  }),
+  http.get('*/api/v1/discovery/top10', () => {
+    mockCourses = getStoredCourses();
+    const eligible = mockCourses.filter((c) => !c.isDeleted && !c.isHidden && c.accessMode !== 'ONLY_ME');
+    const top10 = eligible.slice(0, 10).map((course, idx) => ({
+      rank: idx + 1,
+      count: (course.learnerCount ?? 100) + (10 - idx) * 15,
+      course,
+    }));
+    return HttpResponse.json(top10);
+  }),
+
+  http.get('*/courses/:courseId/ranking', ({ params }) => {
+    const courseId = String(params.courseId);
+    return HttpResponse.json({
+      courseId,
+      learnerRank: 1,
+      nominationRank: 2,
+      reviewRank: 1,
+      learnerCount: 250,
+      nominationCount: 42,
+      reviewCount: 30,
+      totalEligibleCourses: 15,
+    });
+  }),
+  http.get('*/api/v1/courses/:courseId/ranking', ({ params }) => {
+    const courseId = String(params.courseId);
+    return HttpResponse.json({
+      courseId,
+      learnerRank: 1,
+      nominationRank: 2,
+      reviewRank: 1,
+      learnerCount: 250,
+      nominationCount: 42,
+      reviewCount: 30,
+      totalEligibleCourses: 15,
+    });
   }),
 ];

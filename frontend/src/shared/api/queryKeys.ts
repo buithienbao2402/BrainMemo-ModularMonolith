@@ -58,6 +58,14 @@ export const queryKeys = {
     resourceDownloadUrl: (courseId: string, resourceId: string) =>
       ['content', 'resourceDownloadUrl', courseId, resourceId] as const,
   },
+  discovery: {
+    all: ['discovery'] as const,
+    home: () => ['discovery', 'home'] as const,
+    courses: (params?: Record<string, unknown>) => ['discovery', 'courses', params ?? {}] as const,
+    top10: (metric: string, window: string) => ['discovery', 'top10', metric, window] as const,
+    searchHistory: () => ['discovery', 'searchHistory'] as const,
+    ranking: (courseId: string) => ['discovery', 'ranking', courseId] as const,
+  },
   admin: {
     all: ['admin'] as const,
     overview: () => ['admin', 'overview'] as const,

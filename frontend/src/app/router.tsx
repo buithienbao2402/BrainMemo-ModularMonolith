@@ -33,9 +33,13 @@ import {
   ChapterVersionHistoryPage,
   ResourceManagementPage,
 } from '@/features/content';
+import {
+  DiscoveryHomePage,
+  CourseDiscoveryPage,
+} from '@/features/discovery';
 import { RequireAdmin, RequireAuth, RequireVerifiedEmail } from './guards';
 import { AdminLayout, AppLayout, PublicLayout, SettingsLayout } from './layouts';
-import { HomeShellPage, LockedAccountPage, NotFoundPage, RouteStubPage } from './pages';
+import { LockedAccountPage, NotFoundPage, RouteStubPage } from './pages';
 import { RouterRootShell } from './RouterRootShell';
 
 export const appRoutes: RouteObject[] = [
@@ -49,16 +53,10 @@ export const appRoutes: RouteObject[] = [
       {
         element: <PublicLayout />,
         children: [
-          { path: '/', element: <HomeShellPage /> },
+          { path: '/', element: <DiscoveryHomePage /> },
           {
             path: '/courses',
-            element: (
-              <RouteStubPage
-                screenCode="SCR-DSC-02"
-                title="Khám phá khóa học"
-                description="Danh mục khóa học công khai và bộ lọc tìm kiếm đang được tích hợp."
-              />
-            ),
+            element: <CourseDiscoveryPage />,
           },
           {
             path: '/courses/:courseId',
