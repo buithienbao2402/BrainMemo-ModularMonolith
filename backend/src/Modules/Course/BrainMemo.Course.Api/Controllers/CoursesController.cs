@@ -2,9 +2,12 @@ using System.Security.Claims;
 using BrainMemo.Course.Api.DTOs;
 using BrainMemo.Course.Application.Commands.CreateCourse;
 using BrainMemo.Course.Application.Commands.DeleteCourse;
+using BrainMemo.Course.Application.Commands.NominateCourse;
 using BrainMemo.Course.Application.Commands.UpdateCourse;
+using BrainMemo.Course.Application.Commands.WithdrawNomination;
 using BrainMemo.Course.Application.Queries.GetCourse;
 using BrainMemo.Course.Application.Queries.GetCourseStats;
+using BrainMemo.Course.Application.Queries.GetNominationSummary;
 using BrainMemo.Course.Contracts.Dtos;
 using BrainMemo.Course.Contracts.Enums;
 using BrainMemo.SharedKernel.Results;
@@ -146,6 +149,85 @@ public sealed class CoursesController(ISender sender) : ControllerBase
             if (result.Error.Code == ErrorCodes.Forbidden)
             {
                 return StatusCode(StatusCodes.Status403Forbidden, result.Error);
+            }
+
+            return new ObjectResult(result.Error);
+        }
+
+        return Ok(result.Value);
+    }
+
+    [Authorize]
+    [HttpPut("{courseId:guid}/nomination")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> NominateCourse([FromRoute] Guid courseId, CancellationToken ct)
+    {
+        if (!TryGetCurrentUserId(out Guid userId))
+        {
+            return Unauthorized(Error.Unauthenticated("Phiên đăng nhập không hợp lệ."));
+        }
+
+        Result result = await sender.Send(new NominateCourseCommand(courseId, userId), ct).ConfigureAwait(false);
+        if (result.IsFailure)
+        {
+            if (result.Error.Code == "COURSE_NOT_FOUND")
+            {
+                return NotFound(result.Error);
+            }
+
+            if (result.Error.Code == "NOT_ELIGIBLE_TO_NOMINATE")
+            {
+                return BadRequest(result.Error);
+            }
+
+            return new ObjectResult(result.Error);
+        }
+
+        return NoContent();
+    }
+
+    [Authorize]
+    [HttpDelete("{courseId:guid}/nomination")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> WithdrawNomination([FromRoute] Guid courseId, CancellationToken ct)
+    {
+        if (!TryGetCurrentUserId(out Guid userId))
+        {
+            return Unauthorized(Error.Unauthenticated("Phiên đăng nhập không hợp lệ."));
+        }
+
+        Result result = await sender.Send(new WithdrawNominationCommand(courseId, userId), ct).ConfigureAwait(false);
+        if (result.IsFailure)
+        {
+            if (result.Error.Code == "COURSE_NOT_FOUND")
+            {
+                return NotFound(result.Error);
+            }
+
+            return new ObjectResult(result.Error);
+        }
+
+        return NoContent();
+    }
+
+    [AllowAnonymous]
+    [HttpGet("{courseId:guid}/nominations/summary")]
+    [ProducesResponseType<NominationSummaryDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetNominationSummary([FromRoute] Guid courseId, CancellationToken ct)
+    {
+        Guid? userId = TryGetCurrentUserId(out Guid uid) ? uid : null;
+        Result<NominationSummaryDto> result = await sender.Send(new GetNominationSummaryQuery(courseId, userId), ct).ConfigureAwait(false);
+        if (result.IsFailure)
+        {
+            if (result.Error.Code == "COURSE_NOT_FOUND")
+            {
+                return NotFound(result.Error);
             }
 
             return new ObjectResult(result.Error);

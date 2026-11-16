@@ -45,7 +45,7 @@
 | T-S5-INT-01 | INT-01 | DONE | Antigravity (INT) | dev/kim-thuan | **Tích hợp S5 + e2e:** tạo khóa Public → thấy ở trang chủ/tìm kiếm → đổi Only Me → biến mất (100% tests pass) |
 | **S6 – Bình luận & Đề cử** | | | | | |
 | T-S6-BE-01 | BE-01 + BE-02 | DONE | Antigravity (BE) | dev/kim-thuan | **Comments & In-App Notifications (Batched):** Bình luận đa cấp, ghim + Luồng thông báo tự động bảng 3.4.6.1 + Thống kê bình luận (`comments/summary`) (30/30 tests pass, 0 warning 0 error) |
-| T-S6-BE-02 | BE-03 | TODO | – | – | **Nominations & Learning Stats (Batched):** Đề cử/thu hồi + Thống kê học tập khóa & số đề cử cộng đồng (`nominations/summary`) |
+| T-S6-BE-02 | BE-03 | DONE | Antigravity (BE) | dev/kim-thuan | **Nominations & Learning Stats (Batched):** Đề cử/thu hồi + Thống kê học tập khóa & số đề cử cộng đồng (`nominations/summary`) (91/91 tests pass, 0 warning 0 error) |
 | T-S6-FE-01 | FE-01 + FE-02 | TODO | – | – | **FE Social & Notifications (Batched):** SCR-LRN-06 + SCR-NTF-01 + SCR-CRS-04 & nút đề cử |
 | T-S6-INT-01 | INT-01 | TODO | – | – | Tích hợp S6 + e2e |
 | **S7 – Ngân hàng câu hỏi & Quiz** | | | | | |

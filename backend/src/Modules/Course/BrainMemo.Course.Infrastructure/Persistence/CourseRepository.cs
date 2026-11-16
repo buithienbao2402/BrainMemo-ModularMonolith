@@ -190,6 +190,18 @@ public sealed class CourseRepository(CourseDbContext dbContext) : ICourseReposit
             .ConfigureAwait(false);
     }
 
+    public async Task<Nomination?> GetActiveNominationAsync(Guid courseId, Guid userId, CancellationToken ct = default)
+    {
+        return await dbContext.Nominations
+            .FirstOrDefaultAsync(n => n.CourseId == courseId && n.UserId == userId && n.WithdrawnAt == null, ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task AddNominationAsync(Nomination nomination, CancellationToken ct = default)
+    {
+        await dbContext.Nominations.AddAsync(nomination, ct).ConfigureAwait(false);
+    }
+
     public async Task<CourseStatsDto> GetCourseStatsAsync(Guid courseId, CancellationToken ct = default)
     {
         int activeLearners = await dbContext.Enrollments

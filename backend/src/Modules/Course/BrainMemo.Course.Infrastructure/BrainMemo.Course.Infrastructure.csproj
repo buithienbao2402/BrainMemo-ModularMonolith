@@ -9,6 +9,7 @@
     <ProjectReference Include="..\..\Identity\BrainMemo.Identity.Contracts\BrainMemo.Identity.Contracts.csproj" />
     <ProjectReference Include="..\..\Profile\BrainMemo.Profile.Contracts\BrainMemo.Profile.Contracts.csproj" />
     <ProjectReference Include="..\..\Content\BrainMemo.Content.Contracts\BrainMemo.Content.Contracts.csproj" />
+    <ProjectReference Include="..\..\Learning\BrainMemo.Learning.Contracts\BrainMemo.Learning.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

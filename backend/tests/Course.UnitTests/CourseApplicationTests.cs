@@ -631,11 +631,23 @@ public sealed class CourseApplicationTests
         public Task<bool> HasNominatedAsync(Guid courseId, Guid userId, CancellationToken ct = default) =>
             Task.FromResult(Nominations.Any(n => n.CourseId == courseId && n.UserId == userId && n.WithdrawnAt == null));
 
+        public Task<Nomination?> GetActiveNominationAsync(Guid courseId, Guid userId, CancellationToken ct = default) =>
+            Task.FromResult(Nominations.FirstOrDefault(n => n.CourseId == courseId && n.UserId == userId && n.WithdrawnAt == null));
+
+        public Task AddNominationAsync(Nomination nomination, CancellationToken ct = default)
+        {
+            Nominations.Add(nomination);
+            return Task.CompletedTask;
+        }
+
         public Task<CourseStatsDto> GetCourseStatsAsync(Guid courseId, CancellationToken ct = default) =>
             Task.FromResult(new CourseStatsDto(0, 0, 0, 0, 0, 0));
 
-        public Task<int> GetLearnerCountAsync(Guid courseId, CancellationToken ct = default) => Task.FromResult(0);
-        public Task<int> GetNominationCountAsync(Guid courseId, CancellationToken ct = default) => Task.FromResult(0);
+        public Task<int> GetLearnerCountAsync(Guid courseId, CancellationToken ct = default) =>
+            Task.FromResult(Enrollments.Count(e => e.CourseId == courseId && e.Status == BrainMemo.Course.Domain.Enums.EnrollmentStatus.Active));
+
+        public Task<int> GetNominationCountAsync(Guid courseId, CancellationToken ct = default) =>
+            Task.FromResult(Nominations.Count(n => n.CourseId == courseId && n.WithdrawnAt == null));
 
         public Task<Page<CourseEntity>> ListUserCoursesAsync(Guid userId, UserCourseRelation relation, CourseAudience audience, Guid? afterId, int limit, CancellationToken ct = default) =>
             Task.FromResult(new Page<CourseEntity>(Courses, null, false));
