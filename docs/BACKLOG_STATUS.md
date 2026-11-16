@@ -40,7 +40,7 @@
 | T-S4-FE-01 | FE-01 + FE-02 | DONE | Antigravity (FE) | dev/kim-thuan | **FE Enrollment & Learning Player (Batched):** SCR-CRS-05, 06 (Danh sách học viên, duyệt yêu cầu, mời email) + SCR-LRN-01, 07 (Learning Player, 3D Flashcard flip, Practice Question, Passcode gate, Bookmark) |
 | T-S4-INT-01 | INT-01 | DONE | Antigravity (INT) | dev/kim-thuan | **Tích hợp S4 + e2e:** Ghi danh Public → Đọc → Tiến độ + Private xin vào → Duyệt → Đọc; Chương Protected cần passcode (100% tests pass) |
 | **S5 – Discovery** | | | | | |
-| T-S5-BE-01 | BE-01..03 | TODO | – | – | **Discovery Module Trọn gói (Batched):** Read model `dsc_*`, Event handlers, API Home/Search lọc & sắp xếp, Rebuild CLI + API Xếp hạng khóa học theo học viên/đề cử/đánh giá (`GET /courses/{id}/ranking`) |
+| T-S5-BE-01 | BE-01..03 | DONE | Antigravity (BE) | dev/kim-thuan | **Discovery Module Trọn gói (Batched):** Read model `dsc_*`, Event handlers, API Home/Search lọc & sắp xếp, Rebuild CLI + API Xếp hạng khóa học theo học viên/đề cử/đánh giá (`GET /courses/{id}/ranking`) (8/8 tests pass, 0 warning 0 error) |
 | T-S5-FE-01 | FE-01 | TODO | – | – | **FE Discovery (Batched):** SCR-DSC-01, SCR-DSC-02 |
 | T-S5-INT-01 | INT-01 | TODO | – | – | Tích hợp S5 + e2e |
 | **S6 – Bình luận & Đề cử** | | | | | |
