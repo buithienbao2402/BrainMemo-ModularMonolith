@@ -274,7 +274,7 @@ export function LearningPlayerPage() {
                 <CommentSection
                   courseId={courseId}
                   chapterId={activeChapterId}
-                  isOwner={course?.owner?.id === user?.id}
+                  isOwner={Boolean(course?.viewer?.isOwner || (user && course?.owner?.id === user.id))}
                 />
               </div>
             </div>

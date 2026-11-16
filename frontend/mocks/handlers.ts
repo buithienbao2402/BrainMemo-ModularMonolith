@@ -752,6 +752,153 @@ export function saveStoredResources(resources: Record<string, MockResourceItem[]
   }
 }
 
+export interface MockNotificationItem {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  readAt: string | null;
+  createdAt: string;
+  payload?: any;
+}
+
+export const initialMockNotifications: MockNotificationItem[] = [
+  {
+    id: 'ntf-1',
+    type: 'COMMENT',
+    title: 'Bình luận mới về khóa học',
+    body: 'Học viên Nguyễn Văn A đã bình luận về khóa học "Lập trình Web hiện đại".',
+    readAt: null,
+    createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
+    payload: { courseId: 'c1' },
+  },
+  {
+    id: 'ntf-2',
+    type: 'ENROLLMENT',
+    title: 'Học viên mới tham gia',
+    body: 'Trần Thị B đã ghi danh vào khóa học của bạn.',
+    readAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
+    createdAt: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
+    payload: { courseId: 'c1' },
+  },
+  {
+    id: 'ntf-3',
+    type: 'NEW_CHAPTER',
+    title: 'Chương mới đã xuất bản',
+    body: 'Khóa học bạn đang theo dõi vừa ra mắt chương mới.',
+    readAt: null,
+    createdAt: new Date(Date.now() - 1000 * 60 * 300).toISOString(),
+    payload: { courseId: 'c1', chapterId: 'ch1' },
+  },
+];
+
+export interface MockCommentItem {
+  id: string;
+  courseId: string;
+  chapterId: string | null;
+  parentCommentId?: string | null;
+  author: { id: string; displayName: string; avatarUrl?: string };
+  content: string;
+  isPinned: boolean;
+  isDeleted?: boolean;
+  editedAt: string | null;
+  createdAt: string;
+  replies?: MockCommentItem[];
+}
+
+export const initialMockComments: Record<string, MockCommentItem[]> = {
+  'my-course-1': [
+    {
+      id: 'cmt-1',
+      courseId: 'my-course-1',
+      chapterId: null,
+      author: { id: 'user-1', displayName: 'Lê Minh Tuấn' },
+      content: 'Khóa học này giải thích rất dễ hiểu và chi tiết!',
+      isPinned: true,
+      editedAt: null,
+      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
+      replies: [
+        {
+          id: 'cmt-reply-1',
+          courseId: 'my-course-1',
+          chapterId: null,
+          author: { id: 'owner-1', displayName: 'Giảng viên Quang Trần' },
+          parentCommentId: 'cmt-1',
+          content: 'Cảm ơn Tuấn nhé! Chúc bạn học tốt!',
+          isPinned: false,
+          editedAt: null,
+          createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
+        },
+      ],
+    },
+  ],
+};
+
+export const initialMockNominations: Record<string, { count: number; hasNominated: boolean }> = {
+  'course-intro-1': { count: 15, hasNominated: false },
+  'my-course-1': { count: 10, hasNominated: false },
+};
+
+export function getStoredNotifications(): MockNotificationItem[] {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const stored = window.localStorage.getItem('bm_mock_notifications');
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch {}
+  }
+  return JSON.parse(JSON.stringify(initialMockNotifications));
+}
+
+export function saveStoredNotifications(items: MockNotificationItem[]): void {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      window.localStorage.setItem('bm_mock_notifications', JSON.stringify(items));
+    } catch {}
+  }
+}
+
+export function getStoredComments(): Record<string, MockCommentItem[]> {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const stored = window.localStorage.getItem('bm_mock_comments');
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch {}
+  }
+  return JSON.parse(JSON.stringify(initialMockComments));
+}
+
+export function saveStoredComments(items: Record<string, MockCommentItem[]>): void {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      window.localStorage.setItem('bm_mock_comments', JSON.stringify(items));
+    } catch {}
+  }
+}
+
+export function getStoredNominations(): Record<string, { count: number; hasNominated: boolean }> {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const stored = window.localStorage.getItem('bm_mock_nominations');
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch {}
+  }
+  return JSON.parse(JSON.stringify(initialMockNominations));
+}
+
+export function saveStoredNominations(items: Record<string, { count: number; hasNominated: boolean }>): void {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      window.localStorage.setItem('bm_mock_nominations', JSON.stringify(items));
+    } catch {}
+  }
+}
+
 export function resetMockCourses(): void {
   mockCourses = [...initialMockCourses];
   mockChapters = JSON.parse(JSON.stringify(initialMockChapters));
@@ -782,6 +929,9 @@ export function resetMockCourses(): void {
       window.localStorage.removeItem('bm_mock_versions');
       window.localStorage.removeItem('bm_mock_resources');
       window.localStorage.removeItem('bm_mock_enrollments');
+      window.localStorage.removeItem('bm_mock_notifications');
+      window.localStorage.removeItem('bm_mock_comments');
+      window.localStorage.removeItem('bm_mock_nominations');
     } catch {
       // ignore
     }
@@ -1172,7 +1322,8 @@ export const handlers = [
         code: 'UNAUTHORIZED',
       });
     }
-    const count = persona === 'admin' ? 5 : persona === 'user' ? 3 : 1;
+    const notifications = getStoredNotifications();
+    const count = notifications.filter((n) => !n.readAt).length;
     return HttpResponse.json({ count }, { status: 200 });
   }),
 
@@ -1842,19 +1993,40 @@ export const handlers = [
     );
   }),
 
-  http.put('*/api/v1/courses/:courseId/nomination', () => {
+  http.put('*/api/v1/courses/:courseId/nomination', ({ params }) => {
+    const courseId = String(params.courseId);
+    const nominations = getStoredNominations();
+    const current = nominations[courseId] || { count: 10, hasNominated: false };
+    if (!current.hasNominated) {
+      current.count += 1;
+      current.hasNominated = true;
+    }
+    nominations[courseId] = current;
+    saveStoredNominations(nominations);
     return new HttpResponse(null, { status: 204 });
   }),
 
-  http.delete('*/api/v1/courses/:courseId/nomination', () => {
+  http.delete('*/api/v1/courses/:courseId/nomination', ({ params }) => {
+    const courseId = String(params.courseId);
+    const nominations = getStoredNominations();
+    const current = nominations[courseId] || { count: 10, hasNominated: false };
+    if (current.hasNominated) {
+      current.count = Math.max(0, current.count - 1);
+      current.hasNominated = false;
+    }
+    nominations[courseId] = current;
+    saveStoredNominations(nominations);
     return new HttpResponse(null, { status: 204 });
   }),
 
-  http.get('*/api/v1/courses/:courseId/nominations/summary', () => {
+  http.get('*/api/v1/courses/:courseId/nominations/summary', ({ params }) => {
+    const courseId = String(params.courseId);
+    const nominations = getStoredNominations();
+    const current = nominations[courseId] || { count: 15, hasNominated: false };
     return HttpResponse.json(
       {
-        nominationCount: 15,
-        hasNominated: false,
+        nominationCount: current.count,
+        hasNominated: current.hasNominated,
       },
       { status: 200 }
     );
@@ -1869,36 +2041,7 @@ export const handlers = [
     const page = parseInt(url.searchParams.get('page') || '1', 10);
     const pageSize = parseInt(url.searchParams.get('pageSize') || '10', 10);
 
-    let list = [
-      {
-        id: 'ntf-1',
-        type: 'COMMENT',
-        title: 'Bình luận mới về khóa học',
-        body: 'Học viên Nguyễn Văn A đã bình luận về khóa học "Lập trình Web hiện đại".',
-        readAt: null,
-        createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-        payload: { courseId: 'c1' },
-      },
-      {
-        id: 'ntf-2',
-        type: 'ENROLLMENT',
-        title: 'Học viên mới tham gia',
-        body: 'Trần Thị B đã ghi danh vào khóa học của bạn.',
-        readAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-        createdAt: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
-        payload: { courseId: 'c1' },
-      },
-      {
-        id: 'ntf-3',
-        type: 'NEW_CHAPTER',
-        title: 'Chương mới đã xuất bản',
-        body: 'Khóa học bạn đang theo dõi vừa ra mắt chương mới.',
-        readAt: null,
-        createdAt: new Date(Date.now() - 1000 * 60 * 300).toISOString(),
-        payload: { courseId: 'c1', chapterId: 'ch1' },
-      },
-    ];
-
+    let list = getStoredNotifications();
     if (unreadOnly) {
       list = list.filter((n) => !n.readAt);
     }
@@ -1920,51 +2063,44 @@ export const handlers = [
     );
   }),
 
-  http.post('*/api/v1/notifications/:id/read', () => {
+  http.post('*/api/v1/notifications/:id/read', ({ params }) => {
+    const list = getStoredNotifications();
+    const target = list.find((n) => n.id === params.id);
+    if (target) {
+      target.readAt = new Date().toISOString();
+      saveStoredNotifications(list);
+    }
     return new HttpResponse(null, { status: 204 });
   }),
 
   http.post('*/api/v1/notifications/read-all', () => {
+    const list = getStoredNotifications();
+    const now = new Date().toISOString();
+    list.forEach((n) => {
+      if (!n.readAt) n.readAt = now;
+    });
+    saveStoredNotifications(list);
     return new HttpResponse(null, { status: 204 });
   }),
 
-  http.delete('*/api/v1/notifications/:id', () => {
+  http.delete('*/api/v1/notifications/:id', ({ params }) => {
+    let list = getStoredNotifications();
+    list = list.filter((n) => n.id !== params.id);
+    saveStoredNotifications(list);
     return new HttpResponse(null, { status: 204 });
   }),
 
   http.get('*/api/v1/courses/:courseId/comments', ({ params }) => {
     const courseId = String(params.courseId);
+    const all = getStoredComments();
+    const items = all[courseId] || all['my-course-1'] || [];
     return HttpResponse.json(
       {
-        items: [
-          {
-            id: 'cmt-1',
-            courseId,
-            chapterId: null,
-            author: { id: 'user-1', displayName: 'Lê Minh Tuấn' },
-            content: 'Khóa học này giải thích rất dễ hiểu và chi tiết!',
-            isPinned: true,
-            editedAt: null,
-            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-            replies: [
-              {
-                id: 'cmt-reply-1',
-                courseId,
-                chapterId: null,
-                author: { id: 'owner-1', displayName: 'Giảng viên Quang Trần' },
-                parentCommentId: 'cmt-1',
-                content: 'Cảm ơn Tuấn nhé! Chúc bạn học tốt!',
-                isPinned: false,
-                editedAt: null,
-                createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-              },
-            ],
-          },
-        ],
+        items,
         meta: {
           page: 1,
           pageSize: 20,
-          totalItems: 1,
+          totalItems: items.length,
           totalPages: 1,
         },
       },
@@ -1972,61 +2108,154 @@ export const handlers = [
     );
   }),
 
-  http.get('*/api/v1/courses/:courseId/comments/summary', () => {
+  http.get('*/api/v1/courses/:courseId/comments/summary', ({ params }) => {
+    const courseId = String(params.courseId);
+    const all = getStoredComments();
+    const items = all[courseId] || all['my-course-1'] || [];
+    const rootComments = items.length;
+    const replyCount = items.reduce((sum, c) => sum + (c.replies ? c.replies.length : 0), 0);
+    const pinnedComments = items.filter((c) => c.isPinned).length;
     return HttpResponse.json(
       {
-        totalComments: 2,
-        rootComments: 1,
-        pinnedComments: 1,
+        totalComments: rootComments + replyCount,
+        rootComments,
+        pinnedComments,
       },
       { status: 200 }
     );
   }),
 
   http.post('*/api/v1/courses/:courseId/comments', async ({ request, params }) => {
+    const courseId = String(params.courseId);
     const body = (await request.json().catch(() => ({}))) as any;
-    return HttpResponse.json(
-      {
-        id: `cmt-${Date.now()}`,
-        courseId: String(params.courseId),
-        chapterId: body.chapterId || null,
-        parentCommentId: body.parentCommentId || null,
-        author: { id: 'my-user-id', displayName: 'Tôi' },
-        content: body.content || '',
-        isPinned: false,
-        editedAt: null,
-        createdAt: new Date().toISOString(),
-        replies: [],
-      },
-      { status: 201 }
-    );
+    const all = getStoredComments();
+    if (!all[courseId]) {
+      all[courseId] = [...(all['my-course-1'] || [])];
+    }
+    const newCommentId = `cmt-${Date.now()}`;
+    const newComment: MockCommentItem = {
+      id: newCommentId,
+      courseId,
+      chapterId: body.chapterId || null,
+      parentCommentId: body.parentCommentId || null,
+      author: { id: 'my-user-id', displayName: 'Học viên Nguyễn Văn A' },
+      content: body.content || '',
+      isPinned: false,
+      editedAt: null,
+      createdAt: new Date().toISOString(),
+      replies: [],
+    };
+
+    if (body.parentCommentId) {
+      const parent = all[courseId].find((c) => c.id === body.parentCommentId);
+      if (parent) {
+        if (!parent.replies) parent.replies = [];
+        parent.replies.push(newComment);
+      } else {
+        all[courseId].push(newComment);
+      }
+    } else {
+      all[courseId].unshift(newComment);
+    }
+    saveStoredComments(all);
+
+    // Trigger notification for course owner
+    const notifications = getStoredNotifications();
+    notifications.unshift({
+      id: `ntf-${Date.now()}`,
+      type: 'COMMENT',
+      title: 'Bình luận mới về khóa học',
+      body: `Học viên vừa bình luận: "${(body.content || '').slice(0, 50)}"`,
+      readAt: null,
+      createdAt: new Date().toISOString(),
+      payload: { courseId, commentId: newCommentId },
+    });
+    saveStoredNotifications(notifications);
+
+    return HttpResponse.json(newComment, { status: 201 });
   }),
 
   http.patch('*/api/v1/comments/:id', async ({ request, params }) => {
+    const commentId = String(params.id);
     const body = (await request.json().catch(() => ({}))) as any;
+    const all = getStoredComments();
+    for (const key of Object.keys(all)) {
+      const list = all[key];
+      if (!list) continue;
+      const found = list.find((c) => c.id === commentId);
+      if (found) {
+        found.content = body.content || found.content;
+        found.editedAt = new Date().toISOString();
+        break;
+      }
+    }
+    saveStoredComments(all);
     return HttpResponse.json(
       {
-        id: String(params.id),
-        courseId: 'c1',
-        author: { id: 'my-user-id', displayName: 'Tôi' },
+        id: commentId,
         content: body.content || '',
-        isPinned: false,
         editedAt: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
       },
       { status: 200 }
     );
   }),
 
-  http.delete('*/api/v1/comments/:id', () => {
+  http.delete('*/api/v1/comments/:id', ({ params }) => {
+    const commentId = String(params.id);
+    const all = getStoredComments();
+    for (const key of Object.keys(all)) {
+      const list = all[key];
+      if (!list) continue;
+      const idx = list.findIndex((c) => c.id === commentId);
+      if (idx !== -1 && list[idx]) {
+        list[idx]!.isDeleted = true;
+        list[idx]!.content = 'Bình luận này đã bị xóa';
+        break;
+      }
+      for (const root of list) {
+        if (root.replies) {
+          const rIdx = root.replies.findIndex((r) => r.id === commentId);
+          if (rIdx !== -1 && root.replies[rIdx]) {
+            root.replies[rIdx]!.isDeleted = true;
+            root.replies[rIdx]!.content = 'Bình luận này đã bị xóa';
+            break;
+          }
+        }
+      }
+    }
+    saveStoredComments(all);
     return new HttpResponse(null, { status: 204 });
   }),
 
-  http.put('*/api/v1/comments/:id/pin', () => {
+  http.put('*/api/v1/comments/:id/pin', ({ params }) => {
+    const commentId = String(params.id);
+    const all = getStoredComments();
+    for (const key of Object.keys(all)) {
+      const list = all[key];
+      if (!list) continue;
+      const found = list.find((c) => c.id === commentId);
+      if (found) {
+        found.isPinned = true;
+        break;
+      }
+    }
+    saveStoredComments(all);
     return new HttpResponse(null, { status: 204 });
   }),
 
-  http.delete('*/api/v1/comments/:id/pin', () => {
+  http.delete('*/api/v1/comments/:id/pin', ({ params }) => {
+    const commentId = String(params.id);
+    const all = getStoredComments();
+    for (const key of Object.keys(all)) {
+      const list = all[key];
+      if (!list) continue;
+      const found = list.find((c) => c.id === commentId);
+      if (found) {
+        found.isPinned = false;
+        break;
+      }
+    }
+    saveStoredComments(all);
     return new HttpResponse(null, { status: 204 });
   }),
 

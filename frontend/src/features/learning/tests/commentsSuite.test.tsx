@@ -7,7 +7,7 @@ import '@/shared/i18n';
 import { AppProviders } from '@/app/providers';
 import { createAppQueryClient } from '@/app/queryClient';
 import { appRoutes } from '@/app/router';
-import { setMockPersonaCookie } from '../../../../mocks/handlers';
+import { setMockPersonaCookie, resetMockCourses } from '../../../../mocks/handlers';
 
 function renderAppAt(initialPath: string) {
   const queryClient = createAppQueryClient({ disableRetry: true });
@@ -24,6 +24,7 @@ function renderAppAt(initialPath: string) {
 
 describe('SCR-LRN-06: Comments Suite', () => {
   beforeEach(() => {
+    resetMockCourses();
     setMockPersonaCookie('user');
     setAccessToken('mock-access-token-user');
   });
@@ -77,10 +78,10 @@ describe('SCR-LRN-06: Comments Suite', () => {
     renderAppAt('/courses/my-course-1/learn');
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /^Trả lời$/i })).toBeInTheDocument();
+      expect(screen.getAllByRole('button', { name: /^Trả lời$/i }).length).toBeGreaterThan(0);
     });
 
-    const replyBtn = screen.getByRole('button', { name: /^Trả lời$/i });
+    const replyBtn = screen.getAllByRole('button', { name: /^Trả lời$/i })[0]!;
     await user.click(replyBtn);
 
     await waitFor(() => {
