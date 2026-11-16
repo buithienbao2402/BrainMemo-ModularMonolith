@@ -4,6 +4,7 @@ export * from './components/CourseBadges';
 export * from './components/TagInput';
 export * from './components/CourseCoverUpload';
 export * from './components/CourseCardItem';
+export * from './components/NominationButton';
 export * from './pages/CourseDetailPage';
 export * from './pages/CourseFormPage';
 export * from './pages/MyCoursesPage';

@@ -37,6 +37,7 @@ import {
   DiscoveryHomePage,
   CourseDiscoveryPage,
 } from '@/features/discovery';
+import { NotificationsPage } from '@/features/notification';
 import { RequireAdmin, RequireAuth, RequireVerifiedEmail } from './guards';
 import { AdminLayout, AppLayout, PublicLayout, SettingsLayout } from './layouts';
 import { LockedAccountPage, NotFoundPage, RouteStubPage } from './pages';
@@ -110,13 +111,7 @@ export const appRoutes: RouteObject[] = [
           },
           {
             path: '/notifications',
-            element: (
-              <RouteStubPage
-                screenCode="SCR-NTF-01"
-                title="Thông báo"
-                description="Trung tâm thông báo học tập và phản hồi hệ thống."
-              />
-            ),
+            element: <NotificationsPage />,
           },
           {
             path: '/settings',

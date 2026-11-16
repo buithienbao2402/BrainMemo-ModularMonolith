@@ -46,7 +46,7 @@
 | **S6 – Bình luận & Đề cử** | | | | | |
 | T-S6-BE-01 | BE-01 + BE-02 | DONE | Antigravity (BE) | dev/kim-thuan | **Comments & In-App Notifications (Batched):** Bình luận đa cấp, ghim + Luồng thông báo tự động bảng 3.4.6.1 + Thống kê bình luận (`comments/summary`) (30/30 tests pass, 0 warning 0 error) |
 | T-S6-BE-02 | BE-03 | DONE | Antigravity (BE) | dev/kim-thuan | **Nominations & Learning Stats (Batched):** Đề cử/thu hồi + Thống kê học tập khóa & số đề cử cộng đồng (`nominations/summary`) (91/91 tests pass, 0 warning 0 error) |
-| T-S6-FE-01 | FE-01 + FE-02 | TODO | – | – | **FE Social & Notifications (Batched):** SCR-LRN-06 + SCR-NTF-01 + SCR-CRS-04 & nút đề cử |
+| T-S6-FE-01 | FE-01 + FE-02 | DONE | Antigravity (FE) | dev/kim-thuan | **FE Social & Notifications (Batched):** SCR-LRN-06 + SCR-NTF-01 + SCR-CRS-04 & nút đề cử (24/24 tests pass, typecheck clean) |
 | T-S6-INT-01 | INT-01 | TODO | – | – | Tích hợp S6 + e2e |
 | **S7 – Ngân hàng câu hỏi & Quiz** | | | | | |
 | T-S7-BE-01 | BE-01 + BE-02 | TODO | – | – | **Question Bank & Quiz Authoring (Batched):** Ngân hàng câu hỏi 6 loại + Cấu hình bài thi trong chương + Bốc đề thi + API Quiz gắn với chương (`GET /courses/{id}/chapters/{chapterId}/quizzes`) |

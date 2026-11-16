@@ -233,7 +233,30 @@ export function useNominateCourseMutation(courseId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.courses.detail(courseId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.nominationsSummary(courseId) });
     },
+  });
+}
+
+export interface NominationSummaryDto {
+  nominationCount: number;
+  hasNominated: boolean;
+}
+
+/**
+ * Get nomination count and user status for a course (FR-CRS-15, 16).
+ */
+export function useNominationSummaryQuery(courseId: string) {
+  return useQuery({
+    queryKey: queryKeys.courses.nominationsSummary(courseId),
+    queryFn: async (): Promise<NominationSummaryDto> => {
+      return unwrapApi(
+        apiClient.GET('/courses/{courseId}/nominations/summary' as any, {
+          params: { path: { courseId } },
+        })
+      );
+    },
+    enabled: !!courseId,
   });
 }
 
@@ -255,6 +278,7 @@ export function useWithdrawNominationMutation(courseId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.courses.detail(courseId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.nominationsSummary(courseId) });
     },
   });
 }

@@ -19,6 +19,8 @@ import { BlockRenderer } from '../components/BlockRenderer';
 import { ChapterPasscodeModal } from '../components/ChapterPasscodeModal';
 import { GuestBanner } from '../components/GuestBanner';
 import { BookmarkButton } from '../components/BookmarkButton';
+import { CommentSection } from '../components/CommentSection';
+import { useAuth } from '@/shared/hooks';
 
 export function LearningPlayerPage() {
   const { courseId = '', chapterId: urlChapterId } = useParams<{
@@ -28,6 +30,7 @@ export function LearningPlayerPage() {
   const navigate = useNavigate();
 
   const { data: course, isLoading: isCourseLoading } = useCourseQuery(courseId);
+  const { user } = useAuth();
   const { data: allChapters = [], isLoading: isChaptersLoading } = useChaptersQuery(courseId);
 
   // Filter only published chapters for learning player (or all if owner/draft preview)
@@ -264,6 +267,15 @@ export function LearningPlayerPage() {
                 ) : (
                   <div />
                 )}
+              </div>
+
+              {/* Comment Section (SCR-LRN-06) */}
+              <div className="pt-6">
+                <CommentSection
+                  courseId={courseId}
+                  chapterId={activeChapterId}
+                  isOwner={course?.owner?.id === user?.id}
+                />
               </div>
             </div>
           )}

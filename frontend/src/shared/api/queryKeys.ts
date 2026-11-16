@@ -32,6 +32,10 @@ export const queryKeys = {
       ['courses', 'students', courseId, status ?? 'ALL'] as const,
     enrollmentRequests: (courseId: string) =>
       ['courses', 'enrollmentRequests', courseId] as const,
+    nominationsSummary: (courseId: string) =>
+      ['courses', 'nominationsSummary', courseId] as const,
+    stats: (courseId: string) =>
+      ['courses', 'stats', courseId] as const,
   },
   learning: {
     all: ['learning'] as const,
@@ -39,6 +43,10 @@ export const queryKeys = {
     chapter: (courseId: string, chapterId: string) =>
       ['learning', 'chapter', courseId, chapterId] as const,
     myBookmarks: () => ['learning', 'myBookmarks'] as const,
+    comments: (courseId: string, params?: Record<string, unknown>) =>
+      ['learning', 'comments', courseId, params ?? {}] as const,
+    commentsSummary: (courseId: string) =>
+      ['learning', 'commentsSummary', courseId] as const,
   },
   notifications: {
     all: ['notifications'] as const,

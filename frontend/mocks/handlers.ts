@@ -1850,6 +1850,186 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 });
   }),
 
+  http.get('*/api/v1/courses/:courseId/nominations/summary', () => {
+    return HttpResponse.json(
+      {
+        nominationCount: 15,
+        hasNominated: false,
+      },
+      { status: 200 }
+    );
+  }),
+
+  // ==========================================
+  // S6 Social & Notifications (T-S6-FE-01)
+  // ==========================================
+  http.get('*/api/v1/notifications', ({ request }) => {
+    const url = new URL(request.url);
+    const unreadOnly = url.searchParams.get('unreadOnly') === 'true';
+    const page = parseInt(url.searchParams.get('page') || '1', 10);
+    const pageSize = parseInt(url.searchParams.get('pageSize') || '10', 10);
+
+    let list = [
+      {
+        id: 'ntf-1',
+        type: 'COMMENT',
+        title: 'Bình luận mới về khóa học',
+        body: 'Học viên Nguyễn Văn A đã bình luận về khóa học "Lập trình Web hiện đại".',
+        readAt: null,
+        createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
+        payload: { courseId: 'c1' },
+      },
+      {
+        id: 'ntf-2',
+        type: 'ENROLLMENT',
+        title: 'Học viên mới tham gia',
+        body: 'Trần Thị B đã ghi danh vào khóa học của bạn.',
+        readAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
+        createdAt: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
+        payload: { courseId: 'c1' },
+      },
+      {
+        id: 'ntf-3',
+        type: 'NEW_CHAPTER',
+        title: 'Chương mới đã xuất bản',
+        body: 'Khóa học bạn đang theo dõi vừa ra mắt chương mới.',
+        readAt: null,
+        createdAt: new Date(Date.now() - 1000 * 60 * 300).toISOString(),
+        payload: { courseId: 'c1', chapterId: 'ch1' },
+      },
+    ];
+
+    if (unreadOnly) {
+      list = list.filter((n) => !n.readAt);
+    }
+
+    const total = list.length;
+    const paginated = list.slice((page - 1) * pageSize, page * pageSize);
+
+    return HttpResponse.json(
+      {
+        items: paginated,
+        meta: {
+          page,
+          pageSize,
+          totalItems: total,
+          totalPages: Math.ceil(total / pageSize) || 1,
+        },
+      },
+      { status: 200 }
+    );
+  }),
+
+  http.post('*/api/v1/notifications/:id/read', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.post('*/api/v1/notifications/read-all', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.delete('*/api/v1/notifications/:id', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.get('*/api/v1/courses/:courseId/comments', ({ params }) => {
+    const courseId = String(params.courseId);
+    return HttpResponse.json(
+      {
+        items: [
+          {
+            id: 'cmt-1',
+            courseId,
+            chapterId: null,
+            author: { id: 'user-1', displayName: 'Lê Minh Tuấn' },
+            content: 'Khóa học này giải thích rất dễ hiểu và chi tiết!',
+            isPinned: true,
+            editedAt: null,
+            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
+            replies: [
+              {
+                id: 'cmt-reply-1',
+                courseId,
+                chapterId: null,
+                author: { id: 'owner-1', displayName: 'Giảng viên Quang Trần' },
+                parentCommentId: 'cmt-1',
+                content: 'Cảm ơn Tuấn nhé! Chúc bạn học tốt!',
+                isPinned: false,
+                editedAt: null,
+                createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
+              },
+            ],
+          },
+        ],
+        meta: {
+          page: 1,
+          pageSize: 20,
+          totalItems: 1,
+          totalPages: 1,
+        },
+      },
+      { status: 200 }
+    );
+  }),
+
+  http.get('*/api/v1/courses/:courseId/comments/summary', () => {
+    return HttpResponse.json(
+      {
+        totalComments: 2,
+        rootComments: 1,
+        pinnedComments: 1,
+      },
+      { status: 200 }
+    );
+  }),
+
+  http.post('*/api/v1/courses/:courseId/comments', async ({ request, params }) => {
+    const body = (await request.json().catch(() => ({}))) as any;
+    return HttpResponse.json(
+      {
+        id: `cmt-${Date.now()}`,
+        courseId: String(params.courseId),
+        chapterId: body.chapterId || null,
+        parentCommentId: body.parentCommentId || null,
+        author: { id: 'my-user-id', displayName: 'Tôi' },
+        content: body.content || '',
+        isPinned: false,
+        editedAt: null,
+        createdAt: new Date().toISOString(),
+        replies: [],
+      },
+      { status: 201 }
+    );
+  }),
+
+  http.patch('*/api/v1/comments/:id', async ({ request, params }) => {
+    const body = (await request.json().catch(() => ({}))) as any;
+    return HttpResponse.json(
+      {
+        id: String(params.id),
+        courseId: 'c1',
+        author: { id: 'my-user-id', displayName: 'Tôi' },
+        content: body.content || '',
+        isPinned: false,
+        editedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+      },
+      { status: 200 }
+    );
+  }),
+
+  http.delete('*/api/v1/comments/:id', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.put('*/api/v1/comments/:id/pin', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.delete('*/api/v1/comments/:id/pin', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
   // ==========================================
   // S3 Content & Chapter Drafting (T-S3-FE-01)
   // ==========================================
