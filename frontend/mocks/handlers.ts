@@ -3900,4 +3900,253 @@ export const handlers = [
       },
     ]);
   }),
+
+  // ==================== CLO & PLO MOCKS ====================
+  http.get('*/api/v1/courses/:courseId/assessment/clos', () => {
+    return HttpResponse.json([
+      {
+        id: 'clo-1',
+        courseId: 'course-1',
+        code: 'CLO1',
+        description: 'Phân tích và mô hình hóa dữ liệu quan hệ theo các chuẩn 1NF, 2NF, 3NF.',
+        bloomLevelCode: 'ANALYZE',
+        linkedPloIds: ['plo-1'],
+      },
+      {
+        id: 'clo-2',
+        courseId: 'course-1',
+        code: 'CLO2',
+        description: 'Vận dụng ngôn ngữ SQL viết các truy vấn phức tạp và tối ưu chỉ mục index.',
+        bloomLevelCode: 'APPLY',
+        linkedPloIds: ['plo-2'],
+      },
+    ]);
+  }),
+
+  http.post('*/api/v1/courses/:courseId/assessment/clos', async ({ request, params }) => {
+    const body = (await request.json()) as any;
+    return HttpResponse.json(
+      {
+        id: `clo-${Date.now()}`,
+        courseId: params.courseId,
+        code: body.code,
+        description: body.description,
+        bloomLevelCode: body.bloomLevelCode || 'APPLY',
+        linkedPloIds: body.linkedPloIds || [],
+      },
+      { status: 201 }
+    );
+  }),
+
+  http.put('*/api/v1/courses/:courseId/assessment/clos/:id', async ({ request, params }) => {
+    const body = (await request.json()) as any;
+    return HttpResponse.json({
+      id: params.id,
+      courseId: params.courseId,
+      code: body.code,
+      description: body.description,
+      bloomLevelCode: body.bloomLevelCode,
+      linkedPloIds: body.linkedPloIds || [],
+    });
+  }),
+
+  http.delete('*/api/v1/courses/:courseId/assessment/clos/:id', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.get('*/api/v1/courses/:courseId/assessment/plos', () => {
+    return HttpResponse.json([
+      {
+        id: 'plo-1',
+        courseId: 'course-1',
+        code: 'PLO1',
+        description: 'Khả năng áp dụng kiến thức nền tảng kỹ thuật phần mềm vào phân tích hệ thống.',
+      },
+      {
+        id: 'plo-2',
+        courseId: 'course-1',
+        code: 'PLO2',
+        description: 'Khả năng thiết kế, hiện thực và đánh giá giải pháp công nghệ thông tin.',
+      },
+    ]);
+  }),
+
+  http.post('*/api/v1/courses/:courseId/assessment/plos', async ({ request, params }) => {
+    const body = (await request.json()) as any;
+    return HttpResponse.json(
+      {
+        id: `plo-${Date.now()}`,
+        courseId: params.courseId,
+        code: body.code,
+        description: body.description,
+      },
+      { status: 201 }
+    );
+  }),
+
+  http.put('*/api/v1/courses/:courseId/assessment/plos/:id', async ({ request, params }) => {
+    const body = (await request.json()) as any;
+    return HttpResponse.json({
+      id: params.id,
+      courseId: params.courseId,
+      code: body.code,
+      description: body.description,
+    });
+  }),
+
+  http.delete('*/api/v1/courses/:courseId/assessment/plos/:id', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  // ==================== ASSESSMENT STATS & EXPORT MOCKS ====================
+  http.get('*/api/v1/courses/:courseId/assessment/stats', () => {
+    return HttpResponse.json({
+      scoreDistribution: [
+        { rangeLabel: '0 - 2', minScore: 0, maxScore: 2, count: 1, percentage: 4.0 },
+        { rangeLabel: '2 - 4', minScore: 2, maxScore: 4, count: 2, percentage: 8.0 },
+        { rangeLabel: '4 - 6', minScore: 4, maxScore: 6, count: 5, percentage: 20.0 },
+        { rangeLabel: '6 - 8', minScore: 6, maxScore: 8, count: 11, percentage: 44.0 },
+        { rangeLabel: '8 - 10', minScore: 8, maxScore: 10, count: 6, percentage: 24.0 },
+      ],
+      hardestQuestions: [
+        {
+          questionId: 'q-101',
+          stem: 'Trong mô hình quan hệ, tính bảo toàn phụ thuộc hàm thuộc dạng chuẩn nào?',
+          questionType: 'SINGLE_CHOICE',
+          totalAttempts: 25,
+          correctAttempts: 9,
+          averageScore: 0.36,
+          maxPoints: 1.0,
+          errorRate: 64.0,
+        },
+      ],
+      cloPassRates: [
+        {
+          cloId: 'clo-1',
+          code: 'CLO1',
+          bloomLevelCode: 'ANALYZE',
+          totalStudents: 25,
+          passedStudents: 22,
+          passRate: 88.0,
+        },
+        {
+          cloId: 'clo-2',
+          code: 'CLO2',
+          bloomLevelCode: 'APPLY',
+          totalStudents: 25,
+          passedStudents: 19,
+          passRate: 76.0,
+        },
+      ],
+      levelDistribution: [
+        { classification: 'XUẤT SẮC', count: 6, percentage: 24.0 },
+        { classification: 'GIỎI', count: 11, percentage: 44.0 },
+        { classification: 'KHÁ', count: 5, percentage: 20.0 },
+        { classification: 'TRUNG BÌNH', count: 2, percentage: 8.0 },
+        { classification: 'YẾU', count: 1, percentage: 4.0 },
+      ],
+    });
+  }),
+
+  http.get('*/api/v1/courses/:courseId/assessment/export', () => {
+    const csvContent = '\uFEFFID Học viên,Tên học viên,Điểm tổng kết\nusr-1,Quang Trần,8.85\n';
+    return new HttpResponse(csvContent, {
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': 'attachment; filename="assessment_export.csv"',
+      },
+    });
+  }),
+
+  // ==================== COURSE REVIEWS MOCKS ====================
+  http.get('*/api/v1/courses/:courseId/reviews', () => {
+    return HttpResponse.json({
+      avg: 4.8,
+      count: 2,
+      items: [
+        {
+          id: 'rev-1',
+          user: {
+            id: 'usr-1',
+            displayName: 'Trần Văn An',
+            avatarUrl: null,
+          },
+          rating: 5,
+          commentText: 'Khóa học rất hay và bám sát thực tế!',
+          replyText: 'Cảm ơn em nhiều nhé, chúc em học tốt!',
+          repliedAt: '2026-11-15T10:00:00Z',
+          createdAt: '2026-11-14T09:00:00Z',
+          updatedAt: '2026-11-14T09:00:00Z',
+        },
+        {
+          id: 'rev-2',
+          user: {
+            id: 'usr-2',
+            displayName: 'Lê Thị Bình',
+            avatarUrl: null,
+          },
+          rating: 4,
+          commentText: 'Bài tập hơi dài nhưng giải thích dễ hiểu.',
+          replyText: null,
+          repliedAt: null,
+          createdAt: '2026-11-15T14:30:00Z',
+          updatedAt: '2026-11-15T14:30:00Z',
+        },
+      ],
+      meta: {
+        page: 1,
+        pageSize: 20,
+        total: 2,
+        totalPages: 1,
+      },
+    });
+  }),
+
+  http.get('*/api/v1/courses/:courseId/reviews/summary', () => {
+    return HttpResponse.json({
+      averageRating: 4.8,
+      totalReviews: 2,
+      ratingDistribution: {
+        5: 1,
+        4: 1,
+        3: 0,
+        2: 0,
+        1: 0,
+      },
+    });
+  }),
+
+  http.put('*/api/v1/courses/:courseId/reviews/me', async ({ request }) => {
+    const body = (await request.json()) as any;
+    return HttpResponse.json({
+      id: 'rev-me',
+      user: {
+        id: mockUsers.user.id,
+        displayName: 'Quang Trần',
+      },
+      rating: body.rating,
+      commentText: body.commentText,
+      replyText: null,
+      repliedAt: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+  }),
+
+  http.put('*/api/v1/courses/:courseId/reviews/:id/reply', async ({ request, params }) => {
+    const body = (await request.json()) as any;
+    return HttpResponse.json({
+      id: params.id,
+      user: {
+        id: 'usr-1',
+        displayName: 'Trần Văn An',
+      },
+      rating: 5,
+      commentText: 'Khóa học rất hay và bám sát thực tế!',
+      replyText: body.replyText,
+      repliedAt: new Date().toISOString(),
+      createdAt: '2026-11-14T09:00:00Z',
+      updatedAt: '2026-11-14T09:00:00Z',
+    });
+  }),
 ];

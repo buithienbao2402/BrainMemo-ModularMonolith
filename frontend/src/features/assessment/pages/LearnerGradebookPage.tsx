@@ -201,6 +201,75 @@ export function LearnerGradebookPage() {
             </table>
           </div>
         </div>
+
+        {/* Section: Chuẩn đầu ra (CLO & PLO Achievements) */}
+        {((gradebook.cloAchievements && gradebook.cloAchievements.length > 0) ||
+          (gradebook.ploAchievements && gradebook.ploAchievements.length > 0)) && (
+          <div className="bg-card rounded-lg border border-border shadow-sm p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-foreground text-base">
+                  Mức độ đạt Chuẩn đầu ra học phần (CLO)
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Đánh giá năng lực theo chuẩn đầu ra dựa trên điểm các bài kiểm tra và trọng số ánh xạ
+                </p>
+              </div>
+              <div className="text-right">
+                <span
+                  className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-bold ${
+                    gradebook.allCloAchieved
+                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                      : 'bg-destructive/10 text-destructive'
+                  }`}
+                >
+                  {gradebook.allCloAchieved ? 'ĐẠT TẤT CẢ CLO' : 'CHƯA ĐẠT MỘT SỐ CLO'}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+              {(gradebook.cloAchievements as any[])?.map((clo) => {
+                const pct = typeof clo.pct === 'number' ? clo.pct : 0;
+                const isAchieved = clo.achieved ?? pct >= 50;
+
+                return (
+                  <div key={clo.cloId || clo.code} className="border border-border rounded-lg p-4 bg-muted/10 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono font-bold text-primary text-sm">
+                        {clo.code}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                          {clo.level || 'Đạt'}
+                        </span>
+                        <span className="text-sm font-extrabold text-foreground font-mono">
+                          {pct.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${
+                          isAchieved ? 'bg-primary' : 'bg-destructive'
+                        }`}
+                        style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs text-muted-foreground pt-0.5">
+                      <span>Mức độ đạt:</span>
+                      <span className={isAchieved ? 'text-emerald-600 font-semibold' : 'text-destructive font-semibold'}>
+                        {isAchieved ? 'ĐẠT' : 'CHƯA ĐẠT'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

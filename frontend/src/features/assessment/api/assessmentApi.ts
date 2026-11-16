@@ -399,3 +399,352 @@ export function useComponentScores(courseId: string, blockId: string) {
     enabled: Boolean(courseId && blockId),
   });
 }
+
+// ==================== CLO & PLO ====================
+
+export interface CloDto {
+  id: string;
+  courseId: string;
+  code: string;
+  description: string;
+  bloomLevelCode?: string | null;
+  linkedPloIds: string[];
+}
+
+export interface CreateCloRequest {
+  code: string;
+  description: string;
+  bloomLevelCode?: string | null;
+  linkedPloIds?: string[];
+}
+
+export interface UpdateCloRequest {
+  code: string;
+  description: string;
+  bloomLevelCode?: string | null;
+  linkedPloIds?: string[];
+}
+
+export interface PloDto {
+  id: string;
+  courseId: string;
+  code: string;
+  description: string;
+}
+
+export interface CreatePloRequest {
+  code: string;
+  description: string;
+}
+
+export interface UpdatePloRequest {
+  code: string;
+  description: string;
+}
+
+export function useClos(courseId: string) {
+  return useQuery({
+    queryKey: queryKeys.assessment.clos(courseId),
+    queryFn: async (): Promise<CloDto[]> => {
+      return unwrapApi(
+        (apiClient as any).GET('/courses/{courseId}/assessment/clos', {
+          params: { path: { courseId } },
+        }),
+      );
+    },
+    enabled: Boolean(courseId),
+  });
+}
+
+export function useCreateClo(courseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: CreateCloRequest): Promise<CloDto> => {
+      return unwrapApi(
+        (apiClient as any).POST('/courses/{courseId}/assessment/clos', {
+          params: { path: { courseId } },
+          body: payload,
+        }),
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.assessment.clos(courseId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.assessment.assessableBlocks(courseId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.assessment.stats(courseId) });
+    },
+  });
+}
+
+export function useUpdateClo(courseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, payload }: { id: string; payload: UpdateCloRequest }): Promise<CloDto> => {
+      return unwrapApi(
+        (apiClient as any).PUT('/courses/{courseId}/assessment/clos/{id}', {
+          params: { path: { courseId, id } },
+          body: payload,
+        }),
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.assessment.clos(courseId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.assessment.stats(courseId) });
+    },
+  });
+}
+
+export function useDeleteClo(courseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string): Promise<void> => {
+      return unwrapApi(
+        (apiClient as any).DELETE('/courses/{courseId}/assessment/clos/{id}', {
+          params: { path: { courseId, id } },
+        }),
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.assessment.clos(courseId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.assessment.assessableBlocks(courseId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.assessment.stats(courseId) });
+    },
+  });
+}
+
+export function usePlos(courseId: string) {
+  return useQuery({
+    queryKey: queryKeys.assessment.plos(courseId),
+    queryFn: async (): Promise<PloDto[]> => {
+      return unwrapApi(
+        (apiClient as any).GET('/courses/{courseId}/assessment/plos', {
+          params: { path: { courseId } },
+        }),
+      );
+    },
+    enabled: Boolean(courseId),
+  });
+}
+
+export function useCreatePlo(courseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: CreatePloRequest): Promise<PloDto> => {
+      return unwrapApi(
+        (apiClient as any).POST('/courses/{courseId}/assessment/plos', {
+          params: { path: { courseId } },
+          body: payload,
+        }),
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.assessment.plos(courseId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.assessment.clos(courseId) });
+    },
+  });
+}
+
+export function useUpdatePlo(courseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, payload }: { id: string; payload: UpdatePloRequest }): Promise<PloDto> => {
+      return unwrapApi(
+        (apiClient as any).PUT('/courses/{courseId}/assessment/plos/{id}', {
+          params: { path: { courseId, id } },
+          body: payload,
+        }),
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.assessment.plos(courseId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.assessment.clos(courseId) });
+    },
+  });
+}
+
+export function useDeletePlo(courseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string): Promise<void> => {
+      return unwrapApi(
+        (apiClient as any).DELETE('/courses/{courseId}/assessment/plos/{id}', {
+          params: { path: { courseId, id } },
+        }),
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.assessment.plos(courseId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.assessment.clos(courseId) });
+    },
+  });
+}
+
+// ==================== STATS & EXPORT ====================
+
+export interface ScoreRangeStatsDto {
+  rangeLabel: string;
+  minScore: number;
+  maxScore: number;
+  count: number;
+  percentage: number;
+}
+
+export interface HardestQuestionDto {
+  questionId: string;
+  stem: string;
+  questionType: string;
+  totalAttempts: number;
+  correctAttempts: number;
+  averageScore: number;
+  maxPoints: number;
+  errorRate: number;
+}
+
+export interface CloPassRateDto {
+  cloId: string;
+  code: string;
+  bloomLevelCode?: string | null;
+  totalStudents: number;
+  passedStudents: number;
+  passRate: number;
+}
+
+export interface LevelDistributionDto {
+  classification: string;
+  count: number;
+  percentage: number;
+}
+
+export interface AssessmentStatsDto {
+  scoreDistribution: ScoreRangeStatsDto[];
+  hardestQuestions: HardestQuestionDto[];
+  cloPassRates: CloPassRateDto[];
+  levelDistribution: LevelDistributionDto[];
+}
+
+export function useAssessmentStats(courseId: string) {
+  return useQuery({
+    queryKey: queryKeys.assessment.stats(courseId),
+    queryFn: async (): Promise<AssessmentStatsDto> => {
+      return unwrapApi(
+        (apiClient as any).GET('/courses/{courseId}/assessment/stats', {
+          params: { path: { courseId } },
+        }),
+      );
+    },
+    enabled: Boolean(courseId),
+  });
+}
+
+// ==================== COURSE REVIEWS ====================
+
+export interface ReviewUserDto {
+  id: string;
+  displayName: string;
+  email?: string | null;
+  avatarUrl?: string | null;
+}
+
+export interface CourseReviewDto {
+  id: string;
+  user: ReviewUserDto;
+  rating: number;
+  commentText?: string | null;
+  replyText?: string | null;
+  repliedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CourseReviewsResponseDto {
+  avg?: number | null;
+  count: number;
+  items: CourseReviewDto[];
+  meta: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface CourseReviewSummaryDto {
+  averageRating: number;
+  totalReviews: number;
+  ratingDistribution: Record<number, number>;
+}
+
+export interface UpsertReviewRequest {
+  rating: number;
+  commentText?: string | null;
+}
+
+export interface ReplyReviewRequest {
+  replyText: string;
+}
+
+export function useCourseReviews(courseId: string, params?: { page?: number; pageSize?: number }) {
+  return useQuery({
+    queryKey: queryKeys.assessment.reviews(courseId, params),
+    queryFn: async (): Promise<CourseReviewsResponseDto> => {
+      return unwrapApi(
+        (apiClient as any).GET('/courses/{courseId}/reviews', {
+          params: {
+            path: { courseId },
+            query: { page: params?.page ?? 1, pageSize: params?.pageSize ?? 20 },
+          },
+        }),
+      );
+    },
+    enabled: Boolean(courseId),
+  });
+}
+
+export function useCourseReviewSummary(courseId: string) {
+  return useQuery({
+    queryKey: queryKeys.assessment.reviewSummary(courseId),
+    queryFn: async (): Promise<CourseReviewSummaryDto> => {
+      return unwrapApi(
+        (apiClient as any).GET('/courses/{courseId}/reviews/summary', {
+          params: { path: { courseId } },
+        }),
+      );
+    },
+    enabled: Boolean(courseId),
+  });
+}
+
+export function useUpsertReview(courseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: UpsertReviewRequest): Promise<CourseReviewDto> => {
+      return unwrapApi(
+        (apiClient as any).PUT('/courses/{courseId}/reviews/me', {
+          params: { path: { courseId } },
+          body: payload,
+        }),
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.assessment.reviews(courseId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.assessment.reviewSummary(courseId) });
+    },
+  });
+}
+
+export function useReplyReview(courseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, payload }: { id: string; payload: ReplyReviewRequest }): Promise<CourseReviewDto> => {
+      return unwrapApi(
+        (apiClient as any).PUT('/courses/{courseId}/reviews/{id}/reply', {
+          params: { path: { courseId, id } },
+          body: payload,
+        }),
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.assessment.reviews(courseId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.assessment.reviewSummary(courseId) });
+    },
+  });
+}

@@ -36,6 +36,10 @@ import {
   ManualGradingPage,
   CourseGradebookPage,
   LearnerGradebookPage,
+  OutcomesManagementPage,
+  OutcomeMappingMatrixPage,
+  AssessmentStatsPage,
+  CourseReviewsManagePage,
 } from '@/features/assessment';
 import {
   ChapterListPage,
@@ -272,6 +276,22 @@ export const appRoutes: RouteObject[] = [
           {
             path: '/courses/:courseId/manage/gradebook',
             element: <CourseGradebookPage />,
+          },
+          {
+            path: '/courses/:courseId/manage/outcomes',
+            element: <OutcomesManagementPage />,
+          },
+          {
+            path: '/courses/:courseId/manage/outcomes/mapping',
+            element: <OutcomeMappingMatrixPage />,
+          },
+          {
+            path: '/courses/:courseId/manage/stats',
+            element: <AssessmentStatsPage />,
+          },
+          {
+            path: '/courses/:courseId/manage/reviews',
+            element: <CourseReviewsManagePage />,
           },
         ],
       },

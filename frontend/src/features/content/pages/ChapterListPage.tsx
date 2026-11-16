@@ -267,13 +267,7 @@ export function ChapterListPage() {
           {/* Link Tab: Danh sách học viên */}
           <button
             type="button"
-            onClick={() =>
-              pushToast({
-                title: 'Quản lý học viên',
-                description: 'Mô-đun quản lý học viên chi tiết thuộc phạm vi Slice 4 (S4).',
-                tone: 'default',
-              })
-            }
+            onClick={() => navigate(`/courses/${courseId}/manage/students`)}
             className="flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-xs sm:text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
           >
             <Users className="h-4 w-4" />
@@ -283,13 +277,7 @@ export function ChapterListPage() {
           {/* Link Tab: Chấm điểm (badge 12) */}
           <button
             type="button"
-            onClick={() =>
-              pushToast({
-                title: 'Hệ thống chấm điểm',
-                description: 'Hàng đợi chấm thi & bảng điểm thuộc phạm vi Slice 8 (S8).',
-                tone: 'default',
-              })
-            }
+            onClick={() => navigate(`/courses/${courseId}/manage/grading`)}
             className="flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-xs sm:text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
           >
             <CheckSquare className="h-4 w-4" />
@@ -302,13 +290,7 @@ export function ChapterListPage() {
           {/* Link Tab: Chuẩn đầu ra */}
           <button
             type="button"
-            onClick={() =>
-              pushToast({
-                title: 'Chuẩn đầu ra (CLO/PLO)',
-                description: 'Hệ thống quản lý chuẩn đầu ra thuộc phạm vi Slice 9 (S9).',
-                tone: 'default',
-              })
-            }
+            onClick={() => navigate(`/courses/${courseId}/manage/outcomes`)}
             className="flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-xs sm:text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
           >
             <GraduationCap className="h-4 w-4" />
@@ -318,13 +300,7 @@ export function ChapterListPage() {
           {/* Link Tab: Thống kê */}
           <button
             type="button"
-            onClick={() =>
-              pushToast({
-                title: 'Báo cáo thống kê',
-                description: 'Hệ thống phân tích & xuất báo cáo chi tiết thuộc phạm vi Slice 9 (S9).',
-                tone: 'default',
-              })
-            }
+            onClick={() => navigate(`/courses/${courseId}/manage/stats`)}
             className="flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-xs sm:text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
           >
             <BarChart3 className="h-4 w-4" />

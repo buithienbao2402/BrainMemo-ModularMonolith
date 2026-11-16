@@ -70,6 +70,12 @@ export const queryKeys = {
     courseGradebook: (courseId: string, params?: Record<string, unknown>) =>
       ['assessment', 'courseGradebook', courseId, params ?? {}] as const,
     componentScores: (courseId: string, blockId: string) => ['assessment', 'componentScores', courseId, blockId] as const,
+    clos: (courseId: string) => ['assessment', 'clos', courseId] as const,
+    plos: (courseId: string) => ['assessment', 'plos', courseId] as const,
+    stats: (courseId: string) => ['assessment', 'stats', courseId] as const,
+    reviews: (courseId: string, params?: Record<string, unknown>) =>
+      ['assessment', 'reviews', courseId, params ?? {}] as const,
+    reviewSummary: (courseId: string) => ['assessment', 'reviewSummary', courseId] as const,
   },
   notifications: {
     all: ['notifications'] as const,

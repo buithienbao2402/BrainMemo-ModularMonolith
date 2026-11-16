@@ -4,3 +4,7 @@ export * from './pages/GradingQueuePage';
 export * from './pages/ManualGradingPage';
 export * from './pages/CourseGradebookPage';
 export * from './pages/LearnerGradebookPage';
+export * from './pages/OutcomesManagementPage';
+export * from './pages/OutcomeMappingMatrixPage';
+export * from './pages/AssessmentStatsPage';
+export * from './pages/CourseReviewsManagePage';
