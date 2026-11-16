@@ -18,6 +18,7 @@ import {
   Skeleton,
   useToast,
 } from '@/shared/ui';
+import { ReportModal } from '@/features/moderation';
 import {
   useCommentsQuery,
   useCommentsSummaryQuery,
@@ -65,6 +66,7 @@ export function CommentSection({
   const [replyText, setReplyText] = useState('');
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
+  const [reportCommentId, setReportCommentId] = useState<string | null>(null);
 
   const { data: summary } = useCommentsSummaryQuery(courseId);
   const { data, isLoading } = useCommentsQuery(courseId, {
@@ -369,13 +371,7 @@ export function CommentSection({
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7 text-muted-foreground hover:text-amber-500"
-                    onClick={() =>
-                      pushToast({
-                        title: 'Đã gửi báo cáo vi phạm',
-                        description: 'Ban quản trị sẽ xem xét bình luận này.',
-                        tone: 'default',
-                      })
-                    }
+                    onClick={() => setReportCommentId(comment.id)}
                     title="Báo cáo vi phạm"
                   >
                     <Flag className="h-3.5 w-3.5" />
@@ -529,6 +525,16 @@ export function CommentSection({
           ))
         )}
       </div>
+
+      {reportCommentId ? (
+        <ReportModal
+          isOpen={Boolean(reportCommentId)}
+          onClose={() => setReportCommentId(null)}
+          targetType="COMMENT"
+          targetId={reportCommentId}
+          targetTitle="Bình luận bài học"
+        />
+      ) : null}
     </section>
   );
 }

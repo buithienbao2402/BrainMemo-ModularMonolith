@@ -53,6 +53,18 @@ import {
   CourseDiscoveryPage,
 } from '@/features/discovery';
 import { NotificationsPage } from '@/features/notification';
+import {
+  CourseReportsPage,
+  AdminReportsPage,
+  AdminReportDetailPage,
+  AdminSanctionsPage,
+  AdminAuditLogsPage,
+} from '@/features/moderation';
+import {
+  AdminDashboardPage,
+  AdminUsersPage,
+  AdminAnnouncementsPage,
+} from '@/features/admin';
 import { RequireAdmin, RequireAuth, RequireVerifiedEmail } from './guards';
 import { AdminLayout, AppLayout, PublicLayout, SettingsLayout } from './layouts';
 import { LockedAccountPage, NotFoundPage, RouteStubPage } from './pages';
@@ -293,6 +305,10 @@ export const appRoutes: RouteObject[] = [
             path: '/courses/:courseId/manage/reviews',
             element: <CourseReviewsManagePage />,
           },
+          {
+            path: '/courses/:courseId/manage/reports',
+            element: <CourseReportsPage />,
+          },
         ],
       },
       {
@@ -305,13 +321,31 @@ export const appRoutes: RouteObject[] = [
         children: [
           {
             index: true,
-            element: (
-              <RouteStubPage
-                screenCode="SCR-ADM-01"
-                title="Tổng quan quản trị"
-                description="Bảng điều khiển quản trị hệ thống BrainMemo LMS."
-              />
-            ),
+            element: <AdminDashboardPage />,
+          },
+          {
+            path: 'reports',
+            element: <AdminReportsPage />,
+          },
+          {
+            path: 'reports/:id',
+            element: <AdminReportDetailPage />,
+          },
+          {
+            path: 'sanctions',
+            element: <AdminSanctionsPage />,
+          },
+          {
+            path: 'users',
+            element: <AdminUsersPage />,
+          },
+          {
+            path: 'announcements',
+            element: <AdminAnnouncementsPage />,
+          },
+          {
+            path: 'audit-logs',
+            element: <AdminAuditLogsPage />,
           },
           {
             path: 'moderation',
@@ -320,28 +354,6 @@ export const appRoutes: RouteObject[] = [
                 screenCode="SCR-ADM-02"
                 title="Kiểm duyệt nội dung"
                 description="Hàng đợi kiểm duyệt khóa học và chương bài học."
-                backTo="/admin"
-              />
-            ),
-          },
-          {
-            path: 'reports',
-            element: (
-              <RouteStubPage
-                screenCode="SCR-ADM-03"
-                title="Báo cáo vi phạm"
-                description="Xử lý báo cáo vi phạm từ người học và tác giả."
-                backTo="/admin"
-              />
-            ),
-          },
-          {
-            path: 'users',
-            element: (
-              <RouteStubPage
-                screenCode="SCR-ADM-04"
-                title="Quản lý tài khoản"
-                description="Quản lý quyền và trạng thái khóa tài khoản."
                 backTo="/admin"
               />
             ),
@@ -364,17 +376,6 @@ export const appRoutes: RouteObject[] = [
                 screenCode="SCR-ADM-06"
                 title="Cấu hình AI kiểm duyệt"
                 description="Thiết lập tham số và hạn mức tính năng AI."
-                backTo="/admin"
-              />
-            ),
-          },
-          {
-            path: 'audit-logs',
-            element: (
-              <RouteStubPage
-                screenCode="SCR-ADM-07"
-                title="Nhật ký hệ thống"
-                description="Lịch sử thao tác quản trị và kiểm toán bảo mật."
                 backTo="/admin"
               />
             ),

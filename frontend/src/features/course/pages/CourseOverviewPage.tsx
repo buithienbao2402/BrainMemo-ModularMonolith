@@ -886,9 +886,12 @@ export function CourseOverviewPage() {
             <h2 className="text-base sm:text-lg font-bold uppercase tracking-wider text-foreground">
               BÁO CÁO CỦA KHÓA HỌC
             </h2>
-            <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-xs font-bold text-amber-400">
-              3 chờ xử lý
-            </span>
+            <Link
+              to={`/courses/${courseId}/manage/reports`}
+              className="text-xs text-primary font-semibold hover:underline ml-2"
+            >
+              Xem trang quản lý báo cáo &rarr;
+            </Link>
           </div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Info className="h-3.5 w-3.5" />

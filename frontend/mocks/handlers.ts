@@ -4168,4 +4168,446 @@ export const handlers = [
       updatedAt: '2026-11-14T09:00:00Z',
     });
   }),
+
+  // --- Slice 10 Moderation & Admin Portal Handlers ---
+  http.post('*/api/v1/reports', async ({ request }) => {
+    const body = (await request.json().catch(() => ({}))) as any;
+    if (body.reason === 'DUPLICATE_TEST') {
+      return HttpResponse.json(
+        { code: 'DUPLICATE_REPORT', message: 'Bạn đã gửi báo cáo cho nội dung này trước đó.' },
+        { status: 409 }
+      );
+    }
+    const newReport = {
+      id: 'rep-' + Date.now(),
+      reportNumber: 'RPT-2026-999',
+      source: 'USER',
+      targetType: body.targetType || 'COURSE',
+      targetId: body.targetId || 'crs-1',
+      reason: body.reason || 'SPAM',
+      description: body.description || null,
+      status: 'PENDING',
+      reporterUserId: mockUsers.user.id,
+      reporterName: 'Quang Trần',
+      reporterEmail: 'quang@brainmemo.io',
+      createdAt: new Date().toISOString(),
+      evidences: (body.evidenceUrls || []).map((url: string, idx: number) => ({
+        id: `ev-${idx}`,
+        kind: 'LINK',
+        content: url,
+      })),
+    };
+    return HttpResponse.json(newReport, { status: 201 });
+  }),
+
+  http.get('*/api/v1/courses/:courseId/reports', ({ params }) => {
+    return HttpResponse.json([
+      {
+        id: 'rep-crs-1',
+        reportNumber: 'RPT-2026-001',
+        source: 'USER',
+        targetType: 'COURSE',
+        targetId: params.courseId,
+        reason: 'Nội dung chứa liên kết quảng cáo spam ngoài luồng',
+        description: 'Chương 2 có chèn link dẫn sang trang cá cược.',
+        status: 'PENDING',
+        reporterUserId: 'usr-reporter-1',
+        createdAt: '2026-11-15T08:30:00Z',
+        evidences: [
+          { id: 'ev-1', kind: 'LINK', content: 'https://example.com/screenshot.png' },
+        ],
+      },
+      {
+        id: 'rep-cmt-1',
+        reportNumber: 'RPT-2026-002',
+        source: 'USER',
+        targetType: 'COMMENT',
+        targetId: 'cmt-1',
+        reason: 'Bình luận ngôn từ xúc phạm người học khác',
+        description: 'Người dùng này dùng lời lẽ quấy rối.',
+        status: 'RESOLVED_ACCEPTED',
+        reporterUserId: 'usr-reporter-2',
+        resolutionNote: 'Đã xóa bình luận và khóa tài khoản 7 ngày.',
+        createdAt: '2026-11-14T10:00:00Z',
+        resolvedAt: '2026-11-14T11:00:00Z',
+        evidences: [],
+      },
+    ]);
+  }),
+
+  http.get('*/api/v1/admin/reports', ({ request }) => {
+    const url = new URL(request.url);
+    const status = url.searchParams.get('status');
+    const allReports = [
+      {
+        id: 'rep-adm-1',
+        reportNumber: 'RPT-2026-001',
+        source: 'USER',
+        targetType: 'COURSE',
+        targetId: 'crs-clean-arch',
+        reason: 'Nội dung đạo văn từ khóa học khác',
+        description: 'Nội dung sao chép nguyên văn slide của tác giả khác.',
+        status: 'PENDING',
+        reporterUserId: 'usr-1',
+        reporterName: 'Trần Văn An',
+        reporterEmail: 'an.tran@example.com',
+        createdAt: '2026-11-16T08:00:00Z',
+        evidences: [{ id: 'ev-1', kind: 'LINK', content: 'https://example.com/evidence-1.png' }],
+      },
+      {
+        id: 'rep-adm-2',
+        reportNumber: 'RPT-2026-002',
+        source: 'AI_FINDING',
+        targetType: 'COMMENT',
+        targetId: 'cmt-vulgar-1',
+        reason: 'Ngôn từ kích động thù ghét / Độc hại (PhoBERT confidence: 98.4%)',
+        description: 'Mô hình phát hiện từ ngữ xúc phạm nặng nề trong bình luận.',
+        status: 'PENDING',
+        reporterUserId: null,
+        reporterName: 'PhoBERT Safety Bot',
+        reporterEmail: null,
+        createdAt: '2026-11-16T09:15:00Z',
+        evidences: [{ id: 'ev-2', kind: 'TEXT_EXCERPT', content: 'Đoạn trích bình luận độc hại...' }],
+      },
+      {
+        id: 'rep-adm-3',
+        reportNumber: 'RPT-2026-003',
+        source: 'USER',
+        targetType: 'COURSE',
+        targetId: 'crs-copyright-2',
+        reason: 'Vi phạm bản quyền tài liệu',
+        description: 'Đã giải quyết bằng cách ẩn khóa học 30 ngày.',
+        status: 'RESOLVED_ACCEPTED',
+        reporterUserId: 'usr-2',
+        reporterName: 'Lê Thị Bình',
+        reporterEmail: 'binh.le@example.com',
+        resolutionNote: 'Đã ẩn khóa học 30 ngày để tác giả khắc phục bản quyền.',
+        resolvedAt: '2026-11-15T16:00:00Z',
+        createdAt: '2026-11-15T12:00:00Z',
+        evidences: [],
+      },
+    ];
+
+    const filtered = status ? allReports.filter((r) => r.status === status) : allReports;
+
+    return HttpResponse.json({
+      items: filtered,
+      totalCount: filtered.length,
+      page: 1,
+      pageSize: 15,
+      totalPages: 1,
+    });
+  }),
+
+  http.get('*/api/v1/admin/reports/:id', ({ params }) => {
+    return HttpResponse.json({
+      id: params.id,
+      reportNumber: 'RPT-2026-001',
+      source: 'USER',
+      targetType: 'COURSE',
+      targetId: 'crs-clean-arch',
+      reason: 'Nội dung đạo văn từ khóa học khác',
+      description: 'Nội dung sao chép nguyên văn slide của tác giả khác.',
+      status: 'PENDING',
+      reporterUserId: 'usr-1',
+      reporterName: 'Trần Văn An',
+      reporterEmail: 'an.tran@example.com',
+      createdAt: '2026-11-16T08:00:00Z',
+      evidences: [
+        { id: 'ev-1', kind: 'LINK', content: 'https://example.com/evidence-1.png' },
+      ],
+    });
+  }),
+
+  http.get('*/api/v1/admin/reports/:id/target-content', ({ params }) => {
+    if (params.id === 'rep-only-me') {
+      return HttpResponse.json(
+        { code: 'COURSE_NOT_FOUND', message: 'Không thể xem trước nội dung khóa học ở chế độ Only Me.' },
+        { status: 404 }
+      );
+    }
+    return HttpResponse.json({
+      targetType: 'COURSE',
+      targetId: 'crs-clean-arch',
+      contentSnapshot: 'Khóa học Clean Architecture với .NET & Modular Monolith. Giới thiệu các nguyên tắc DDD, CQRS, MediatR và Event-driven architecture...',
+      metadata: {
+        title: 'Khóa học Clean Architecture .NET',
+        totalChapters: 8,
+        author: 'Nguyen Instructor',
+        status: 'PUBLISHED',
+      },
+    });
+  }),
+
+  http.post('*/api/v1/admin/reports/:id/resolve', async ({ params, request }) => {
+    const body = (await request.json().catch(() => ({}))) as any;
+    return HttpResponse.json({
+      id: params.id,
+      reportNumber: 'RPT-2026-001',
+      source: 'USER',
+      targetType: 'COURSE',
+      targetId: 'crs-clean-arch',
+      reason: 'Nội dung đạo văn',
+      status: body.resolution === 'ACCEPTED' ? 'RESOLVED_ACCEPTED' : 'RESOLVED_REJECTED',
+      resolutionNote: body.note || null,
+      resolvedAt: new Date().toISOString(),
+      resolverUserId: mockUsers.admin.id,
+      createdAt: '2026-11-16T08:00:00Z',
+      evidences: [],
+    });
+  }),
+
+  http.get('*/api/v1/admin/sanctions', () => {
+    return HttpResponse.json({
+      items: [
+        {
+          id: 'snc-1',
+          reportId: 'rep-adm-3',
+          type: 'COURSE_HIDE',
+          targetType: 'COURSE',
+          targetId: 'crs-copyright-2',
+          reason: 'Vi phạm bản quyền tài liệu học phần',
+          durationHours: 720,
+          expiresAt: '2026-12-15T12:00:00Z',
+          status: 'ACTIVE',
+          appliedByUserId: mockUsers.admin.id,
+          appliedAt: '2026-11-15T12:00:00Z',
+        },
+        {
+          id: 'snc-2',
+          reportId: null,
+          type: 'ACCOUNT_LOCK_TEMPORARY',
+          targetType: 'ACCOUNT',
+          targetId: 'usr-spammer-9',
+          reason: 'Spam bình luận quấy rối hàng loạt',
+          durationHours: 168,
+          expiresAt: '2026-11-23T10:00:00Z',
+          status: 'ACTIVE',
+          appliedByUserId: mockUsers.admin.id,
+          appliedAt: '2026-11-16T10:00:00Z',
+        },
+        {
+          id: 'snc-3',
+          reportId: null,
+          type: 'COURSE_HIDE',
+          targetType: 'COURSE',
+          targetId: 'crs-old-hidden',
+          reason: 'Nội dung hết hạn kiểm định',
+          durationHours: 72,
+          expiresAt: '2026-11-10T00:00:00Z',
+          status: 'LIFTED',
+          liftKind: 'MANUAL',
+          liftReason: 'Tác giả đã cập nhật lại nội dung kiểm định đầy đủ.',
+          liftedAt: '2026-11-09T15:00:00Z',
+          appliedByUserId: mockUsers.admin.id,
+          appliedAt: '2026-11-07T00:00:00Z',
+        },
+      ],
+      totalCount: 3,
+      page: 1,
+      pageSize: 15,
+      totalPages: 1,
+    });
+  }),
+
+  http.post('*/api/v1/admin/sanctions', async ({ request }) => {
+    const body = (await request.json().catch(() => ({}))) as any;
+    return HttpResponse.json(
+      {
+        id: 'snc-' + Date.now(),
+        reportId: null,
+        type: body.type,
+        targetType: body.targetType,
+        targetId: body.targetId,
+        reason: body.reason,
+        durationHours: body.durationDays ? body.durationDays * 24 : null,
+        expiresAt: body.durationDays
+          ? new Date(Date.now() + body.durationDays * 86400000).toISOString()
+          : null,
+        status: 'ACTIVE',
+        appliedByUserId: mockUsers.admin.id,
+        appliedAt: new Date().toISOString(),
+      },
+      { status: 201 }
+    );
+  }),
+
+  http.post('*/api/v1/admin/sanctions/:id/lift', async ({ params, request }) => {
+    const body = (await request.json().catch(() => ({}))) as any;
+    return HttpResponse.json({
+      id: params.id,
+      status: 'LIFTED',
+      liftKind: 'MANUAL',
+      liftReason: body.reason,
+      liftedAt: new Date().toISOString(),
+      liftedByUserId: mockUsers.admin.id,
+    });
+  }),
+
+  http.get('*/api/v1/admin/audit-logs', () => {
+    return HttpResponse.json({
+      items: [
+        {
+          id: 'log-1',
+          occurredAt: new Date().toISOString(),
+          actorType: 'ADMIN',
+          actorUserId: mockUsers.admin.id,
+          actorName: 'Admin BrainMemo',
+          action: 'REPORT_RESOLVE',
+          objectType: 'REPORT',
+          objectId: 'rep-adm-1',
+          ipAddress: '127.0.0.1',
+          note: 'Xác nhận vi phạm đạo văn và áp dụng ẩn khóa học 7 ngày.',
+          metadata: { decision: 'ACCEPTED', sanctionsApplied: 1 },
+        },
+        {
+          id: 'log-2',
+          occurredAt: '2026-11-16T10:00:00Z',
+          actorType: 'ADMIN',
+          actorUserId: mockUsers.admin.id,
+          actorName: 'Admin BrainMemo',
+          action: 'SANCTION_APPLY',
+          objectType: 'USER_ACCOUNT',
+          objectId: 'usr-spammer-9',
+          ipAddress: '127.0.0.1',
+          note: 'Khóa tài khoản 7 ngày do spam bình luận.',
+          metadata: { lockType: 'TEMPORARY', days: 7 },
+        },
+        {
+          id: 'log-3',
+          occurredAt: '2026-11-15T08:00:00Z',
+          actorType: 'SYSTEM',
+          actorUserId: null,
+          actorName: 'System Background Worker',
+          action: 'COURSE_HIDE',
+          objectType: 'COURSE',
+          objectId: 'crs-auto-hidden',
+          ipAddress: null,
+          note: 'Tự động phục hồi hiển thị khóa học sau khi hết hạn 30 ngày.',
+          metadata: { restoreEvent: 'AutoExpired' },
+        },
+      ],
+      totalCount: 3,
+      page: 1,
+      pageSize: 20,
+      totalPages: 1,
+    });
+  }),
+
+  http.get('*/api/v1/admin/dashboard', () => {
+    return HttpResponse.json({
+      pendingReportsCount: 2,
+      pendingAiFlagsCount: 1,
+      activeSanctionsCount: 2,
+      lockedUsersCount: 1,
+      hiddenCoursesCount: 1,
+      recentAuditLogs: [
+        {
+          id: 'log-recent-1',
+          occurredAt: new Date().toISOString(),
+          actorType: 'ADMIN',
+          actorName: 'Admin BrainMemo',
+          action: 'REPORT_RESOLVE',
+          objectType: 'REPORT',
+          objectId: 'rep-adm-1',
+          note: 'Xác nhận vi phạm đạo văn.',
+        },
+        {
+          id: 'log-recent-2',
+          occurredAt: '2026-11-16T09:00:00Z',
+          actorType: 'ADMIN',
+          actorName: 'Admin BrainMemo',
+          action: 'SANCTION_APPLY',
+          objectType: 'USER_ACCOUNT',
+          objectId: 'usr-spammer-9',
+          note: 'Khóa tài khoản người dùng vi phạm.',
+        },
+      ],
+    });
+  }),
+
+  http.get('*/api/v1/admin/users', () => {
+    return HttpResponse.json({
+      items: [
+        {
+          id: mockUsers.admin.id,
+          email: 'admin@brainmemo.io',
+          displayName: 'BrainMemo Admin',
+          avatarUrl: null,
+          roles: ['USER', 'ADMIN'],
+          isLocked: false,
+          lockType: null,
+          lockedUntil: null,
+          lockReason: null,
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+        {
+          id: 'usr-instructor-1',
+          email: 'instructor@brainmemo.io',
+          displayName: 'Nguyen Giang Vien',
+          avatarUrl: null,
+          roles: ['USER'],
+          isLocked: false,
+          lockType: null,
+          lockedUntil: null,
+          lockReason: null,
+          createdAt: '2026-02-15T00:00:00Z',
+        },
+        {
+          id: mockUsers.user.id,
+          email: 'user@brainmemo.io',
+          displayName: 'Quang Tran Hoc Vien',
+          avatarUrl: null,
+          roles: ['USER'],
+          isLocked: false,
+          lockType: null,
+          lockedUntil: null,
+          lockReason: null,
+          createdAt: '2026-03-01T00:00:00Z',
+        },
+        {
+          id: 'usr-locked-1',
+          email: 'spammer@example.com',
+          displayName: 'Spammer Test',
+          avatarUrl: null,
+          roles: ['USER'],
+          isLocked: true,
+          lockType: 'TEMPORARY',
+          lockedUntil: '2026-11-23T10:00:00Z',
+          lockReason: 'Spam liên kết độc hại trên diễn đàn',
+          createdAt: '2026-10-10T00:00:00Z',
+        },
+      ],
+      totalCount: 4,
+      page: 1,
+      pageSize: 15,
+      totalPages: 1,
+    });
+  }),
+
+  http.post('*/api/v1/admin/users/:id/grant-admin', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.post('*/api/v1/admin/users/:id/revoke-admin', ({ params }) => {
+    if (params.id === 'usr-last-admin') {
+      return HttpResponse.json(
+        { code: 'LAST_ADMIN', message: 'Không thể thu hồi quyền Admin duy nhất trong hệ thống.' },
+        { status: 400 }
+      );
+    }
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.post('*/api/v1/admin/users/:id/lock', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.post('*/api/v1/admin/users/:id/unlock', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.post('*/api/v1/admin/announcements', () => {
+    return HttpResponse.json({ id: 'ann-' + Date.now() }, { status: 202 });
+  }),
 ];

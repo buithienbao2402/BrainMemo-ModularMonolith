@@ -18,6 +18,7 @@ import {
   ChevronRight,
   ChevronDown,
   ChevronUp,
+  Flag,
   MessageSquare,
   CornerDownRight,
   Sparkles,
@@ -45,6 +46,7 @@ import {
   useNominateCourseMutation,
   useWithdrawNominationMutation,
 } from '../api/courseApi';
+import { ReportModal } from '@/features/moderation';
 import defaultCourseCover from '@/assets/courses';
 
 interface ReviewItem {
@@ -228,6 +230,7 @@ export function CourseDetailPage() {
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   // Reviews submission state
   const [reviewRating, setReviewRating] = useState<number>(5);
@@ -728,6 +731,17 @@ export function CourseDetailPage() {
                     aria-label="Lưu khóa học"
                   >
                     <Bookmark className={`h-4 w-4 ${isBookmarked ? 'fill-current' : ''}`} />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setIsReportModalOpen(true)}
+                    className="rounded-full border-border/70 text-muted-foreground hover:text-destructive"
+                    title="Báo cáo khóa học vi phạm"
+                    aria-label="Báo cáo khóa học vi phạm"
+                  >
+                    <Flag className="h-4 w-4" />
                   </Button>
                 </div>
               )}
@@ -1607,6 +1621,17 @@ export function CourseDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Report Modal */}
+      {courseId ? (
+        <ReportModal
+          isOpen={isReportModalOpen}
+          onClose={() => setIsReportModalOpen(false)}
+          targetType="COURSE"
+          targetId={courseId}
+          targetTitle={courseTitle}
+        />
+      ) : null}
     </div>
   );
 }
