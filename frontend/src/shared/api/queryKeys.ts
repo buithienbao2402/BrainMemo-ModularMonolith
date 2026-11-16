@@ -47,6 +47,10 @@ export const queryKeys = {
       ['learning', 'comments', courseId, params ?? {}] as const,
     commentsSummary: (courseId: string) =>
       ['learning', 'commentsSummary', courseId] as const,
+    quizAttempts: (courseId: string, blockId: string) =>
+      ['learning', 'quizAttempts', courseId, blockId] as const,
+    quizAttempt: (attemptId: string) =>
+      ['learning', 'quizAttempt', attemptId] as const,
   },
   notifications: {
     all: ['notifications'] as const,
@@ -65,6 +69,14 @@ export const queryKeys = {
     resources: (courseId: string) => ['content', 'resources', courseId] as const,
     resourceDownloadUrl: (courseId: string, resourceId: string) =>
       ['content', 'resourceDownloadUrl', courseId, resourceId] as const,
+    questions: (courseId: string, params?: Record<string, unknown>) =>
+      ['content', 'questions', courseId, params ?? {}] as const,
+    questionDetail: (courseId: string, questionId: string) =>
+      ['content', 'questionDetail', courseId, questionId] as const,
+    questionUsage: (courseId: string, questionId: string) =>
+      ['content', 'questionUsage', courseId, questionId] as const,
+    quizExceptions: (courseId: string, blockId: string) =>
+      ['content', 'quizExceptions', courseId, blockId] as const,
   },
   discovery: {
     all: ['discovery'] as const,

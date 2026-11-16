@@ -3264,4 +3264,98 @@ export const handlers = [
       totalEligibleCourses: 15,
     });
   }),
+
+  // Questions and Quiz Authoring (T-S7-FE-01)
+  http.get('*/courses/:courseId/questions', () => {
+    return HttpResponse.json({
+      items: [
+        {
+          id: 'q-sample-1',
+          courseId: 'test-course-id',
+          questionType: 'MULTIPLE_CHOICE',
+          stem: 'Thủ đô của Việt Nam là gì?',
+          difficultyCode: 1,
+          defaultPoints: 10,
+          status: 'READY',
+          origin: 'MANUAL',
+          options: [
+            { id: 'opt-1', position: 1, content: 'Hà Nội', isCorrect: true },
+            { id: 'opt-2', position: 2, content: 'Huế', isCorrect: false },
+          ],
+          usageCount: 1,
+        },
+      ],
+      totalCount: 1,
+      page: 1,
+      pageSize: 20,
+    });
+  }),
+  http.get('*/api/v1/courses/:courseId/questions', () => {
+    return HttpResponse.json({
+      items: [
+        {
+          id: 'q-sample-1',
+          courseId: 'test-course-id',
+          questionType: 'MULTIPLE_CHOICE',
+          stem: 'Thủ đô của Việt Nam là gì?',
+          difficultyCode: 1,
+          defaultPoints: 10,
+          status: 'READY',
+          origin: 'MANUAL',
+          options: [
+            { id: 'opt-1', position: 1, content: 'Hà Nội', isCorrect: true },
+            { id: 'opt-2', position: 2, content: 'Huế', isCorrect: false },
+          ],
+          usageCount: 1,
+        },
+      ],
+      totalCount: 1,
+      page: 1,
+      pageSize: 20,
+    });
+  }),
+
+  http.get('*/courses/:courseId/questions/:questionId/usage', ({ params }) => {
+    return HttpResponse.json({
+      questionId: String(params.questionId),
+      quizCount: 2,
+      attemptCount: 15,
+      correctRate: 75,
+      usedInQuizzes: [
+        { quizBlockId: 'b-1', title: 'Quiz giữa kỳ', chapterTitle: 'Chương 1' },
+      ],
+    });
+  }),
+  http.get('*/api/v1/courses/:courseId/questions/:questionId/usage', ({ params }) => {
+    return HttpResponse.json({
+      questionId: String(params.questionId),
+      quizCount: 2,
+      attemptCount: 15,
+      correctRate: 75,
+      usedInQuizzes: [
+        { quizBlockId: 'b-1', title: 'Quiz giữa kỳ', chapterTitle: 'Chương 1' },
+      ],
+    });
+  }),
+
+  http.get('*/courses/:courseId/quizzes/:blockId/exceptions', () => {
+    return HttpResponse.json([]);
+  }),
+  http.get('*/api/v1/courses/:courseId/quizzes/:blockId/exceptions', () => {
+    return HttpResponse.json([]);
+  }),
+
+  http.put('*/courses/:courseId/quizzes/:blockId/exceptions/:userId', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+  http.put('*/api/v1/courses/:courseId/quizzes/:blockId/exceptions/:userId', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.delete('*/courses/:courseId/quizzes/:blockId/exceptions/:userId', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+  http.delete('*/api/v1/courses/:courseId/quizzes/:blockId/exceptions/:userId', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
 ];

@@ -32,6 +32,7 @@ import {
   ChapterEditorPage,
   ChapterVersionHistoryPage,
   ResourceManagementPage,
+  QuestionBankPage,
 } from '@/features/content';
 import {
   DiscoveryHomePage,
@@ -140,13 +141,7 @@ export const appRoutes: RouteObject[] = [
           },
           {
             path: '/manage/questions',
-            element: (
-              <RouteStubPage
-                screenCode="SCR-LMS-02"
-                title="Ngân hàng câu hỏi"
-                description="Hệ thống quản lý kho câu hỏi trắc nghiệm, tự luận và flashcard đang được hoàn thiện."
-              />
-            ),
+            element: <QuestionBankPage />,
           },
           {
             path: '/manage/resources',
@@ -199,6 +194,10 @@ export const appRoutes: RouteObject[] = [
           {
             path: '/courses/:courseId/manage/resources',
             element: <ResourceManagementPage />,
+          },
+          {
+            path: '/courses/:courseId/manage/questions',
+            element: <QuestionBankPage />,
           },
         ],
       },
