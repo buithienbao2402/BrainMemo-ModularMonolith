@@ -3718,8 +3718,10 @@ export const handlers = [
   }),
 
   // Grading queue
-  http.get('*/api/v1/courses/:courseId/assessment/grading-queue', () => {
-    return HttpResponse.json([
+  http.get('*/api/v1/courses/:courseId/assessment/grading-queue', ({ request }) => {
+    const url = new URL(request.url);
+    const kind = url.searchParams.get('kind');
+    const items = [
       {
         kind: 'QUIZ_ATTEMPT',
         sourceId: 'attempt-quiz-essay-1',
@@ -3744,7 +3746,10 @@ export const handlers = [
         },
         submittedAt: new Date(Date.now() - 3600000).toISOString(),
       },
-    ]);
+    ];
+
+    const filtered = kind ? items.filter((item) => item.kind === kind) : items;
+    return HttpResponse.json(filtered);
   }),
 
   // Review quiz attempt

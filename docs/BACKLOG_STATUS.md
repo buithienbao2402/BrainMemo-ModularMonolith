@@ -58,7 +58,7 @@
 | T-S8-BE-01 | BE-01 + BE-02 | DONE | Antigravity (BE) | dev/kim-thuan | **Assignments & Manual Grading Pipeline (Batched):** Nộp bài tập commit tệp + Hàng đợi chấm thi & Chấm tay tự luận DEC-03 + API Bài tập nộp chưa chấm (`GET /courses/{id}/submissions/pending`) |
 | T-S8-BE-02 | BE-03 | DONE | Antigravity (BE) | dev/kim-thuan | **Gradebook & Evaluation Rules (Batched):** Trọng số đánh giá, tính điểm final, bảng điểm, xếp loại |
 | T-S8-FE-01 | FE-01 + FE-02 | DONE | Antigravity (FE) | dev/kim-thuan | **FE Grading Suite & Gradebook (Batched):** SCR-LRN-05 + SCR-AST-01, 04, 05, 06, 07 (6/6 tests pass, 0 type error) |
-| T-S8-INT-01 | INT-01 | TODO | – | – | Tích hợp S8 + e2e |
+| T-S8-INT-01 | INT-01 | DONE | Antigravity (INT) | dev/kim-thuan | **Tích hợp S8 + e2e:** Playwright e2e `grading-and-gradebook-flow.spec.ts` pass 100%, 6/6 FE tests pass, BE build clean & unit tests pass |
 | **S9 – CLO/PLO & Đánh giá khóa** | | | | | |
 | T-S9-BE-01 | BE-01..04 | TODO | – | – | **CLO/PLO Engine, Analytics & Export (Batched):** CLO/PLO CRUD, liên kết trọng số, công thức 3.5.2, xuất báo cáo |
 | T-S9-BE-02 | BE-05 | TODO | – | – | **Course Review & Rating:** Học viên đánh giá 1-5 sao, phản hồi của giảng viên, rating Discovery & tổng kết sao (`reviews/summary`) |
