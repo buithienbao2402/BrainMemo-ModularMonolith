@@ -1,3 +1,4 @@
+using BrainMemo.Assessment.Contracts.Events;
 using BrainMemo.Content.Contracts.Events;
 using BrainMemo.Course.Contracts;
 using BrainMemo.Course.Contracts.Dtos;
@@ -448,5 +449,105 @@ public sealed class DiscoveryUnitTests
         Assert.Equal(2, ranking.LearnerRank);
         Assert.Equal(2, ranking.NominationRank);
         Assert.Equal(2, ranking.ReviewRank);
+    }
+
+    [Fact]
+    public async Task CourseReviewCreated_InsertsFact_AndUpdatesEntryAvgRatingAndReviewCount()
+    {
+        using DiscoveryDbContext dbContext = CreateInMemoryDbContext();
+        CourseEntryRepository entryRepo = new(dbContext);
+        CourseActivityFactRepository factRepo = new(dbContext);
+        CourseReviewCreatedEventHandler handler = new(entryRepo, factRepo, NullLogger<CourseReviewCreatedEventHandler>.Instance);
+
+        Guid courseId = Guid.NewGuid();
+        Guid studentId = Guid.NewGuid();
+        Guid eventId = Guid.NewGuid();
+
+        await entryRepo.UpsertAsync(new CourseEntry
+        {
+            CourseId = courseId,
+            Name = "Course 1",
+            AccessMode = "PUBLIC",
+            CourseStatus = "UPDATING",
+            ReviewCount = 0,
+            AvgRating = null,
+            SourceRevision = 1,
+            LastUpdatedAt = DateTimeOffset.UtcNow,
+        });
+
+        var createdEvent = new CourseReviewCreated(
+            EventId: eventId,
+            OccurredAt: DateTimeOffset.UtcNow,
+            ReviewId: Guid.NewGuid(),
+            CourseId: courseId,
+            UserId: studentId,
+            Rating: 5,
+            CommentText: "Great!",
+            AvgRating: 5.0m,
+            ReviewCount: 1);
+
+        await handler.HandleAsync(createdEvent, CancellationToken.None);
+
+        var entry = await entryRepo.GetByIdAsync(courseId);
+        Assert.NotNull(entry);
+        Assert.Equal(1, entry.ReviewCount);
+        Assert.Equal(5.0m, entry.AvgRating);
+
+        var fact = await dbContext.CourseActivityFacts.FirstOrDefaultAsync(f => f.SourceEventId == eventId);
+        Assert.NotNull(fact);
+        Assert.Equal("REVIEW_NEW", fact.ActivityType);
+        Assert.Equal(courseId, fact.CourseId);
+        Assert.Equal(studentId, fact.UserId);
+
+        // Duplicate event idempotency test
+        await handler.HandleAsync(createdEvent, CancellationToken.None);
+        var entryAfterDup = await entryRepo.GetByIdAsync(courseId);
+        Assert.Equal(1, entryAfterDup!.ReviewCount);
+    }
+
+    [Fact]
+    public async Task CourseReviewUpdated_UpdatesEntryAvgRating_WithoutCreatingFact()
+    {
+        using DiscoveryDbContext dbContext = CreateInMemoryDbContext();
+        CourseEntryRepository entryRepo = new(dbContext);
+        CourseReviewUpdatedEventHandler handler = new(entryRepo, NullLogger<CourseReviewUpdatedEventHandler>.Instance);
+
+        Guid courseId = Guid.NewGuid();
+        Guid studentId = Guid.NewGuid();
+
+        await entryRepo.UpsertAsync(new CourseEntry
+        {
+            CourseId = courseId,
+            Name = "Course 1",
+            AccessMode = "PUBLIC",
+            CourseStatus = "UPDATING",
+            ReviewCount = 1,
+            AvgRating = 5.0m,
+            SourceRevision = 1,
+            LastUpdatedAt = DateTimeOffset.UtcNow,
+        });
+
+        var updatedEvent = new CourseReviewUpdated(
+            EventId: Guid.NewGuid(),
+            OccurredAt: DateTimeOffset.UtcNow,
+            ReviewId: Guid.NewGuid(),
+            CourseId: courseId,
+            UserId: studentId,
+            OldRating: 5,
+            NewRating: 4,
+            CommentText: "Updated comment",
+            AvgRating: 4.0m,
+            ReviewCount: 1);
+
+        await handler.HandleAsync(updatedEvent, CancellationToken.None);
+
+        var entry = await entryRepo.GetByIdAsync(courseId);
+        Assert.NotNull(entry);
+        Assert.Equal(1, entry.ReviewCount);
+        Assert.Equal(4.0m, entry.AvgRating);
+
+        // Verify no fact added in db
+        var facts = await dbContext.CourseActivityFacts.ToListAsync();
+        Assert.Empty(facts);
     }
 }

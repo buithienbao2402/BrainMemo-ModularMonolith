@@ -36,5 +36,12 @@ public interface IAssessmentRepository
     Task<IReadOnlyList<ComponentOutcomeWeight>> GetOutcomeWeightsByCourseIdAsync(Guid courseId, CancellationToken ct = default);
     Task<IReadOnlyList<ComponentOutcomeWeight>> GetOutcomeWeightsByComponentIdAsync(Guid componentId, CancellationToken ct = default);
     Task ReplaceComponentOutcomeWeightsAsync(Guid componentId, IEnumerable<ComponentOutcomeWeight> weights, CancellationToken ct = default);
+    Task<CourseReview?> GetReviewByCourseAndUserAsync(Guid courseId, Guid userId, CancellationToken ct = default);
+    Task<CourseReview?> GetReviewByIdAsync(Guid id, CancellationToken ct = default);
+    Task<IReadOnlyList<CourseReview>> GetReviewsByCourseIdAsync(Guid courseId, int page, int pageSize, CancellationToken ct = default);
+    Task<int> CountReviewsByCourseIdAsync(Guid courseId, CancellationToken ct = default);
+    Task<(decimal? AvgRating, int TotalCount, Dictionary<int, int> Distribution)> GetCourseReviewStatsAsync(Guid courseId, CancellationToken ct = default);
+    Task AddReviewAsync(CourseReview review, CancellationToken ct = default);
+    Task DeleteReviewAsync(CourseReview review, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
 }

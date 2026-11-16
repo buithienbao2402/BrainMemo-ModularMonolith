@@ -20,6 +20,7 @@ public class AssessmentDbContext : DbContext
     public DbSet<Clo> Clos => Set<Clo>();
     public DbSet<Plo> Plos => Set<Plo>();
     public DbSet<ComponentOutcomeWeight> ComponentOutcomeWeights => Set<ComponentOutcomeWeight>();
+    public DbSet<CourseReview> CourseReviews => Set<CourseReview>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {

@@ -364,6 +364,15 @@ public class GradingStrategyTests
 
         public Task ReplaceComponentOutcomeWeightsAsync(Guid componentId, IEnumerable<ComponentOutcomeWeight> weights, CancellationToken ct = default) => Task.CompletedTask;
 
+        public Task<CourseReview?> GetReviewByCourseAndUserAsync(Guid courseId, Guid userId, CancellationToken ct = default) => Task.FromResult<CourseReview?>(null);
+        public Task<CourseReview?> GetReviewByIdAsync(Guid id, CancellationToken ct = default) => Task.FromResult<CourseReview?>(null);
+        public Task<IReadOnlyList<CourseReview>> GetReviewsByCourseIdAsync(Guid courseId, int page, int pageSize, CancellationToken ct = default) => Task.FromResult<IReadOnlyList<CourseReview>>(Array.Empty<CourseReview>());
+        public Task<int> CountReviewsByCourseIdAsync(Guid courseId, CancellationToken ct = default) => Task.FromResult(0);
+        public Task<(decimal? AvgRating, int TotalCount, Dictionary<int, int> Distribution)> GetCourseReviewStatsAsync(Guid courseId, CancellationToken ct = default) =>
+            Task.FromResult((default(decimal?), 0, new Dictionary<int, int> { [1] = 0, [2] = 0, [3] = 0, [4] = 0, [5] = 0 }));
+        public Task AddReviewAsync(CourseReview review, CancellationToken ct = default) => Task.CompletedTask;
+        public Task DeleteReviewAsync(CourseReview review, CancellationToken ct = default) => Task.CompletedTask;
+
         public Task SaveChangesAsync(CancellationToken ct = default) => Task.CompletedTask;
     }
 }

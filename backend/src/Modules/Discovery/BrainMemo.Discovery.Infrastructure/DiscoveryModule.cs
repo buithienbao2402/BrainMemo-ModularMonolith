@@ -1,3 +1,4 @@
+using BrainMemo.Assessment.Contracts.Events;
 using BrainMemo.BuildingBlocks.Abstractions.Events;
 using BrainMemo.BuildingBlocks.Abstractions.Modules;
 using BrainMemo.Content.Contracts.Events;
@@ -54,5 +55,7 @@ public sealed class DiscoveryModule : IModule
         services.AddScoped<IIntegrationEventHandler<NominationChanged>, NominationChangedEventHandler>();
         services.AddScoped<IIntegrationEventHandler<ProfileUpdated>, ProfileUpdatedEventHandler>();
         services.AddScoped<IIntegrationEventHandler<CommentCreated>, CommentCreatedEventHandler>();
+        services.AddScoped<IIntegrationEventHandler<CourseReviewCreated>, CourseReviewCreatedEventHandler>();
+        services.AddScoped<IIntegrationEventHandler<CourseReviewUpdated>, CourseReviewUpdatedEventHandler>();
     }
 }

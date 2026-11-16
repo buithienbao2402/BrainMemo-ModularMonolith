@@ -317,6 +317,65 @@ public class AssessmentRepository : IAssessmentRepository
         await _db.ComponentOutcomeWeights.AddRangeAsync(weights, ct);
     }
 
+    public async Task<CourseReview?> GetReviewByCourseAndUserAsync(Guid courseId, Guid userId, CancellationToken ct = default)
+    {
+        return await _db.CourseReviews.FirstOrDefaultAsync(r => r.CourseId == courseId && r.UserId == userId, ct);
+    }
+
+    public async Task<CourseReview?> GetReviewByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        return await _db.CourseReviews.FirstOrDefaultAsync(r => r.Id == id, ct);
+    }
+
+    public async Task<IReadOnlyList<CourseReview>> GetReviewsByCourseIdAsync(Guid courseId, int page, int pageSize, CancellationToken ct = default)
+    {
+        return await _db.CourseReviews
+            .Where(r => r.CourseId == courseId)
+            .OrderByDescending(r => r.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+    }
+
+    public async Task<int> CountReviewsByCourseIdAsync(Guid courseId, CancellationToken ct = default)
+    {
+        return await _db.CourseReviews
+            .CountAsync(r => r.CourseId == courseId, ct);
+    }
+
+    public async Task<(decimal? AvgRating, int TotalCount, Dictionary<int, int> Distribution)> GetCourseReviewStatsAsync(Guid courseId, CancellationToken ct = default)
+    {
+        var ratings = await _db.CourseReviews
+            .Where(r => r.CourseId == courseId)
+            .Select(r => r.Rating)
+            .ToListAsync(ct);
+
+        var dist = new Dictionary<int, int> { [1] = 0, [2] = 0, [3] = 0, [4] = 0, [5] = 0 };
+        if (ratings.Count == 0)
+        {
+            return (null, 0, dist);
+        }
+
+        foreach (var r in ratings)
+        {
+            if (dist.ContainsKey(r)) dist[r]++;
+        }
+
+        var avg = Math.Round((decimal)ratings.Average(), 2);
+        return (avg, ratings.Count, dist);
+    }
+
+    public async Task AddReviewAsync(CourseReview review, CancellationToken ct = default)
+    {
+        await _db.CourseReviews.AddAsync(review, ct);
+    }
+
+    public Task DeleteReviewAsync(CourseReview review, CancellationToken ct = default)
+    {
+        _db.CourseReviews.Remove(review);
+        return Task.CompletedTask;
+    }
+
     public async Task SaveChangesAsync(CancellationToken ct = default)
     {
         await _db.SaveChangesAsync(ct);

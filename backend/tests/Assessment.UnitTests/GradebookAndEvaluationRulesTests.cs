@@ -214,6 +214,41 @@ public class GradebookAndEvaluationRulesTests
             return Task.CompletedTask;
         }
 
+        public List<CourseReview> Reviews { get; } = new();
+
+        public Task<CourseReview?> GetReviewByCourseAndUserAsync(Guid courseId, Guid userId, CancellationToken ct = default) =>
+            Task.FromResult(Reviews.FirstOrDefault(r => r.CourseId == courseId && r.UserId == userId));
+
+        public Task<CourseReview?> GetReviewByIdAsync(Guid id, CancellationToken ct = default) =>
+            Task.FromResult(Reviews.FirstOrDefault(r => r.Id == id));
+
+        public Task<IReadOnlyList<CourseReview>> GetReviewsByCourseIdAsync(Guid courseId, int page, int pageSize, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<CourseReview>>(Reviews.Where(r => r.CourseId == courseId).Skip((page - 1) * pageSize).Take(pageSize).ToList());
+
+        public Task<int> CountReviewsByCourseIdAsync(Guid courseId, CancellationToken ct = default) =>
+            Task.FromResult(Reviews.Count(r => r.CourseId == courseId));
+
+        public Task<(decimal? AvgRating, int TotalCount, Dictionary<int, int> Distribution)> GetCourseReviewStatsAsync(Guid courseId, CancellationToken ct = default)
+        {
+            var ratings = Reviews.Where(r => r.CourseId == courseId).Select(r => r.Rating).ToList();
+            var dist = new Dictionary<int, int> { [1] = 0, [2] = 0, [3] = 0, [4] = 0, [5] = 0 };
+            if (ratings.Count == 0) return Task.FromResult((default(decimal?), 0, dist));
+            foreach (var r in ratings) if (dist.ContainsKey(r)) dist[r]++;
+            return Task.FromResult((Math.Round((decimal)ratings.Average(), 2) as decimal?, ratings.Count, dist));
+        }
+
+        public Task AddReviewAsync(CourseReview review, CancellationToken ct = default)
+        {
+            Reviews.Add(review);
+            return Task.CompletedTask;
+        }
+
+        public Task DeleteReviewAsync(CourseReview review, CancellationToken ct = default)
+        {
+            Reviews.Remove(review);
+            return Task.CompletedTask;
+        }
+
         public Task SaveChangesAsync(CancellationToken ct = default) => Task.CompletedTask;
     }
 
