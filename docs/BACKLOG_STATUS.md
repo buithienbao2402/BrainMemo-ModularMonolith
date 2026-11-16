@@ -68,7 +68,7 @@
 | T-S10-BE-01 | BE-01 | DONE | – | – | **Identity Admin & Account Controls:** Phân quyền Admin, khóa/mở khóa tài khoản, job tự gỡ khóa |
 | T-S10-BE-02 | BE-02..05 | DONE | Antigravity (BE) | dev/kim-thuan | **Full Moderation Pipeline, Sanctions & Audit (Batched):** Báo cáo vi phạm (`GET /courses/{id}/reports`), transaction IModerationTransaction, chế tài, audit log, broadcast |
 | T-S10-FE-01 | FE-01 + FE-02 | DONE | Antigravity (FE) | dev/kim-thuan | **FE Moderation & Admin Portal (Batched):** SCR-MOD-01..06 + SCR-ADM-01, 02 (9/9 tests pass, 0 type error) |
-| T-S10-INT-01 | INT-01 | TODO | – | – | Tích hợp S10 + e2e |
+| T-S10-INT-01 | INT-01 | DONE | Antigravity (INT) | dev/kim-thuan | **Tích hợp S10 + e2e:** Playwright e2e `moderation-and-admin-flow.spec.ts` pass 100%, 9/9 FE tests pass, BE build clean & unit tests pass |
 | **S11 – AI Services** | | | | | |
 | T-S11-BE-01 | BE-01..03 | TODO | – | – | **GenAI Quiz & Flashcard Service (Batched):** Settings, Quota, Gemini API, Background jobs sinh câu hỏi & flashcard |
 | T-S11-BE-02 | BE-04 | TODO | – | – | **PhoBERT Content Safety Service:** `ai-service` FastAPI PhoBERT + C# client + background scanner |
