@@ -22,5 +22,13 @@ public interface ILearningRepository
     Task<int> CountChapterCompletionsAsync(Guid chapterId, CancellationToken ct = default);
     Task<Page<Guid>> ListInProgressCourseIdsAsync(Guid userId, Guid? afterId, int limit, CancellationToken ct = default);
 
+    Task<Comment?> GetCommentByIdAsync(Guid commentId, CancellationToken ct = default);
+    Task AddCommentAsync(Comment comment, CancellationToken ct = default);
+    Task<PagedResult<Comment>> ListRootCommentsAsync(Guid courseId, Guid? chapterId, int page, int pageSize, CancellationToken ct = default);
+    Task<IReadOnlyList<Comment>> ListRepliesForParentsAsync(IReadOnlyList<Guid> parentCommentIds, CancellationToken ct = default);
+    Task<int> CountCommentsAsync(Guid courseId, Guid? chapterId = null, CancellationToken ct = default);
+    Task<int> CountRootCommentsAsync(Guid courseId, Guid? chapterId = null, CancellationToken ct = default);
+    Task<int> CountPinnedCommentsAsync(Guid courseId, CancellationToken ct = default);
+
     Task SaveChangesAsync(CancellationToken ct = default);
 }

@@ -54,6 +54,12 @@ public sealed class NotificationApplicationTests
             return Task.FromResult(item);
         }
 
+        public Task<bool> ExistsByEventAndRecipientAsync(Guid sourceEventId, Guid recipientUserId, CancellationToken ct = default)
+        {
+            bool exists = Items.Any(n => n.SourceEventId == sourceEventId && n.RecipientUserId == recipientUserId);
+            return Task.FromResult(exists);
+        }
+
         public Task<int> MarkAllAsReadAsync(Guid recipientUserId, DateTimeOffset utcNow, CancellationToken ct = default)
         {
             int count = 0;

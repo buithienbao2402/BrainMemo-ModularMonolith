@@ -69,16 +69,43 @@ public sealed class LearningContractService(
 
     public Result<ReportTargetDto> ResolveReportTarget(Guid commentId, Guid reporterUserId)
     {
-        return Result.Failure<ReportTargetDto>(Error.NotFound("Bình luận không tồn tại."));
+        Comment? comment = learningRepository.GetCommentByIdAsync(commentId).GetAwaiter().GetResult();
+        if (comment is null)
+        {
+            return Result.Failure<ReportTargetDto>(Error.NotFound("Bình luận không tồn tại."));
+        }
+
+        return Result.Success(new ReportTargetDto(
+            CommentId: comment.Id,
+            CourseId: comment.CourseId,
+            ChapterId: comment.ChapterId,
+            AuthorUserId: comment.UserId,
+            Content: comment.Content));
     }
 
     public Result SoftDeleteComment(Guid commentId, Guid actorAdminId)
     {
+        Comment? comment = learningRepository.GetCommentByIdAsync(commentId).GetAwaiter().GetResult();
+        if (comment is null)
+        {
+            return Result.Failure(Error.NotFound("Bình luận không tồn tại."));
+        }
+
+        comment.AdminSoftDelete(actorAdminId, DateTimeOffset.UtcNow);
+        learningRepository.SaveChangesAsync().GetAwaiter().GetResult();
         return Result.Success();
     }
 
     public Result RestoreComment(Guid commentId, Guid actorAdminId)
     {
+        Comment? comment = learningRepository.GetCommentByIdAsync(commentId).GetAwaiter().GetResult();
+        if (comment is null)
+        {
+            return Result.Failure(Error.NotFound("Bình luận không tồn tại."));
+        }
+
+        comment.AdminRestore(actorAdminId, DateTimeOffset.UtcNow);
+        learningRepository.SaveChangesAsync().GetAwaiter().GetResult();
         return Result.Success();
     }
 
@@ -88,8 +115,12 @@ public sealed class LearningContractService(
             .CountCourseCompletionsAsync(courseId)
             .GetAwaiter().GetResult();
 
+        int commentCount = learningRepository
+            .CountCommentsAsync(courseId)
+            .GetAwaiter().GetResult();
+
         return Result.Success(new CourseLearningStatsDto(
             CompletedLearnerCount: completedCount,
-            CommentCount: 0));
+            CommentCount: commentCount));
     }
 }

@@ -125,6 +125,99 @@ public sealed class LearningRepository(LearningDbContext dbContext) : ILearningR
         return new Page<Guid>(items, lastId, hasMore);
     }
 
+    public async Task<Comment?> GetCommentByIdAsync(Guid commentId, CancellationToken ct = default)
+    {
+        return await dbContext.Comments
+            .Include(c => c.Replies)
+            .FirstOrDefaultAsync(c => c.Id == commentId, ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task AddCommentAsync(Comment comment, CancellationToken ct = default)
+    {
+        await dbContext.Comments.AddAsync(comment, ct).ConfigureAwait(false);
+    }
+
+    public async Task<PagedResult<Comment>> ListRootCommentsAsync(
+        Guid courseId,
+        Guid? chapterId,
+        int page,
+        int pageSize,
+        CancellationToken ct = default)
+    {
+        IQueryable<Comment> query = dbContext.Comments
+            .AsNoTracking()
+            .Where(c => c.CourseId == courseId && c.ParentCommentId == null && c.DeletedAt == null);
+
+        if (chapterId.HasValue)
+        {
+            query = query.Where(c => c.ChapterId == chapterId.Value);
+        }
+
+        int totalItems = await query.CountAsync(ct).ConfigureAwait(false);
+
+        List<Comment> items = await query
+            .OrderByDescending(c => c.IsPinned)
+            .ThenByDescending(c => c.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+
+        return new PagedResult<Comment>(items, page, pageSize, totalItems);
+    }
+
+    public async Task<IReadOnlyList<Comment>> ListRepliesForParentsAsync(
+        IReadOnlyList<Guid> parentCommentIds,
+        CancellationToken ct = default)
+    {
+        if (parentCommentIds.Count == 0)
+        {
+            return Array.Empty<Comment>();
+        }
+
+        return await dbContext.Comments
+            .AsNoTracking()
+            .Where(c => c.ParentCommentId != null && parentCommentIds.Contains(c.ParentCommentId.Value) && c.DeletedAt == null)
+            .OrderBy(c => c.CreatedAt)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<int> CountCommentsAsync(Guid courseId, Guid? chapterId = null, CancellationToken ct = default)
+    {
+        IQueryable<Comment> query = dbContext.Comments
+            .Where(c => c.CourseId == courseId && c.DeletedAt == null);
+
+        if (chapterId.HasValue)
+        {
+            query = query.Where(c => c.ChapterId == chapterId.Value);
+        }
+
+        return await query.CountAsync(ct).ConfigureAwait(false);
+    }
+
+    public async Task<int> CountRootCommentsAsync(Guid courseId, Guid? chapterId = null, CancellationToken ct = default)
+    {
+        IQueryable<Comment> query = dbContext.Comments
+            .Where(c => c.CourseId == courseId && c.ParentCommentId == null && c.DeletedAt == null);
+
+        if (chapterId.HasValue)
+        {
+            query = query.Where(c => c.ChapterId == chapterId.Value);
+        }
+
+        return await query.CountAsync(ct).ConfigureAwait(false);
+    }
+
+    public async Task<int> CountPinnedCommentsAsync(Guid courseId, CancellationToken ct = default)
+    {
+        return await dbContext.Comments
+            .Where(c => c.CourseId == courseId && c.IsPinned && c.DeletedAt == null)
+            .CountAsync(ct)
+            .ConfigureAwait(false);
+    }
+
     public async Task SaveChangesAsync(CancellationToken ct = default)
     {
         await dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
