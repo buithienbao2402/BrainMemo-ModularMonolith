@@ -15,8 +15,16 @@ namespace BrainMemo.Content.Application.Commands.SaveChapterDraft;
 public sealed class SaveChapterDraftCommandHandler(
     IContentRepository contentRepository,
     ICourseContract courseContract,
-    IHtmlSanitizer htmlSanitizer) : ICommandHandler<SaveChapterDraftCommand, ChapterDetailDto>
+    IHtmlSanitizer htmlSanitizer,
+    IQuizPasswordHasher? quizPasswordHasher = null) : ICommandHandler<SaveChapterDraftCommand, ChapterDetailDto>
 {
+    private readonly IQuizPasswordHasher _quizPasswordHasher = quizPasswordHasher ?? new SimpleQuizPasswordHasher();
+
+    private sealed class SimpleQuizPasswordHasher : IQuizPasswordHasher
+    {
+        public string Hash(string password) => password;
+        public bool Verify(string password, string passwordHash) => password == passwordHash;
+    }
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -174,6 +182,13 @@ public sealed class SaveChapterDraftCommandHandler(
                 QuizConfigDto qc = b.QuizConfig;
                 Enum.TryParse<QuizResultDisplay>(qc.ResultDisplay, true, out var display);
 
+                QuizConfig? existingQuizConfig = await contentRepository.GetQuizConfigAsync(b.Id, cancellationToken);
+                string? passwordHash = existingQuizConfig?.PasswordHash;
+                if (!string.IsNullOrWhiteSpace(qc.Password))
+                {
+                    passwordHash = _quizPasswordHasher.Hash(qc.Password);
+                }
+
                 var quizConfig = new QuizConfig(
                     b.Id,
                     qc.OpenAt,
@@ -184,7 +199,7 @@ public sealed class SaveChapterDraftCommandHandler(
                     display,
                     qc.ShuffleQuestions,
                     qc.ShuffleOptions,
-                    qc.Password);
+                    passwordHash);
 
                 var quizQuestions = qc.Questions?
                     .Select(q => new QuizQuestion(b.Id, q.QuestionId, q.Position, q.Points))

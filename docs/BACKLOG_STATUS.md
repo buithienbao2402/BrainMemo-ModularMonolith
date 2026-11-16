@@ -49,7 +49,7 @@
 | T-S6-FE-01 | FE-01 + FE-02 | DONE | Antigravity (FE) | dev/kim-thuan | **FE Social & Notifications (Batched):** SCR-LRN-06 + SCR-NTF-01 + SCR-CRS-04 & nút đề cử (24/24 tests pass, typecheck clean) |
 | T-S6-INT-01 | INT-01 | DONE | Antigravity (INT) | dev/kim-thuan | **Tích hợp S6 + e2e:** Playwright e2e `social-notification-flow.spec.ts` pass 100%, 24/24 FE tests pass, BE build & unit tests pass |
 | **S7 – Ngân hàng câu hỏi & Quiz** | | | | | |
-| T-S7-BE-01 | BE-01 + BE-02 | TODO | – | – | **Question Bank & Quiz Authoring (Batched):** Ngân hàng câu hỏi 6 loại + Cấu hình bài thi trong chương + Bốc đề thi + API Quiz gắn với chương (`GET /courses/{id}/chapters/{chapterId}/quizzes`) |
+| T-S7-BE-01 | BE-01 + BE-02 | DONE | Antigravity (BE) | dev/kim-thuan | **Question Bank & Quiz Authoring (Batched):** Ngân hàng câu hỏi 6 loại + Cấu hình bài thi trong chương + Bốc đề thi + API Quiz gắn với chương (`GET /courses/{id}/chapters/{chapterId}/quizzes`) (98/98 tests pass, build clean) |
 | T-S7-BE-02 | BE-03..05 | TODO | – | – | **Quiz Engine & Auto-Grading (Batched):** Làm bài, autosave, deadline worker + Bộ chấm tự động ADR-04 + Nộp bài TX1/TX2 |
 | T-S7-FE-01 | FE-01 + FE-02 | TODO | – | – | **FE Question Bank & Quiz Authoring (Batched):** SCR-CNT-04, 05, 06, 08, 09 |
 | T-S7-FE-02 | FE-03 | TODO | – | – | **FE Quiz Player:** SCR-LRN-02, 03, 04 (Làm quiz, đếm giờ, autosave, nộp bài) |

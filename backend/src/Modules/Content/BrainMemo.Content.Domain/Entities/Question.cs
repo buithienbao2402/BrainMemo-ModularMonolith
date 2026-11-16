@@ -72,6 +72,25 @@ public class Question : AggregateRoot
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 
+    public void Update(
+        QuestionType questionType,
+        string stem,
+        string? explanation,
+        string? referenceAnswer,
+        byte? difficultyCode,
+        decimal defaultPoints,
+        bool allowMultiple)
+    {
+        QuestionType = questionType;
+        Stem = stem;
+        Explanation = explanation;
+        ReferenceAnswer = referenceAnswer;
+        DifficultyCode = difficultyCode;
+        DefaultPoints = defaultPoints;
+        AllowMultiple = allowMultiple;
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
     public Result SetStatus(QuestionStatus newStatus)
     {
         Status = newStatus;

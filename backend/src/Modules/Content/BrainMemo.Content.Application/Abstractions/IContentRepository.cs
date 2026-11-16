@@ -24,6 +24,32 @@ public interface IContentRepository
     Task<Question?> GetQuestionByIdAsync(Guid questionId, CancellationToken ct = default);
     Task<IReadOnlyList<Question>> GetQuestionsByIdsAsync(IReadOnlyList<Guid> questionIds, CancellationToken ct = default);
     Task<int> CountReadyQuestionsAsync(Guid courseId, string? filterTag, byte? filterDifficultyCode, QuestionType? filterQuestionType, CancellationToken ct = default);
+    Task<QuestionBank?> GetQuestionBankByCourseIdAsync(Guid courseId, CancellationToken ct = default);
+    Task AddQuestionBankAsync(QuestionBank bank, CancellationToken ct = default);
+    Task UpdateQuestionBankAsync(QuestionBank bank, CancellationToken ct = default);
+    Task<(IReadOnlyList<Question> Items, int TotalCount)> ListQuestionsAsync(
+        Guid courseId,
+        string? tag,
+        byte? difficultyCode,
+        QuestionType? type,
+        QuestionStatus? status,
+        int page,
+        int pageSize,
+        CancellationToken ct = default);
+    Task<IReadOnlyList<QuestionOption>> GetQuestionOptionsAsync(Guid questionId, CancellationToken ct = default);
+    Task<IReadOnlyList<string>> GetQuestionTagsAsync(Guid questionId, CancellationToken ct = default);
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<QuestionOption>>> GetOptionsForQuestionsAsync(IReadOnlyList<Guid> questionIds, CancellationToken ct = default);
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<string>>> GetTagsForQuestionsAsync(IReadOnlyList<Guid> questionIds, CancellationToken ct = default);
+    Task AddQuestionWithOptionsAndTagsAsync(Question question, IReadOnlyList<QuestionOption> options, IReadOnlyList<string> tags, CancellationToken ct = default);
+    Task UpdateQuestionWithOptionsAndTagsAsync(Question question, IReadOnlyList<QuestionOption> options, IReadOnlyList<string> tags, CancellationToken ct = default);
+    Task<IReadOnlyList<(Guid BlockId, string Title)>> GetQuestionUsageQuizzesAsync(Guid questionId, CancellationToken ct = default);
+    Task<IReadOnlyList<QuizException>> ListQuizExceptionsAsync(Guid quizBlockId, CancellationToken ct = default);
+    Task<QuizException?> GetQuizExceptionAsync(Guid quizBlockId, Guid userId, CancellationToken ct = default);
+    Task AddQuizExceptionAsync(QuizException exception, CancellationToken ct = default);
+    Task UpdateQuizExceptionAsync(QuizException exception, CancellationToken ct = default);
+    Task DeleteQuizExceptionAsync(QuizException exception, CancellationToken ct = default);
+    Task<IReadOnlyList<Question>> GetReadyCandidateQuestionsAsync(Guid courseId, string? filterTag, byte? filterDifficultyCode, QuestionType? filterQuestionType, CancellationToken ct = default);
+    Task<Guid?> GetCourseIdByBlockIdAsync(Guid blockId, CancellationToken ct = default);
     Task SaveQuizConfigAsync(
         QuizConfig config,
         IReadOnlyList<QuizQuestion>? questions,

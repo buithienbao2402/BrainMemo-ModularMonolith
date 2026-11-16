@@ -177,8 +177,10 @@ public sealed class FakeContentRepository : IContentRepository
     public List<AssignmentConfig> AssignmentConfigs { get; } = [];
     public List<PublishedBlock> PublishedBlocks { get; } = [];
     public List<Question> Questions { get; } = [];
+    public List<QuestionOption> QuestionOptions { get; } = [];
     public List<QuestionTag> QuestionTags { get; } = [];
     public List<QuestionBank> QuestionBanks { get; } = [];
+    public List<QuizException> QuizExceptions { get; } = [];
 
     public Task<Chapter?> GetChapterByIdAsync(Guid chapterId, CancellationToken ct = default)
     {
@@ -350,6 +352,215 @@ public sealed class FakeContentRepository : IContentRepository
         }
 
         return Task.FromResult(query.Count());
+    }
+
+    public Task<QuestionBank?> GetQuestionBankByCourseIdAsync(Guid courseId, CancellationToken ct = default)
+    {
+        var bank = QuestionBanks.FirstOrDefault(b => b.CourseId == courseId);
+        return Task.FromResult(bank);
+    }
+
+    public Task AddQuestionBankAsync(QuestionBank bank, CancellationToken ct = default)
+    {
+        QuestionBanks.Add(bank);
+        return Task.CompletedTask;
+    }
+
+    public Task UpdateQuestionBankAsync(QuestionBank bank, CancellationToken ct = default)
+    {
+        return Task.CompletedTask;
+    }
+
+    public Task<(IReadOnlyList<Question> Items, int TotalCount)> ListQuestionsAsync(
+        Guid courseId,
+        string? tag,
+        byte? difficultyCode,
+        QuestionType? type,
+        QuestionStatus? status,
+        int page,
+        int pageSize,
+        CancellationToken ct = default)
+    {
+        var bank = QuestionBanks.FirstOrDefault(b => b.CourseId == courseId);
+        if (bank is null) return Task.FromResult(((IReadOnlyList<Question>)Array.Empty<Question>(), 0));
+
+        var query = Questions.Where(q => q.BankId == bank.Id);
+        if (status.HasValue) query = query.Where(q => q.Status == status.Value);
+        if (type.HasValue) query = query.Where(q => q.QuestionType == type.Value);
+        if (difficultyCode.HasValue) query = query.Where(q => q.DifficultyCode == difficultyCode.Value);
+        if (!string.IsNullOrWhiteSpace(tag))
+        {
+            string t = tag.Trim();
+            query = query.Where(q => QuestionTags.Any(qt => qt.QuestionId == q.Id && qt.Tag == t));
+        }
+
+        int total = query.Count();
+        int clampedPage = page < 1 ? 1 : page;
+        int clampedPageSize = pageSize < 1 ? 20 : pageSize;
+
+        IReadOnlyList<Question> items = query.OrderByDescending(q => q.CreatedAt)
+            .Skip((clampedPage - 1) * clampedPageSize)
+            .Take(clampedPageSize)
+            .ToList();
+
+        return Task.FromResult((items, total));
+    }
+
+    public Task<IReadOnlyList<QuestionOption>> GetQuestionOptionsAsync(Guid questionId, CancellationToken ct = default)
+    {
+        IReadOnlyList<QuestionOption> options = QuestionOptions.Where(o => o.QuestionId == questionId).OrderBy(o => o.Position).ToList();
+        return Task.FromResult(options);
+    }
+
+    public Task<IReadOnlyList<string>> GetQuestionTagsAsync(Guid questionId, CancellationToken ct = default)
+    {
+        IReadOnlyList<string> tags = QuestionTags.Where(t => t.QuestionId == questionId).Select(t => t.Tag).ToList();
+        return Task.FromResult(tags);
+    }
+
+    public Task<IReadOnlyDictionary<Guid, IReadOnlyList<QuestionOption>>> GetOptionsForQuestionsAsync(IReadOnlyList<Guid> questionIds, CancellationToken ct = default)
+    {
+        IReadOnlyDictionary<Guid, IReadOnlyList<QuestionOption>> dict = QuestionOptions
+            .Where(o => questionIds.Contains(o.QuestionId))
+            .GroupBy(o => o.QuestionId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<QuestionOption>)g.OrderBy(o => o.Position).ToList());
+
+        return Task.FromResult(dict);
+    }
+
+    public Task<IReadOnlyDictionary<Guid, IReadOnlyList<string>>> GetTagsForQuestionsAsync(IReadOnlyList<Guid> questionIds, CancellationToken ct = default)
+    {
+        IReadOnlyDictionary<Guid, IReadOnlyList<string>> dict = QuestionTags
+            .Where(t => questionIds.Contains(t.QuestionId))
+            .GroupBy(t => t.QuestionId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)g.Select(t => t.Tag).ToList());
+
+        return Task.FromResult(dict);
+    }
+
+    public Task AddQuestionWithOptionsAndTagsAsync(Question question, IReadOnlyList<QuestionOption> options, IReadOnlyList<string> tags, CancellationToken ct = default)
+    {
+        Questions.Add(question);
+        if (options != null) QuestionOptions.AddRange(options);
+        if (tags != null)
+        {
+            var distinctTags = tags.Where(t => !string.IsNullOrWhiteSpace(t)).Select(t => t.Trim()).Distinct();
+            QuestionTags.AddRange(distinctTags.Select(t => new QuestionTag(question.Id, t)));
+        }
+        return Task.CompletedTask;
+    }
+
+    public Task UpdateQuestionWithOptionsAndTagsAsync(Question question, IReadOnlyList<QuestionOption> options, IReadOnlyList<string> tags, CancellationToken ct = default)
+    {
+        QuestionOptions.RemoveAll(o => o.QuestionId == question.Id);
+        if (options != null) QuestionOptions.AddRange(options);
+
+        QuestionTags.RemoveAll(t => t.QuestionId == question.Id);
+        if (tags != null)
+        {
+            var distinctTags = tags.Where(t => !string.IsNullOrWhiteSpace(t)).Select(t => t.Trim()).Distinct();
+            QuestionTags.AddRange(distinctTags.Select(t => new QuestionTag(question.Id, t)));
+        }
+        return Task.CompletedTask;
+    }
+
+    public Task<IReadOnlyList<(Guid BlockId, string Title)>> GetQuestionUsageQuizzesAsync(Guid questionId, CancellationToken ct = default)
+    {
+        var quizBlockIds = QuizQuestions.Where(q => q.QuestionId == questionId).Select(q => q.QuizBlockId).Distinct().ToList();
+        var result = new List<(Guid BlockId, string Title)>();
+        foreach (var id in quizBlockIds)
+        {
+            var pb = PublishedBlocks.FirstOrDefault(b => b.BlockId == id);
+            if (pb != null)
+            {
+                var c = Chapters.FirstOrDefault(ch => ch.Id == pb.ChapterId);
+                result.Add((id, c?.Title ?? "Quiz"));
+                continue;
+            }
+            var db = Blocks.FirstOrDefault(b => b.Id == id);
+            result.Add((id, db?.Title ?? "Quiz"));
+        }
+        return Task.FromResult<IReadOnlyList<(Guid BlockId, string Title)>>(result);
+    }
+
+    public Task<IReadOnlyList<QuizException>> ListQuizExceptionsAsync(Guid quizBlockId, CancellationToken ct = default)
+    {
+        IReadOnlyList<QuizException> list = QuizExceptions.Where(e => e.QuizBlockId == quizBlockId).ToList();
+        return Task.FromResult(list);
+    }
+
+    public Task<QuizException?> GetQuizExceptionAsync(Guid quizBlockId, Guid userId, CancellationToken ct = default)
+    {
+        QuizException? ex = QuizExceptions.FirstOrDefault(e => e.QuizBlockId == quizBlockId && e.UserId == userId);
+        return Task.FromResult(ex);
+    }
+
+    public Task AddQuizExceptionAsync(QuizException exception, CancellationToken ct = default)
+    {
+        QuizExceptions.Add(exception);
+        return Task.CompletedTask;
+    }
+
+    public Task UpdateQuizExceptionAsync(QuizException exception, CancellationToken ct = default)
+    {
+        return Task.CompletedTask;
+    }
+
+    public Task DeleteQuizExceptionAsync(QuizException exception, CancellationToken ct = default)
+    {
+        QuizExceptions.Remove(exception);
+        return Task.CompletedTask;
+    }
+
+    public Task<IReadOnlyList<Question>> GetReadyCandidateQuestionsAsync(
+        Guid courseId,
+        string? filterTag,
+        byte? filterDifficultyCode,
+        QuestionType? filterQuestionType,
+        CancellationToken ct = default)
+    {
+        var query = from q in Questions
+                    join b in QuestionBanks on q.BankId equals b.Id
+                    where b.CourseId == courseId && q.Status == QuestionStatus.Ready
+                    select q;
+
+        if (filterDifficultyCode.HasValue)
+        {
+            query = query.Where(q => q.DifficultyCode == filterDifficultyCode.Value);
+        }
+
+        if (filterQuestionType.HasValue)
+        {
+            query = query.Where(q => q.QuestionType == filterQuestionType.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(filterTag))
+        {
+            string tag = filterTag.Trim();
+            query = query.Where(q => QuestionTags.Any(t => t.QuestionId == q.Id && t.Tag == tag));
+        }
+
+        IReadOnlyList<Question> list = query.OrderBy(q => q.CreatedAt).ToList();
+        return Task.FromResult(list);
+    }
+
+    public Task<Guid?> GetCourseIdByBlockIdAsync(Guid blockId, CancellationToken ct = default)
+    {
+        var pb = PublishedBlocks.FirstOrDefault(b => b.BlockId == blockId);
+        if (pb != null)
+        {
+            var ch = Chapters.FirstOrDefault(c => c.Id == pb.ChapterId);
+            if (ch != null) return Task.FromResult<Guid?>(ch.CourseId);
+        }
+
+        var db = Blocks.FirstOrDefault(b => b.Id == blockId);
+        if (db != null)
+        {
+            var ch = Chapters.FirstOrDefault(c => c.Id == db.ChapterId);
+            if (ch != null) return Task.FromResult<Guid?>(ch.CourseId);
+        }
+
+        return Task.FromResult<Guid?>(null);
     }
 
     public Task<IReadOnlyList<Block>> GetBlocksByChapterIdAsync(Guid chapterId, CancellationToken ct = default)

@@ -13,8 +13,10 @@ namespace BrainMemo.Content.Infrastructure.Contracts;
 
 public class ContentContractService(
     IContentRepository contentRepository,
-    ICourseContract courseContract) : IContentContract
+    ICourseContract courseContract,
+    IQuizPasswordHasher? quizPasswordHasher = null) : IContentContract
 {
+    private readonly IQuizPasswordHasher _quizPasswordHasher = quizPasswordHasher ?? new Security.BCryptQuizPasswordHasher();
     public Result<ResourceAuthDto> AuthorizeResourceDownload(Guid resourceId, Guid? viewerUserId)
     {
         Resource? resource = contentRepository.GetResourceByIdAsync(resourceId).GetAwaiter().GetResult();
@@ -182,27 +184,164 @@ public class ContentContractService(
 
     public Result<IReadOnlyList<AssessableBlockDto>> GetAssessableBlocks(Guid courseId)
     {
-        return Result.Failure<IReadOnlyList<AssessableBlockDto>>(new Error("NOT_IMPLEMENTED", "Assessable blocks query will be implemented in T-S3-BE-02."));
+        IReadOnlyList<Chapter> chapters = contentRepository.ListChaptersByCourseIdAsync(courseId, includeDrafts: false)
+            .GetAwaiter().GetResult();
+
+        var result = new List<AssessableBlockDto>();
+
+        foreach (Chapter chapter in chapters)
+        {
+            IReadOnlyList<PublishedBlock> blocks = contentRepository.GetPublishedBlocksByChapterIdAsync(chapter.Id)
+                .GetAwaiter().GetResult();
+
+            foreach (PublishedBlock b in blocks)
+            {
+                if (b.BlockType == BlockType.Quiz)
+                {
+                    IReadOnlyList<QuizQuestion> qq = contentRepository.GetQuizQuestionsAsync(b.BlockId).GetAwaiter().GetResult();
+                    IReadOnlyList<QuizRandomRule> qr = contentRepository.GetQuizRandomRulesAsync(b.BlockId).GetAwaiter().GetResult();
+                    decimal maxScore = qq.Sum(q => q.Points) + qr.Sum(r => r.PickCount * r.PointsEach);
+
+                    result.Add(new AssessableBlockDto(
+                        b.BlockId,
+                        courseId,
+                        chapter.Id,
+                        "QUIZ",
+                        chapter.Title,
+                        maxScore));
+                }
+                else if (b.BlockType == BlockType.Assignment)
+                {
+                    AssignmentConfig? ac = contentRepository.GetAssignmentConfigAsync(b.BlockId).GetAwaiter().GetResult();
+                    if (ac is not null && ac.MaxPoints.HasValue && ac.MaxPoints.Value > 0)
+                    {
+                        result.Add(new AssessableBlockDto(
+                            b.BlockId,
+                            courseId,
+                            chapter.Id,
+                            "ASSIGNMENT",
+                            chapter.Title,
+                            ac.MaxPoints.Value));
+                    }
+                }
+            }
+        }
+
+        return Result.Success<IReadOnlyList<AssessableBlockDto>>(result);
     }
 
     public Result<QuizDefinitionDto> GetPublishedQuizDefinition(Guid quizBlockId)
     {
-        return Result.Failure<QuizDefinitionDto>(new Error("NOT_IMPLEMENTED", "Quiz definitions will be implemented in T-S3-BE-02."));
+        QuizConfig? qc = contentRepository.GetQuizConfigAsync(quizBlockId).GetAwaiter().GetResult();
+        if (qc is null)
+        {
+            return Result.Failure<QuizDefinitionDto>(new Error("QUIZ_NOT_FOUND", "Quiz not found."));
+        }
+
+        var dto = new QuizDefinitionDto(
+            quizBlockId,
+            qc.PassScore,
+            !string.IsNullOrEmpty(qc.PasswordHash),
+            qc.ResultDisplay.ToString().ToUpperInvariant(),
+            qc.TimeLimitMinutes,
+            qc.MaxAttempts,
+            qc.ShuffleQuestions,
+            qc.ShuffleOptions);
+
+        return Result.Success(dto);
     }
 
     public Result VerifyQuizPassword(Guid quizBlockId, string password)
     {
-        return Result.Failure(new Error("NOT_IMPLEMENTED", "Quiz password verification will be implemented in T-S3-BE-02."));
+        QuizConfig? qc = contentRepository.GetQuizConfigAsync(quizBlockId).GetAwaiter().GetResult();
+        if (qc is null)
+        {
+            return Result.Failure(new Error("QUIZ_NOT_FOUND", "Quiz not found."));
+        }
+
+        if (string.IsNullOrEmpty(qc.PasswordHash))
+        {
+            return Result.Success();
+        }
+
+        if (!_quizPasswordHasher.Verify(password, qc.PasswordHash))
+        {
+            return Result.Failure(new Error("QUIZ_PASSWORD_INVALID", "Mật khẩu bài thi không đúng."));
+        }
+
+        return Result.Success();
     }
 
     public Result<QuizExceptionDto?> GetQuizExceptions(Guid quizBlockId, Guid userId)
     {
-        return Result.Failure<QuizExceptionDto?>(new Error("NOT_IMPLEMENTED", "Quiz exceptions will be implemented in T-S3-BE-02."));
+        QuizException? exception = contentRepository.GetQuizExceptionAsync(quizBlockId, userId).GetAwaiter().GetResult();
+        if (exception is null)
+        {
+            return Result.Success<QuizExceptionDto?>(null);
+        }
+
+        var dto = new QuizExceptionDto(
+            exception.UserId,
+            exception.ExtraMinutes,
+            exception.ExtraAttempts,
+            exception.ExtendedCloseAt);
+
+        return Result.Success<QuizExceptionDto?>(dto);
     }
 
     public Result<DrawnQuizDto> DrawQuizQuestions(Guid quizBlockId)
     {
-        return Result.Failure<DrawnQuizDto>(new Error("NOT_IMPLEMENTED", "Drawing quiz questions will be implemented in T-S3-BE-02."));
+        QuizConfig? qc = contentRepository.GetQuizConfigAsync(quizBlockId).GetAwaiter().GetResult();
+        if (qc is null)
+        {
+            return Result.Failure<DrawnQuizDto>(new Error("QUIZ_NOT_FOUND", "Quiz not found."));
+        }
+
+        Guid? courseId = contentRepository.GetCourseIdByBlockIdAsync(quizBlockId).GetAwaiter().GetResult();
+        if (!courseId.HasValue)
+        {
+            return Result.Failure<DrawnQuizDto>(new Error("QUIZ_NOT_FOUND", "Khóa học của bài thi không tồn tại."));
+        }
+
+        var drawnQuestionIds = new List<Guid>();
+
+        // 1. Manual questions (cnt_quiz_question) ordered by position
+        IReadOnlyList<QuizQuestion> manualQuestions = contentRepository.GetQuizQuestionsAsync(quizBlockId).GetAwaiter().GetResult();
+        foreach (QuizQuestion mq in manualQuestions.OrderBy(q => q.Position))
+        {
+            Question? q = contentRepository.GetQuestionByIdAsync(mq.QuestionId).GetAwaiter().GetResult();
+            if (q is not null && q.Status == QuestionStatus.Ready && !drawnQuestionIds.Contains(q.Id))
+            {
+                drawnQuestionIds.Add(q.Id);
+            }
+        }
+
+        // 2. Random rules (cnt_quiz_random_rule) ordered by position
+        IReadOnlyList<QuizRandomRule> rules = contentRepository.GetQuizRandomRulesAsync(quizBlockId).GetAwaiter().GetResult();
+        foreach (QuizRandomRule rule in rules.OrderBy(r => r.Position))
+        {
+            IReadOnlyList<Question> candidateQuestions = contentRepository.GetReadyCandidateQuestionsAsync(
+                courseId.Value,
+                rule.FilterTag,
+                rule.FilterDifficultyCode,
+                rule.FilterQuestionType).GetAwaiter().GetResult();
+
+            var pool = candidateQuestions.Where(q => !drawnQuestionIds.Contains(q.Id)).ToList();
+            if (pool.Count < rule.PickCount)
+            {
+                return Result.Failure<DrawnQuizDto>(new Error("NOT_ENOUGH_QUESTIONS", $"Không đủ câu hỏi hợp lệ trong ngân hàng câu hỏi cho quy tắc ngẫu nhiên vị trí {rule.Position}. Cần {rule.PickCount}, chỉ có {pool.Count}."));
+            }
+
+            var picked = pool.Take(rule.PickCount).Select(q => q.Id);
+            drawnQuestionIds.AddRange(picked);
+        }
+
+        if (drawnQuestionIds.Count == 0)
+        {
+            return Result.Failure<DrawnQuizDto>(new Error("NOT_ENOUGH_QUESTIONS", "Bài thi không có câu hỏi nào."));
+        }
+
+        return Result.Success(new DrawnQuizDto(quizBlockId, drawnQuestionIds));
     }
 
     public Result<AssignmentDefinitionDto> GetAssignmentDefinition(Guid assignmentBlockId)
@@ -212,7 +351,43 @@ public class ContentContractService(
 
     public Result<IReadOnlyList<QuestionDetailDto>> GetQuestionsByIds(IReadOnlyList<Guid> ids, bool includeAnswerKey)
     {
-        return Result.Failure<IReadOnlyList<QuestionDetailDto>>(new Error("NOT_IMPLEMENTED", "Questions query will be implemented in T-S3-BE-02."));
+        if (ids.Count == 0)
+        {
+            return Result.Success<IReadOnlyList<QuestionDetailDto>>([]);
+        }
+
+        IReadOnlyList<Question> questions = contentRepository.GetQuestionsByIdsAsync(ids).GetAwaiter().GetResult();
+        IReadOnlyDictionary<Guid, IReadOnlyList<QuestionOption>> optionsMap = contentRepository.GetOptionsForQuestionsAsync(ids).GetAwaiter().GetResult();
+
+        var dtos = new List<QuestionDetailDto>();
+        foreach (Question q in questions)
+        {
+            optionsMap.TryGetValue(q.Id, out var options);
+            options ??= [];
+
+            var optionDtos = options.OrderBy(o => o.Position).Select(o => new QuestionOptionDto(
+                o.Id,
+                o.Position,
+                o.Content,
+                o.MatchContent,
+                o.BlankNo,
+                includeAnswerKey ? o.IsCorrect : null
+            )).ToList();
+
+            dtos.Add(new QuestionDetailDto(
+                q.Id,
+                q.QuestionType.ToString().ToUpperInvariant(),
+                q.Stem,
+                includeAnswerKey ? q.Explanation : null,
+                includeAnswerKey ? q.ReferenceAnswer : null,
+                q.DifficultyCode,
+                q.DefaultPoints,
+                optionDtos
+            ));
+        }
+
+        var ordered = ids.Select(id => dtos.FirstOrDefault(d => d.Id == id)).OfType<QuestionDetailDto>().ToList();
+        return Result.Success<IReadOnlyList<QuestionDetailDto>>(ordered);
     }
 
     public Result<PracticeQuestionDto> GetQuestionForPractice(Guid blockId)
