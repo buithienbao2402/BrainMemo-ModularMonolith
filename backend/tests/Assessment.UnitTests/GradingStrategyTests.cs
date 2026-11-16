@@ -281,6 +281,21 @@ public class GradingStrategyTests
         public Task<GradeRecord?> GetGradeRecordBySourceAttemptIdAsync(Guid sourceAttemptId, CancellationToken ct = default) =>
             Task.FromResult(SavedRecord?.SourceAttemptId == sourceAttemptId ? SavedRecord : null);
 
+        public Task<GradeRecord?> GetGradeRecordBySourceSubmissionIdAsync(Guid sourceSubmissionId, CancellationToken ct = default) =>
+            Task.FromResult(SavedRecord?.SourceSubmissionId == sourceSubmissionId ? SavedRecord : null);
+
+        public Task<GradeRecord?> GetGradeRecordByIdAsync(Guid recordId, CancellationToken ct = default) =>
+            Task.FromResult(SavedRecord?.Id == recordId ? SavedRecord : null);
+
+        public Task<AssessmentComponent?> GetComponentByIdAsync(Guid componentId, CancellationToken ct = default) =>
+            Task.FromResult(ComponentToReturn?.Id == componentId ? ComponentToReturn : null);
+
+        public Task<IReadOnlyList<GradeRecord>> GetPendingGradingRecordsAsync(Guid courseId, string? kind, int page, int pageSize, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<GradeRecord>>(Array.Empty<GradeRecord>());
+
+        public Task<int> CountPendingGradingRecordsAsync(Guid courseId, string? kind, CancellationToken ct = default) =>
+            Task.FromResult(0);
+
         public Task<AssessmentComponent?> GetComponentByCourseAndBlockIdAsync(Guid courseId, Guid sourceBlockId, CancellationToken ct = default) =>
             Task.FromResult(ComponentToReturn);
 

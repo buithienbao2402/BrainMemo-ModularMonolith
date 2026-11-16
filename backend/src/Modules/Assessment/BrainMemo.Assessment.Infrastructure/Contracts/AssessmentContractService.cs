@@ -38,6 +38,40 @@ public class AssessmentContractService : IAssessmentContract
         return GradeQuizAttemptAsync(attemptId).GetAwaiter().GetResult();
     }
 
+    public Result RecordAssignmentSubmission(Guid submissionId, Guid courseId, Guid userId, Guid blockId, DateTimeOffset submittedAt)
+    {
+        var existing = _repository.GetGradeRecordBySourceSubmissionIdAsync(submissionId).GetAwaiter().GetResult();
+        if (existing != null)
+        {
+            return Result.Success();
+        }
+
+        var component = _repository.GetOrCreateDefaultComponentAsync(
+            courseId,
+            "ASSIGNMENT",
+            blockId,
+            "Bài tập đánh giá",
+            10.0m).GetAwaiter().GetResult();
+
+        var record = new GradeRecord(
+            Guid.NewGuid(),
+            userId,
+            courseId,
+            component.Id,
+            GradeRecordType.AssignmentSubmission,
+            sourceAttemptId: null,
+            sourceSubmissionId: submissionId,
+            score: null,
+            maxScore: component.MaxScore,
+            isFullyGraded: false,
+            gradedAt: null);
+
+        _repository.UpsertGradeRecordAsync(record).GetAwaiter().GetResult();
+        _repository.SaveChangesAsync().GetAwaiter().GetResult();
+
+        return Result.Success();
+    }
+
     private async Task<Result<GradeQuizAttemptResult>> GradeQuizAttemptAsync(Guid attemptId)
     {
         var attemptResult = _learningContract.GetQuizAttemptForGrading(attemptId);

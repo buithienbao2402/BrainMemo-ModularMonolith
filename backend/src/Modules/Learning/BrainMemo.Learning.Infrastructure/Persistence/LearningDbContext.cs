@@ -20,6 +20,7 @@ public class LearningDbContext : DbContext
     public DbSet<Comment> Comments => Set<Comment>();
     public DbSet<QuizAttempt> QuizAttempts => Set<QuizAttempt>();
     public DbSet<QuizAttemptAnswer> QuizAttemptAnswers => Set<QuizAttemptAnswer>();
+    public DbSet<AssignmentSubmission> AssignmentSubmissions => Set<AssignmentSubmission>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {

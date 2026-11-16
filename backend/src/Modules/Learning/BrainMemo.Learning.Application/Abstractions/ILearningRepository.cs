@@ -39,5 +39,10 @@ public interface ILearningRepository
     Task<QuizAttemptAnswer?> GetQuizAttemptAnswerAsync(Guid attemptId, Guid questionId, CancellationToken ct = default);
     Task<IReadOnlyList<QuizAttempt>> ListExpiredInProgressAttemptsAsync(DateTimeOffset now, CancellationToken ct = default);
 
+    Task<AssignmentSubmission?> GetAssignmentSubmissionAsync(Guid userId, Guid assignmentBlockId, CancellationToken ct = default);
+    Task<AssignmentSubmission?> GetAssignmentSubmissionByIdAsync(Guid submissionId, CancellationToken ct = default);
+    Task<IReadOnlyList<AssignmentSubmission>> ListPendingAssignmentSubmissionsAsync(Guid courseId, CancellationToken ct = default);
+    Task AddAssignmentSubmissionAsync(AssignmentSubmission submission, CancellationToken ct = default);
+
     Task SaveChangesAsync(CancellationToken ct = default);
 }

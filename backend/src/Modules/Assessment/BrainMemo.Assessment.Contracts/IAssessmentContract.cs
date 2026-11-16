@@ -5,6 +5,7 @@ namespace BrainMemo.Assessment.Contracts;
 public interface IAssessmentContract
 {
     Result<GradeQuizAttemptResult> GradeQuizAttempt(Guid attemptId);
+    Result RecordAssignmentSubmission(Guid submissionId, Guid courseId, Guid userId, Guid blockId, DateTimeOffset submittedAt);
     Result<IReadOnlyList<QuestionUsageDto>> GetQuestionUsageStats(IReadOnlyList<Guid> questionIds);
     Result<GradebookDto> GetStudentGradebook(Guid userId, Guid courseId);
     Result<IReadOnlyList<CloStatDto>> GetCloAttainmentStats(Guid courseId);

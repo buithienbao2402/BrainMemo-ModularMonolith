@@ -282,6 +282,34 @@ public sealed class LearningRepository(LearningDbContext dbContext) : ILearningR
             .ConfigureAwait(false);
     }
 
+    public async Task<AssignmentSubmission?> GetAssignmentSubmissionAsync(Guid userId, Guid assignmentBlockId, CancellationToken ct = default)
+    {
+        return await dbContext.AssignmentSubmissions
+            .FirstOrDefaultAsync(s => s.UserId == userId && s.AssignmentBlockId == assignmentBlockId, ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<AssignmentSubmission?> GetAssignmentSubmissionByIdAsync(Guid submissionId, CancellationToken ct = default)
+    {
+        return await dbContext.AssignmentSubmissions
+            .FirstOrDefaultAsync(s => s.Id == submissionId, ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyList<AssignmentSubmission>> ListPendingAssignmentSubmissionsAsync(Guid courseId, CancellationToken ct = default)
+    {
+        return await dbContext.AssignmentSubmissions
+            .Where(s => s.CourseId == courseId && s.Status == "SUBMITTED")
+            .OrderBy(s => s.SubmittedAt)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task AddAssignmentSubmissionAsync(AssignmentSubmission submission, CancellationToken ct = default)
+    {
+        await dbContext.AssignmentSubmissions.AddAsync(submission, ct).ConfigureAwait(false);
+    }
+
     public async Task SaveChangesAsync(CancellationToken ct = default)
     {
         await dbContext.SaveChangesAsync(ct).ConfigureAwait(false);

@@ -19,6 +19,22 @@ public class AssessmentRepository : IAssessmentRepository
             .FirstOrDefaultAsync(g => g.SourceAttemptId == sourceAttemptId, ct);
     }
 
+    public async Task<GradeRecord?> GetGradeRecordBySourceSubmissionIdAsync(Guid sourceSubmissionId, CancellationToken ct = default)
+    {
+        return await _db.GradeRecords
+            .FirstOrDefaultAsync(g => g.SourceSubmissionId == sourceSubmissionId, ct);
+    }
+
+    public async Task<GradeRecord?> GetGradeRecordByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        return await _db.GradeRecords.FirstOrDefaultAsync(g => g.Id == id, ct);
+    }
+
+    public async Task<AssessmentComponent?> GetComponentByIdAsync(Guid componentId, CancellationToken ct = default)
+    {
+        return await _db.AssessmentComponents.FirstOrDefaultAsync(c => c.Id == componentId, ct);
+    }
+
     public async Task<AssessmentComponent?> GetComponentByCourseAndBlockIdAsync(Guid courseId, Guid sourceBlockId, CancellationToken ct = default)
     {
         return await _db.AssessmentComponents
@@ -89,6 +105,48 @@ public class AssessmentRepository : IAssessmentRepository
         return await _db.GradeRecords
             .Where(g => g.CourseId == courseId)
             .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<GradeRecord>> GetPendingGradingRecordsAsync(Guid courseId, string? kind = null, int page = 1, int pageSize = 20, CancellationToken ct = default)
+    {
+        var query = _db.GradeRecords.Where(g => g.CourseId == courseId && !g.IsFullyGraded);
+
+        if (!string.IsNullOrWhiteSpace(kind))
+        {
+            if (kind.Equals("QUIZ_ATTEMPT", StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(g => g.RecordType == Domain.Enums.GradeRecordType.QuizAttempt);
+            }
+            else if (kind.Equals("ASSIGNMENT", StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(g => g.RecordType == Domain.Enums.GradeRecordType.AssignmentSubmission);
+            }
+        }
+
+        return await query
+            .OrderBy(g => g.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+    }
+
+    public async Task<int> CountPendingGradingRecordsAsync(Guid courseId, string? kind = null, CancellationToken ct = default)
+    {
+        var query = _db.GradeRecords.Where(g => g.CourseId == courseId && !g.IsFullyGraded);
+
+        if (!string.IsNullOrWhiteSpace(kind))
+        {
+            if (kind.Equals("QUIZ_ATTEMPT", StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(g => g.RecordType == Domain.Enums.GradeRecordType.QuizAttempt);
+            }
+            else if (kind.Equals("ASSIGNMENT", StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(g => g.RecordType == Domain.Enums.GradeRecordType.AssignmentSubmission);
+            }
+        }
+
+        return await query.CountAsync(ct);
     }
 
     public async Task SaveChangesAsync(CancellationToken ct = default)

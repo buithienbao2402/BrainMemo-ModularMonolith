@@ -67,7 +67,9 @@ public sealed record GradingQuestionItemDto(
     decimal MaxPoints,
     IReadOnlyList<GradingOptionItemDto> Options,
     string? ReferenceAnswer,
-    GradingAnswerPayloadDto? StudentAnswer);
+    GradingAnswerPayloadDto? StudentAnswer,
+    decimal? PointsEarned = null,
+    string? GraderFeedback = null);
 
 public sealed record GradingOptionItemDto(
     Guid Id,
@@ -88,6 +90,9 @@ public sealed record AssignmentSubmissionDto(
     Guid AssignmentBlockId,
     Guid UserId,
     string Status,
+    string? TextContent,
+    string? FilesJson,
+    bool? IsLate,
     DateTimeOffset? SubmittedAt);
 
 public sealed record ReportTargetDto(

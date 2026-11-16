@@ -78,6 +78,7 @@ public class QuizLifecycleTests
         public Result<IReadOnlyList<QuestionUsageDto>> GetQuestionUsageStats(IReadOnlyList<Guid> questionIds) => throw new NotImplementedException();
         public Result<GradebookDto> GetStudentGradebook(Guid userId, Guid courseId) => throw new NotImplementedException();
         public Result<IReadOnlyList<CloStatDto>> GetCloAttainmentStats(Guid courseId) => throw new NotImplementedException();
+        public Result RecordAssignmentSubmission(Guid submissionId, Guid courseId, Guid assignmentBlockId, Guid userId, DateTimeOffset submittedAt) => Result.Success();
     }
 
     [Fact]

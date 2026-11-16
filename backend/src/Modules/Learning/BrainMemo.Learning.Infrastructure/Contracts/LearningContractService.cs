@@ -101,7 +101,8 @@ public sealed class LearningContractService(
         foreach (var q in snapshotItems)
         {
             GradingAnswerPayloadDto? studentPayload = null;
-            if (answerDict.TryGetValue(q.QuestionId, out var ans) && !string.IsNullOrWhiteSpace(ans.AnswerPayload))
+            answerDict.TryGetValue(q.QuestionId, out var ans);
+            if (ans != null && !string.IsNullOrWhiteSpace(ans.AnswerPayload))
             {
                 try
                 {
@@ -129,7 +130,9 @@ public sealed class LearningContractService(
                 q.MaxPoints,
                 optionsDto,
                 q.ReferenceAnswer,
-                studentPayload));
+                studentPayload,
+                ans?.PointsEarned,
+                ans?.GraderFeedback));
         }
 
         return Result.Success(new AttemptForGradingDto(
@@ -179,11 +182,32 @@ public sealed class LearningContractService(
 
     public Result<AssignmentSubmissionDto> GetAssignmentSubmission(Guid submissionId)
     {
-        return Result.Failure<AssignmentSubmissionDto>(Error.NotFound("Chưa có bài nộp."));
+        AssignmentSubmission? sub = learningRepository.GetAssignmentSubmissionByIdAsync(submissionId).GetAwaiter().GetResult();
+        if (sub is null)
+        {
+            return Result.Failure<AssignmentSubmissionDto>(Error.NotFound("Chưa có bài nộp."));
+        }
+
+        return Result.Success(new AssignmentSubmissionDto(
+            SubmissionId: sub.Id,
+            CourseId: sub.CourseId,
+            AssignmentBlockId: sub.AssignmentBlockId,
+            UserId: sub.UserId,
+            Status: sub.Status,
+            TextContent: sub.TextContent,
+            FilesJson: sub.FilesJson,
+            IsLate: sub.IsLate,
+            SubmittedAt: sub.SubmittedAt));
     }
 
     public Result MarkAssignmentGraded(Guid submissionId, DateTimeOffset gradedAt)
     {
+        AssignmentSubmission? sub = learningRepository.GetAssignmentSubmissionByIdAsync(submissionId).GetAwaiter().GetResult();
+        if (sub != null)
+        {
+            sub.MarkGraded(gradedAt);
+            learningRepository.SaveChangesAsync().GetAwaiter().GetResult();
+        }
         return Result.Success();
     }
 
