@@ -127,7 +127,7 @@ export function CourseDiscoveryPage() {
 
         {/* Search Input Bar with History Popover */}
         <div className="relative max-w-2xl">
-          <form onSubmit={handleSearchSubmit} className="relative flex items-center">
+          <form onSubmit={handleSearchSubmit} className="relative z-30 flex items-center">
             <Search className="absolute left-3.5 h-4 w-4 text-muted-foreground" />
             <Input
               id="search-course-input"
