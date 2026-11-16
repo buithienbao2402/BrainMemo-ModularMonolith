@@ -969,6 +969,8 @@ function problemResponse(status: number, body: ProblemDetails) {
   });
 }
 
+export const submittedQuizAttemptIds = new Set<string>();
+
 export const handlers = [
   http.post('*/api/v1/auth/refresh', ({ request }) => {
     const persona = readPersonaFromCookie(request);
@@ -3468,8 +3470,11 @@ export const handlers = [
     });
   }),
 
-  http.get('*/quiz-attempts/:attemptId', ({ params }) => {
-    const isResult = params.attemptId === 'att-result-1';
+  http.get('*/quiz-attempts/:attemptId', ({ params, request }) => {
+    if (request.headers.get('accept')?.includes('text/html')) {
+      return;
+    }
+    const isResult = params.attemptId === 'att-result-1' || submittedQuizAttemptIds.has(String(params.attemptId));
     return HttpResponse.json({
       id: String(params.attemptId),
       quizBlockId: 'block-quiz-1',
@@ -3514,7 +3519,7 @@ export const handlers = [
     });
   }),
   http.get('*/api/v1/quiz-attempts/:attemptId', ({ params }) => {
-    const isResult = params.attemptId === 'att-result-1';
+    const isResult = params.attemptId === 'att-result-1' || submittedQuizAttemptIds.has(String(params.attemptId));
     return HttpResponse.json({
       id: String(params.attemptId),
       quizBlockId: 'block-quiz-1',
@@ -3575,6 +3580,7 @@ export const handlers = [
   }),
 
   http.post('*/quiz-attempts/:attemptId/submit', ({ params }) => {
+    submittedQuizAttemptIds.add(String(params.attemptId));
     return HttpResponse.json({
       attemptId: String(params.attemptId),
       status: 'GRADED',
@@ -3584,6 +3590,7 @@ export const handlers = [
     });
   }),
   http.post('*/api/v1/quiz-attempts/:attemptId/submit', ({ params }) => {
+    submittedQuizAttemptIds.add(String(params.attemptId));
     return HttpResponse.json({
       attemptId: String(params.attemptId),
       status: 'GRADED',

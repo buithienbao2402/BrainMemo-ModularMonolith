@@ -53,7 +53,7 @@
 | T-S7-BE-02 | BE-03..05 | DONE | Antigravity (BE) | dev/kim-thuan | **Quiz Engine & Auto-Grading (Batched):** Làm bài, autosave, deadline worker + Bộ chấm tự động ADR-04 + Nộp bài TX1/TX2 |
 | T-S7-FE-01 | FE-01 + FE-02 | DONE | Antigravity (FE) | dev/kim-thuan | **FE Question Bank & Quiz Authoring (Batched):** SCR-CNT-04, 05, 06, 08, 09 (5/5 tests pass, 0 type error) |
 | T-S7-FE-02 | FE-03 | DONE | Antigravity (FE) | dev/kim-thuan | **FE Quiz Player:** SCR-LRN-02, 03, 04 (4/4 tests pass, 0 type error) |
-| T-S7-INT-01 | INT-01 | TODO | – | – | Tích hợp S7 + e2e |
+| T-S7-INT-01 | INT-01 | DONE | Antigravity (INT) | dev/kim-thuan | **Tích hợp S7 + e2e:** Playwright e2e `quiz-player-flow.spec.ts` pass 100%, 9/9 FE tests pass, BE build clean & unit tests pass |
 | **S8 – Bài tập & Bảng điểm** | | | | | |
 | T-S8-BE-01 | BE-01 + BE-02 | TODO | – | – | **Assignments & Manual Grading Pipeline (Batched):** Nộp bài tập commit tệp + Hàng đợi chấm thi & Chấm tay tự luận DEC-03 + API Bài tập nộp chưa chấm (`GET /courses/{id}/submissions/pending`) |
 | T-S8-BE-02 | BE-03 | TODO | – | – | **Gradebook & Evaluation Rules (Batched):** Trọng số đánh giá, tính điểm final, bảng điểm, xếp loại |
