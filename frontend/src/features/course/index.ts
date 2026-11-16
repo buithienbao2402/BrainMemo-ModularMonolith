@@ -10,3 +10,5 @@ export * from './pages/MyCoursesPage';
 export * from './layouts/CourseManagementLayout';
 export * from './pages/CourseManagementHomePage';
 export * from './pages/CourseOverviewPage';
+export * from './pages/CourseStudentsPage';
+export * from './pages/CourseAccessPage';

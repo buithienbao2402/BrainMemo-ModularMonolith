@@ -20,7 +20,13 @@ import {
   CourseManagementLayout,
   CourseManagementHomePage,
   CourseOverviewPage,
+  CourseStudentsPage,
+  CourseAccessPage,
 } from '@/features/course';
+import {
+  LearningPlayerPage,
+  MyBookmarksPage,
+} from '@/features/learning';
 import {
   ChapterListPage,
   ChapterEditorPage,
@@ -59,6 +65,14 @@ export const appRoutes: RouteObject[] = [
             element: <CourseDetailPage />,
           },
           {
+            path: '/courses/:courseId/learn',
+            element: <LearningPlayerPage />,
+          },
+          {
+            path: '/courses/:courseId/learn/:chapterId',
+            element: <LearningPlayerPage />,
+          },
+          {
             path: '/users/:userId',
             element: <PublicProfilePage />,
           },
@@ -94,13 +108,7 @@ export const appRoutes: RouteObject[] = [
           },
           {
             path: '/me/bookmarks',
-            element: (
-              <RouteStubPage
-                screenCode="SCR-LRN-07"
-                title="Khóa học đã lưu (Bookmark)"
-                description="Danh sách khóa học được bạn đánh dấu."
-              />
-            ),
+            element: <MyBookmarksPage />,
           },
           {
             path: '/notifications',
@@ -170,6 +178,14 @@ export const appRoutes: RouteObject[] = [
           {
             path: '/courses/:courseId/manage/overview',
             element: <CourseOverviewPage />,
+          },
+          {
+            path: '/courses/:courseId/manage/students',
+            element: <CourseStudentsPage />,
+          },
+          {
+            path: '/courses/:courseId/manage/access',
+            element: <CourseAccessPage />,
           },
           {
             path: '/courses/:courseId/manage/content',

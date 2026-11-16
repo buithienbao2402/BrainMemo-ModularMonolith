@@ -37,7 +37,7 @@
 | **S4 – Ghi danh & Learning** | | | | | |
 | T-S4-BE-01 | BE-01 + BE-02 | DONE | Antigravity (BE) | feat/T-S4-BE-01-enrollment-chapter-access | **Enrollment & Chapter Access Engine (Batched):** Ghi danh 5 trạng thái + Ma trận quyền 3.2.2 + Mở khóa chương passcode (`POST /courses/{id}/chapters/{chapterId}/verify-passcode`) + Outbox + Quản lý yêu cầu tham gia chờ duyệt (`GET/POST /courses/{id}/enrollment-requests`) |
 | T-S4-BE-02 | BE-03 | DONE | Antigravity (BE) | dev/kim-thuan | **Learning Progress & Player Service:** Đọc chương, hoàn thành block, tính tiến độ, bookmark, event hoàn thành khóa + Thống kê học tập (`GET /courses/{id}/enrollments/summary`) + Thống kê hoàn thành chương (`GET /courses/{id}/chapters/{chapterId}/progress-summary`) |
-| T-S4-FE-01 | FE-01 + FE-02 | TODO | – | – | **FE Enrollment & Learning Player (Batched):** SCR-CRS-05, 06 + SCR-LRN-01, 07 |
+| T-S4-FE-01 | FE-01 + FE-02 | DONE | Antigravity (FE) | dev/kim-thuan | **FE Enrollment & Learning Player (Batched):** SCR-CRS-05, 06 (Danh sách học viên, duyệt yêu cầu, mời email) + SCR-LRN-01, 07 (Learning Player, 3D Flashcard flip, Practice Question, Passcode gate, Bookmark) |
 | T-S4-INT-01 | INT-01 | TODO | – | – | Tích hợp S4 + e2e |
 | **S5 – Discovery** | | | | | |
 | T-S5-BE-01 | BE-01..03 | TODO | – | – | **Discovery Module Trọn gói (Batched):** Read model `dsc_*`, Event handlers, API Home/Search lọc & sắp xếp, Rebuild CLI + API Xếp hạng khóa học theo học viên/đề cử/đánh giá (`GET /courses/{id}/ranking`) |

@@ -172,20 +172,22 @@ export function CourseOverviewPage() {
           </Link>
 
           {/* Link Tab: Danh sách học viên */}
-          <button
-            type="button"
-            onClick={() =>
-              pushToast({
-                title: 'Quản lý học viên',
-                description: 'Mô-đun quản lý học viên chi tiết thuộc phạm vi Slice 4 (S4).',
-                tone: 'default',
-              })
-            }
+          <Link
+            to={`/courses/${courseId}/manage/students`}
             className="flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-xs sm:text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
           >
             <Users className="h-4 w-4" />
             <span>Danh sách học viên</span>
-          </button>
+          </Link>
+
+          {/* Link Tab: Chế độ truy cập */}
+          <Link
+            to={`/courses/${courseId}/manage/access`}
+            className="flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-xs sm:text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+          >
+            <ShieldCheck className="h-4 w-4" />
+            <span>Chế độ truy cập</span>
+          </Link>
 
           {/* Link Tab: Chấm điểm (badge 12) */}
           <button
