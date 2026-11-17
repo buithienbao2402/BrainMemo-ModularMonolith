@@ -84,5 +84,5 @@
 | **S12 – Hoàn thiện & Triển khai** | | | | | |
 | T-S12-BE-01 | BE-01 + BE-02 | DONE | Antigravity (BE) | dev/kim-thuan | **Top 10, Google OAuth & Housekeeping (Batched):** BXH Top 10, Google login, worker dọn dẹp (Discovery 10/10, Identity 94/94, BB 69/69 pass) |
 | T-S12-FE-01 | FE-01 | DONE | Antigravity (FE) | dev/kim-thuan | **FE Top 10, Social Auth & Lighthouse (Batched):** SCR-DSC-03, Google button, tối ưu Lighthouse ≥ 70 (9/9 discovery tests pass, 16/16 auth tests pass, typecheck clean) |
-| T-S12-INT-01 | INT-01 | TODO | – | – | **System Verification & Load Testing:** e2e 3 luồng NFR-17 + Load test 50 VU |
+| T-S12-INT-01 | INT-01 | DONE | Antigravity (INT) | dev/kim-thuan | **System Verification & Load Testing:** e2e 3 luồng NFR-17 pass 100%, k6 load test 50 VU script & runner |
 | T-S12-OPS-01 | OPS-01 | TODO | – | – | **Triển khai Production VPS:** Docker Compose prod, Nginx SSL, Cloudflare, backup MySQL |
