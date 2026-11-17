@@ -78,7 +78,7 @@
 | T-S10R-FE-02 | – | DONE | Antigravity (FE) | dev/kim-thuan | **FE Hỏi đáp bài học & Nhắn tin Giảng viên:** Tab Q&A bài học (`CommentSection`), `ChatDrawer` & Messages Hub `/me/messages` (`MessagesPage`), `tsc -b --noEmit` clean |
 | T-S10R-INT-01 | – | DONE | Antigravity (INT) | dev/kim-thuan | **Tích hợp & Kiểm thử:** OpenAPI bundle (12 modules, 123 paths), Backend build 0 errors, `211/211` backend unit/host tests pass, FE typecheck & modified Vitest suites pass |
 | **S11 – AI Services (GenAI Only)** | | | | | |
-| T-S11-BE-01 | BE-01..03 | TODO | – | – | **GenAI Quiz & Flashcard Service (Batched):** Settings (`aiDailyQuota`, `aiLlmProvider`), Quota, Gemini API, Background jobs sinh câu hỏi & flashcard *(Đã bỏ T-S11-BE-02 PhoBERT theo DEC-30)* |
+| T-S11-BE-01 | BE-01..03 | DONE | Antigravity (BE) | dev/kim-thuan | **GenAI Quiz & Flashcard Service (Batched):** Settings (`aiDailyQuota`, `aiLlmProvider`), Quota, Gemini API (`ILlmClient`), Background jobs sinh câu hỏi Quiz & Flashcard, Content import (`11/11` AI tests pass) |
 | T-S11-FE-01 | FE-01 | TODO | – | – | **FE AI Features & Quota Management (Batched):** SCR-AI-01, 02 + SCR-ADM-03 |
 | T-S11-INT-01 | INT-01 | TODO | – | – | Tích hợp S11 + e2e |
 | **S12 – Hoàn thiện & Triển khai** | | | | | |

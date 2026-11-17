@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\BrainMemo.BuildingBlocks.Abstractions\BrainMemo.BuildingBlocks.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BrainMemo.BuildingBlocks.Infrastructure\BrainMemo.BuildingBlocks.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BrainMemo.SharedKernel\BrainMemo.SharedKernel.csproj" />
+    <ProjectReference Include="..\BrainMemo.AI.Application\BrainMemo.AI.Application.csproj" />
+    <ProjectReference Include="..\BrainMemo.AI.Contracts\BrainMemo.AI.Contracts.csproj" />
+    <ProjectReference Include="..\BrainMemo.AI.Domain\BrainMemo.AI.Domain.csproj" />
+    <ProjectReference Include="..\..\Course\BrainMemo.Course.Contracts\BrainMemo.Course.Contracts.csproj" />
+    <ProjectReference Include="..\..\Content\BrainMemo.Content.Contracts\BrainMemo.Content.Contracts.csproj" />
+    <ProjectReference Include="..\..\Identity\BrainMemo.Identity.Contracts\BrainMemo.Identity.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.2" />
+    <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
+  </ItemGroup>
+</Project>

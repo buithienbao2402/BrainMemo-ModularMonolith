@@ -33,6 +33,9 @@
     <ProjectReference Include="..\..\Modules\Messaging\BrainMemo.Messaging.Api\BrainMemo.Messaging.Api.csproj" />
     <ProjectReference Include="..\..\Modules\Messaging\BrainMemo.Messaging.Contracts\BrainMemo.Messaging.Contracts.csproj" />
     <ProjectReference Include="..\..\Modules\Messaging\BrainMemo.Messaging.Infrastructure\BrainMemo.Messaging.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\AI\BrainMemo.AI.Api\BrainMemo.AI.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\AI\BrainMemo.AI.Contracts\BrainMemo.AI.Contracts.csproj" />
+    <ProjectReference Include="..\..\Modules\AI\BrainMemo.AI.Infrastructure\BrainMemo.AI.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

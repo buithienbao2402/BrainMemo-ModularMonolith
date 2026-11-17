@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\BrainMemo.BuildingBlocks.Abstractions\BrainMemo.BuildingBlocks.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BrainMemo.SharedKernel\BrainMemo.SharedKernel.csproj" />
+    <ProjectReference Include="..\BrainMemo.AI.Contracts\BrainMemo.AI.Contracts.csproj" />
+    <ProjectReference Include="..\BrainMemo.AI.Domain\BrainMemo.AI.Domain.csproj" />
+    <ProjectReference Include="..\..\Course\BrainMemo.Course.Contracts\BrainMemo.Course.Contracts.csproj" />
+    <ProjectReference Include="..\..\Content\BrainMemo.Content.Contracts\BrainMemo.Content.Contracts.csproj" />
+    <ProjectReference Include="..\..\Identity\BrainMemo.Identity.Contracts\BrainMemo.Identity.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation" Version="11.11.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.2" />
+  </ItemGroup>
+</Project>

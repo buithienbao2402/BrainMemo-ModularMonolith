@@ -402,16 +402,162 @@ public class ContentContractService(
 
     public Result ImportAiGeneratedQuestions(Guid courseId, Guid requesterUserId, Guid aiJobId, IReadOnlyList<AiQuestionItem> items)
     {
-        return Result.Failure(new Error("NOT_IMPLEMENTED", "AI question import will be implemented in T-S3-BE-02."));
+        Result<CourseAccessDto> accessResult = courseContract.GetCourseAccess(
+            courseId,
+            requesterUserId,
+            AccessPurpose.Normal);
+
+        if (accessResult.IsFailure || !accessResult.Value.Exists)
+        {
+            return Result.Failure(new Error("COURSE_NOT_FOUND", "Course not found."));
+        }
+
+        if (!accessResult.Value.IsOwner)
+        {
+            return Result.Failure(new Error("FORBIDDEN", "Only course owner can import AI questions."));
+        }
+
+        QuestionBank? bank = contentRepository.GetQuestionBankByCourseIdAsync(courseId).GetAwaiter().GetResult();
+        if (bank is null)
+        {
+            bank = new QuestionBank(Guid.NewGuid(), courseId);
+            contentRepository.AddQuestionBankAsync(bank).GetAwaiter().GetResult();
+        }
+
+        foreach (AiQuestionItem item in items)
+        {
+            QuestionType qType = QuestionType.MultipleChoice;
+            if (Enum.TryParse<QuestionType>(item.QuestionType, true, out var parsedType))
+            {
+                qType = parsedType;
+            }
+
+            bool allowMultiple = item.Options.Count(o => o.IsCorrect) > 1;
+
+            var q = new Question(
+                id: Guid.NewGuid(),
+                bankId: bank.Id,
+                questionType: qType,
+                allowMultiple: allowMultiple,
+                stem: item.Stem,
+                explanation: item.Explanation,
+                referenceAnswer: item.ReferenceAnswer,
+                difficultyCode: 1,
+                defaultPoints: item.DefaultPoints > 0 ? item.DefaultPoints : 1.0m,
+                status: QuestionStatus.Draft,
+                origin: QuestionOrigin.Ai,
+                aiJobId: aiJobId,
+                aiItemNo: (ushort)item.ItemNo);
+
+            var options = item.Options.Select(opt => new QuestionOption(
+                id: Guid.NewGuid(),
+                questionId: q.Id,
+                position: (ushort)opt.Position,
+                content: opt.Content,
+                matchContent: opt.MatchContent,
+                blankNo: opt.BlankNo.HasValue ? (byte)opt.BlankNo.Value : null,
+                isCorrect: opt.IsCorrect
+            )).ToList();
+
+            IReadOnlyList<string> tags = item.Tags is not null && item.Tags.Count > 0 ? item.Tags : ["AI"];
+            contentRepository.AddQuestionWithOptionsAndTagsAsync(q, options, tags).GetAwaiter().GetResult();
+        }
+
+        return Result.Success();
     }
 
     public Result ImportAiGeneratedFlashcards(Guid chapterId, Guid requesterUserId, Guid aiJobId, IReadOnlyList<Flashcard> cards)
     {
-        return Result.Failure(new Error("NOT_IMPLEMENTED", "AI flashcards import will be implemented in T-S3-BE-02."));
+        Chapter? chapter = contentRepository.GetChapterByIdAsync(chapterId).GetAwaiter().GetResult();
+        if (chapter is null || chapter.IsDeleted)
+        {
+            return Result.Failure(new Error("CHAPTER_NOT_FOUND", "Chapter was not found."));
+        }
+
+        Result<CourseAccessDto> accessResult = courseContract.GetCourseAccess(
+            chapter.CourseId,
+            requesterUserId,
+            AccessPurpose.Normal);
+
+        if (accessResult.IsFailure || !accessResult.Value.Exists)
+        {
+            return Result.Failure(new Error("COURSE_NOT_FOUND", "Course not found."));
+        }
+
+        if (!accessResult.Value.IsOwner)
+        {
+            return Result.Failure(new Error("FORBIDDEN", "Only course owner can import flashcards."));
+        }
+
+        IReadOnlyList<Block> existingBlocks = contentRepository.GetBlocksByChapterIdAsync(chapterId).GetAwaiter().GetResult();
+        var blocks = existingBlocks.ToList();
+        int nextPos = blocks.Count > 0 ? blocks.Max(b => b.Position) + 1 : 1;
+
+        string flashcardJson = System.Text.Json.JsonSerializer.Serialize(cards, new System.Text.Json.JsonSerializerOptions
+        {
+            PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+        });
+
+        var flashcardBlock = new Block(
+            id: Guid.NewGuid(),
+            chapterId: chapterId,
+            blockType: BlockType.Flashcard,
+            position: nextPos,
+            title: "Flashcard (AI)",
+            body: null,
+            resourceId: null,
+            questionId: null,
+            flashcards: flashcardJson,
+            aiJobId: aiJobId,
+            aiReviewStatus: AiReviewStatus.Pending);
+
+        blocks.Add(flashcardBlock);
+        contentRepository.ReplaceBlocksAsync(chapterId, blocks).GetAwaiter().GetResult();
+
+        return Result.Success();
     }
 
     public Result<string> GetChapterTextForAi(Guid chapterId, Guid requesterUserId)
     {
-        return Result.Failure<string>(new Error("NOT_IMPLEMENTED", "AI chapter text will be implemented in T-S3-BE-02."));
+        Chapter? chapter = contentRepository.GetChapterByIdAsync(chapterId).GetAwaiter().GetResult();
+        if (chapter is null || chapter.IsDeleted)
+        {
+            return Result.Failure<string>(new Error("CHAPTER_NOT_FOUND", "Chapter was not found."));
+        }
+
+        Result<CourseAccessDto> accessResult = courseContract.GetCourseAccess(
+            chapter.CourseId,
+            requesterUserId,
+            AccessPurpose.Normal);
+
+        if (accessResult.IsFailure || !accessResult.Value.Exists)
+        {
+            return Result.Failure<string>(new Error("COURSE_NOT_FOUND", "Course not found."));
+        }
+
+        if (!accessResult.Value.IsOwner)
+        {
+            return Result.Failure<string>(new Error("FORBIDDEN", "Only course owner can extract chapter text for AI."));
+        }
+
+        IReadOnlyList<Block> draftBlocks = contentRepository.GetBlocksByChapterIdAsync(chapterId).GetAwaiter().GetResult();
+        var texts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(chapter.Title)) texts.Add(chapter.Title);
+        if (!string.IsNullOrWhiteSpace(chapter.Description)) texts.Add(chapter.Description);
+
+        foreach (Block block in draftBlocks.OrderBy(b => b.Position))
+        {
+            if (!string.IsNullOrWhiteSpace(block.Title)) texts.Add(block.Title);
+            if (!string.IsNullOrWhiteSpace(block.Body)) texts.Add(block.Body);
+            if (!string.IsNullOrWhiteSpace(block.Flashcards)) texts.Add(block.Flashcards);
+        }
+
+        string resultText = string.Join("\n\n", texts.Where(t => !string.IsNullOrWhiteSpace(t)));
+        if (string.IsNullOrWhiteSpace(resultText))
+        {
+            resultText = chapter.Title ?? string.Empty;
+        }
+
+        return Result.Success(resultText);
     }
 }
