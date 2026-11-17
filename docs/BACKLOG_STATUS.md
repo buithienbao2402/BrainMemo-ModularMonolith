@@ -82,7 +82,7 @@
 | T-S11-FE-01 | FE-01 | DONE | Antigravity (FE) | dev/kim-thuan | **FE AI Features & Quota Management (Batched):** SCR-AI-01, 02 + SCR-ADM-03 (4/4 tests pass, 0 type error) |
 | T-S11-INT-01 | INT-01 | DONE | Antigravity (INT) | dev/kim-thuan | **Tích hợp S11 + e2e:** Playwright e2e `ai-generation-flow.spec.ts` pass 100%, 4/4 FE tests pass, BE build clean & 11/11 AI unit tests pass |
 | **S12 – Hoàn thiện & Triển khai** | | | | | |
-| T-S12-BE-01 | BE-01 + BE-02 | TODO | – | – | **Top 10, Google OAuth & Housekeeping (Batched):** BXH Top 10, Google login, worker dọn dẹp |
+| T-S12-BE-01 | BE-01 + BE-02 | DONE | Antigravity (BE) | dev/kim-thuan | **Top 10, Google OAuth & Housekeeping (Batched):** BXH Top 10, Google login, worker dọn dẹp (Discovery 10/10, Identity 94/94, BB 69/69 pass) |
 | T-S12-FE-01 | FE-01 | TODO | – | – | **FE Top 10, Social Auth & Lighthouse (Batched):** SCR-DSC-03, Google button, tối ưu Lighthouse ≥ 70 |
 | T-S12-INT-01 | INT-01 | TODO | – | – | **System Verification & Load Testing:** e2e 3 luồng NFR-17 + Load test 50 VU |
 | T-S12-OPS-01 | OPS-01 | TODO | – | – | **Triển khai Production VPS:** Docker Compose prod, Nginx SSL, Cloudflare, backup MySQL |

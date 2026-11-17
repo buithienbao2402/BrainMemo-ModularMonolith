@@ -67,4 +67,6 @@ public interface IIdentityAuthRepository
         UserTokenPurpose purpose,
         DateTimeOffset utcNow,
         CancellationToken ct = default);
+
+    Task<int> PurgeExpiredSessionsAsync(DateTimeOffset cutoff, CancellationToken ct = default) => Task.FromResult(0);
 }

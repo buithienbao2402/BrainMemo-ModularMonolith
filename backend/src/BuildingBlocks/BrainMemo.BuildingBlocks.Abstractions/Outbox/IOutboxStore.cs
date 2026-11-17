@@ -18,4 +18,6 @@ public interface IOutboxStore
         CancellationToken ct = default);
 
     Task SaveChangesAsync(CancellationToken ct = default);
+
+    Task<int> PurgePublishedOlderThanAsync(DateTimeOffset cutoff, CancellationToken ct = default) => Task.FromResult(0);
 }

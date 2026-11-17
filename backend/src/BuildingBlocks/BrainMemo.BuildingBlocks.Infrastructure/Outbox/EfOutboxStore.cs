@@ -80,4 +80,21 @@ public sealed class EfOutboxStore<TDbContext>(
 
     public Task SaveChangesAsync(CancellationToken ct = default)
         => _dbContext.SaveChangesAsync(ct);
+
+    public async Task<int> PurgePublishedOlderThanAsync(DateTimeOffset cutoff, CancellationToken ct = default)
+    {
+        List<OutboxMessage> oldMessages = await _dbContext.Set<OutboxMessage>()
+            .Where(x => x.PublishedAt != null && x.PublishedAt <= cutoff)
+            .Take(500)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+
+        if (oldMessages.Count > 0)
+        {
+            _dbContext.Set<OutboxMessage>().RemoveRange(oldMessages);
+            await _dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
+        }
+
+        return oldMessages.Count;
+    }
 }

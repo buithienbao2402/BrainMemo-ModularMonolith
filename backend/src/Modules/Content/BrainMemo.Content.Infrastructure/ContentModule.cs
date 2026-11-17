@@ -36,5 +36,6 @@ public sealed class ContentModule : IModule
         services.AddScoped<IContentContract, ContentContractService>();
         services.AddSingleton<IHtmlSanitizer, HtmlSanitizer>();
         services.AddSingleton<IQuizPasswordHasher, Security.BCryptQuizPasswordHasher>();
+        services.AddHostedService<BackgroundJobs.PurgeOrphanedStorageFilesWorker>();
     }
 }

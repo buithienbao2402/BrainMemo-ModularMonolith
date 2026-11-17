@@ -55,5 +55,6 @@ public sealed class IdentityModule : IModule
         services.TryAddSingleton<ITokenCryptoService, Sha256TokenCryptoService>();
         services.TryAddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddHostedService<UnlockExpiredAccountsWorker>();
+        services.AddHostedService<PurgeExpiredSessionsWorker>();
     }
 }

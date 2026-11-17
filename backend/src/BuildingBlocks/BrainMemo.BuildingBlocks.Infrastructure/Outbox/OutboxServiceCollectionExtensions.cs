@@ -45,6 +45,7 @@ public static class OutboxServiceCollectionExtensions
         services.TryAddSingleton<OutboxDispatcher>();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, OutboxDispatcher>(
             sp => sp.GetRequiredService<OutboxDispatcher>()));
+        services.AddHostedService<PurgeSentOutboxMessagesWorker>();
 
         return services;
     }

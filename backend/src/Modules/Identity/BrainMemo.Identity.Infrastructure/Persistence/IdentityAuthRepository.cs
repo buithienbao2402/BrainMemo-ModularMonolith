@@ -369,6 +369,23 @@ internal sealed class IdentityAuthRepository(IdentityDbContext dbContext) : IIde
         }
     }
 
+    public async Task<int> PurgeExpiredSessionsAsync(DateTimeOffset cutoff, CancellationToken ct = default)
+    {
+        List<RefreshSession> expired = await dbContext.RefreshSessions
+            .Where(s => s.ExpiresAt <= cutoff || (s.RevokedAt != null && s.RevokedAt <= cutoff))
+            .Take(500)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+
+        if (expired.Count > 0)
+        {
+            dbContext.RefreshSessions.RemoveRange(expired);
+            await dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
+        }
+
+        return expired.Count;
+    }
+
     private static bool IsEmailDuplicateKeyException(DbUpdateException ex)
         => ex.InnerException is MySqlException { Number: MySqlDuplicateKeyErrorNumber } mysqlEx
            && mysqlEx.Message.Contains("uk_idn_user_email", StringComparison.OrdinalIgnoreCase);
