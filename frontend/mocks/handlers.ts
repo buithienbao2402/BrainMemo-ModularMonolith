@@ -4610,4 +4610,62 @@ export const handlers = [
   http.post('*/api/v1/admin/announcements', () => {
     return HttpResponse.json({ id: 'ann-' + Date.now() }, { status: 202 });
   }),
+
+  // S11 AI endpoints
+  http.get('*/api/v1/ai/quota', () => {
+    return HttpResponse.json({
+      usedCount: 2,
+      quotaLimit: 20,
+      remaining: 18,
+      usedToday: 2,
+      dailyLimit: 20,
+      remainingToday: 18,
+      resetsAtUtc: new Date(Date.now() + 86400000).toISOString(),
+    });
+  }),
+
+  http.post('*/api/v1/courses/:courseId/ai/quiz-jobs', () => {
+    return HttpResponse.json(
+      { id: 'job-mock-quiz-1', jobId: 'job-mock-quiz-1', status: 'QUEUED', message: 'Yêu cầu sinh câu hỏi Quiz đã được tiếp nhận.' },
+      { status: 202 }
+    );
+  }),
+
+  http.post('*/api/v1/courses/:courseId/ai/flashcard-jobs', () => {
+    return HttpResponse.json(
+      { id: 'job-mock-fc-1', jobId: 'job-mock-fc-1', status: 'QUEUED', message: 'Yêu cầu sinh Flashcard đã được tiếp nhận.' },
+      { status: 202 }
+    );
+  }),
+
+  http.get('*/api/v1/ai/jobs/:id', ({ params }) => {
+    return HttpResponse.json({
+      id: params.id,
+      jobId: params.id,
+      jobType: 'QUIZ',
+      status: 'COMPLETED',
+      resultCount: 5,
+      totalCostUsd: 0.002,
+      generatedItemsCount: 5,
+      failureReason: null,
+      createdAtUtc: new Date().toISOString(),
+      completedAtUtc: new Date().toISOString(),
+    });
+  }),
+
+  http.get('*/api/v1/admin/settings', () => {
+    return HttpResponse.json({
+      aiDailyQuota: 20,
+      aiLlmProvider: 'GEMINI',
+    });
+  }),
+
+  http.put('*/api/v1/admin/settings', async ({ request }) => {
+    const body = (await request.json()) as any;
+    return HttpResponse.json({
+      success: true,
+      aiDailyQuota: body.aiDailyQuota ?? 20,
+      aiLlmProvider: body.aiLlmProvider ?? 'GEMINI',
+    });
+  }),
 ];

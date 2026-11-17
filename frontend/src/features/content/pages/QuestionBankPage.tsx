@@ -10,6 +10,7 @@ import {
   Edit2,
   CheckCircle,
   Clock,
+  Sparkles,
 } from 'lucide-react';
 import {
   type QuestionItemDto,
@@ -20,6 +21,7 @@ import {
 import { QuestionEditorModal } from '../components/QuestionEditorModal';
 import { QuestionUsageDrawer } from '../components/QuestionUsageDrawer';
 import { ImportQuestionsModal } from '../components/ImportQuestionsModal';
+import { AiGenerateModal } from '@/features/ai';
 import { Button, Input, EmptyState } from '@/shared/ui';
 
 export function QuestionBankPage() {
@@ -38,6 +40,7 @@ export function QuestionBankPage() {
   const [usageQuestionId, setUsageQuestionId] = useState<string | null>(null);
 
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
   const filterParams: QuestionFilterParams = {
     search: search.trim() || undefined,
@@ -47,7 +50,7 @@ export function QuestionBankPage() {
     tag: selectedTag.trim() || undefined,
   };
 
-  const { data, isLoading } = useQuestionsQuery(courseId, filterParams);
+  const { data, isLoading, refetch } = useQuestionsQuery(courseId, filterParams);
 
   const questions = data?.items ?? [];
 
@@ -152,6 +155,16 @@ export function QuestionBankPage() {
           >
             <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
             Nhập câu hỏi (Import)
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsAiModalOpen(true)}
+            className="text-xs flex items-center gap-1.5 border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-300 dark:hover:bg-purple-950/40"
+          >
+            <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+            Tạo câu hỏi với AI (SCR-AI-01)
           </Button>
 
           <Button
@@ -374,6 +387,18 @@ export function QuestionBankPage() {
         courseId={courseId}
         isOpen={isImportOpen}
         onClose={() => setIsImportOpen(false)}
+      />
+
+      {/* AI Generate Modal */}
+      <AiGenerateModal
+        isOpen={isAiModalOpen}
+        onClose={() => setIsAiModalOpen(false)}
+        courseId={courseId}
+        defaultTab="QUIZ"
+        onSuccess={() => {
+          setIsAiModalOpen(false);
+          refetch();
+        }}
       />
     </div>
   );

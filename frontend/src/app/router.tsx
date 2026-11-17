@@ -67,6 +67,7 @@ import {
   AdminUsersPage,
   AdminAnnouncementsPage,
 } from '@/features/admin';
+import { AdminSystemSettingsPage } from '@/features/ai';
 import { RequireAdmin, RequireAuth, RequireVerifiedEmail } from './guards';
 import { AdminLayout, AppLayout, PublicLayout, SettingsLayout } from './layouts';
 import { LockedAccountPage, NotFoundPage, RouteStubPage } from './pages';
@@ -381,25 +382,11 @@ export const appRoutes: RouteObject[] = [
           },
           {
             path: 'ai-settings',
-            element: (
-              <RouteStubPage
-                screenCode="SCR-ADM-06"
-                title="Cấu hình AI kiểm duyệt"
-                description="Thiết lập tham số và hạn mức tính năng AI."
-                backTo="/admin"
-              />
-            ),
+            element: <AdminSystemSettingsPage />,
           },
           {
             path: 'settings',
-            element: (
-              <RouteStubPage
-                screenCode="SCR-ADM-08"
-                title="Cài đặt hệ thống"
-                description="Cấu hình vận hành nền tảng BrainMemo."
-                backTo="/admin"
-              />
-            ),
+            element: <AdminSystemSettingsPage />,
           },
         ],
       },

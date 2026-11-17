@@ -79,7 +79,7 @@
 | T-S10R-INT-01 | – | DONE | Antigravity (INT) | dev/kim-thuan | **Tích hợp & Kiểm thử:** OpenAPI bundle (12 modules, 123 paths), Backend build 0 errors, `211/211` backend unit/host tests pass, FE typecheck & modified Vitest suites pass |
 | **S11 – AI Services (GenAI Only)** | | | | | |
 | T-S11-BE-01 | BE-01..03 | DONE | Antigravity (BE) | dev/kim-thuan | **GenAI Quiz & Flashcard Service (Batched):** Settings (`aiDailyQuota`, `aiLlmProvider`), Quota, Gemini API (`ILlmClient`), Background jobs sinh câu hỏi Quiz & Flashcard, Content import (`11/11` AI tests pass) |
-| T-S11-FE-01 | FE-01 | TODO | – | – | **FE AI Features & Quota Management (Batched):** SCR-AI-01, 02 + SCR-ADM-03 |
+| T-S11-FE-01 | FE-01 | DONE | Antigravity (FE) | dev/kim-thuan | **FE AI Features & Quota Management (Batched):** SCR-AI-01, 02 + SCR-ADM-03 (4/4 tests pass, 0 type error) |
 | T-S11-INT-01 | INT-01 | TODO | – | – | Tích hợp S11 + e2e |
 | **S12 – Hoàn thiện & Triển khai** | | | | | |
 | T-S12-BE-01 | BE-01 + BE-02 | TODO | – | – | **Top 10, Google OAuth & Housekeeping (Batched):** BXH Top 10, Google login, worker dọn dẹp |
