@@ -1,4 +1,4 @@
-export type ReportSource = 'USER' | 'AI_FINDING';
+export type ReportSource = 'USER';
 export type ReportTargetType = 'COURSE' | 'COMMENT';
 export type ReportStatus = 'PENDING' | 'RESOLVED_ACCEPTED' | 'RESOLVED_REJECTED';
 export type EvidenceKind = 'TEXT_EXCERPT' | 'IMAGE_URL' | 'LINK';
@@ -93,11 +93,26 @@ export interface AuditLogDto {
 
 export interface ModerationDashboardDto {
   pendingReportsCount: number;
-  pendingAiFlagsCount: number;
+  pendingCourseReviewsCount: number;
   activeSanctionsCount: number;
   lockedUsersCount: number;
   hiddenCoursesCount: number;
   recentAuditLogs: AuditLogDto[];
+}
+
+export interface CourseReviewQueueItemDto {
+  courseId: string;
+  name: string;
+  description?: string | null;
+  accessMode: string;
+  publishStatus: 'PENDING_APPROVAL' | 'PUBLISHED' | 'REJECTED';
+  owner: {
+    id: string;
+    displayName: string;
+    avatarUrl?: string | null;
+  };
+  submittedForReviewAt?: string | null;
+  rejectionReason?: string | null;
 }
 
 export interface PagedListResponse<T> {

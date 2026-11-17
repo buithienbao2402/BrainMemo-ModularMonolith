@@ -272,6 +272,12 @@ public sealed class CourseAccessTests
             Now);
 
         CourseEntity course = result.Value;
+        if (accessMode != CourseAccessMode.OnlyMe)
+        {
+            course.SubmitForReview(Now);
+            course.ApprovePublish(Guid.NewGuid(), Now);
+        }
+
         if (isHidden)
         {
             course.Hide(Guid.NewGuid(), Now);

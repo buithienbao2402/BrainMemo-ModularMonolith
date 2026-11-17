@@ -79,7 +79,7 @@ public static class CourseAccessEvaluator
                 ReasonCode: "ONLY_ME");
         }
 
-        // (3b / 4) ModerationReview - allows read-only (CanReadContent=true, CanLearn=false) for Private/Hidden/Deleted/Public
+        // (3b / 4) ModerationReview - allows read-only (CanReadContent=true, CanLearn=false) for Private/Hidden/Deleted/Public/PendingApproval
         if (purpose == AccessPurpose.ModerationReview)
         {
             return new CourseAccessDto(
@@ -95,7 +95,7 @@ public static class CourseAccessEvaluator
                 ReasonCode: "MODERATION_REVIEW");
         }
 
-        // (5) Hidden or Deleted course - denied to all non-owners
+        // (4) Hidden or Deleted course - denied to all non-owners
         if (course.IsDeleted || course.IsHidden)
         {
             return new CourseAccessDto(
@@ -109,6 +109,22 @@ public static class CourseAccessEvaluator
                 CanReadContent: false,
                 CanLearn: false,
                 ReasonCode: course.IsDeleted ? "COURSE_DELETED" : "COURSE_HIDDEN");
+        }
+
+        // (5) Unpublished course (DRAFT / PENDING_APPROVAL / REJECTED) - denied to all non-owners (DEC-27)
+        if (course.PublishStatus != Domain.Enums.CoursePublishStatus.Published)
+        {
+            return new CourseAccessDto(
+                Exists: true,
+                EffectiveState: effectiveState,
+                AccessMode: accessModeStr,
+                OwnerUserId: course.OwnerUserId,
+                IsOwner: false,
+                EnrollmentStatus: enrollmentStatusStr,
+                CanViewInfo: false,
+                CanReadContent: false,
+                CanLearn: false,
+                ReasonCode: "NOT_PUBLISHED");
         }
 
         // (6) PUBLIC

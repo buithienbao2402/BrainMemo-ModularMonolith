@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Bot,
   Eye,
   FileText,
   Flag,
@@ -58,7 +57,7 @@ export function AdminReportsPage() {
             Hàng đợi kiểm duyệt báo cáo vi phạm
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Xem xét các nội dung bị báo cáo bởi người học hoặc phát hiện bởi hệ thống AI PhoBERT.
+            Xem xét các nội dung bị báo cáo vi phạm bởi người học và giảng viên.
           </p>
         </div>
       </div>
@@ -109,7 +108,6 @@ export function AdminReportsPage() {
               >
                 <option value="ALL">Tất cả nguồn</option>
                 <option value="USER">Người dùng báo cáo</option>
-                <option value="AI_FINDING">PhoBERT AI phát hiện</option>
               </select>
             </div>
 
@@ -178,17 +176,10 @@ export function AdminReportsPage() {
                     #{rep.reportNumber || rep.id.substring(0, 8)}
                   </td>
                   <td className="py-3.5 px-4 whitespace-nowrap">
-                    {rep.source === 'AI_FINDING' ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-500/20 px-2.5 py-0.5 text-[11px] font-semibold text-violet-400 border border-violet-500/30">
-                        <Bot className="h-3 w-3" />
-                        PhoBERT AI
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/20 px-2.5 py-0.5 text-[11px] font-semibold text-blue-400">
-                        <User className="h-3 w-3" />
-                        Người dùng
-                      </span>
-                    )}
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/20 px-2.5 py-0.5 text-[11px] font-semibold text-blue-400">
+                      <User className="h-3 w-3" />
+                      Người dùng
+                    </span>
                   </td>
                   <td className="py-3.5 px-4 whitespace-nowrap">
                     <span
@@ -212,7 +203,7 @@ export function AdminReportsPage() {
                     </p>
                   </td>
                   <td className="py-3.5 px-4 whitespace-nowrap text-muted-foreground">
-                    {rep.reporterName || rep.reporterEmail || (rep.source === 'AI_FINDING' ? 'Hệ thống AI' : 'Ẩn danh')}
+                    {rep.reporterName || rep.reporterEmail || 'Ẩn danh'}
                   </td>
                   <td className="py-3.5 px-4 font-mono text-muted-foreground whitespace-nowrap">
                     {new Date(rep.createdAt).toLocaleString('vi-VN')}

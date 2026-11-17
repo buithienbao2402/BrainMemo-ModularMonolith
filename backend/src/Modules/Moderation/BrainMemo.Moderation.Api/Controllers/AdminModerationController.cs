@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using BrainMemo.Identity.Contracts;
 using BrainMemo.Moderation.Application.Commands.ApplySanction;
+using BrainMemo.Moderation.Application.Commands.CourseReview;
 using BrainMemo.Moderation.Application.Commands.LiftSanction;
 using BrainMemo.Moderation.Application.Commands.ResolveReport;
 using BrainMemo.Moderation.Application.DTOs;
@@ -180,6 +181,45 @@ public sealed class AdminModerationController(
 
         var result = await sender.Send(new GetModerationDashboardQuery(), ct).ConfigureAwait(false);
         return result.IsSuccess ? Ok(result.Value) : MapErrorToResult(result.Error);
+    }
+
+    [HttpGet("courses/review-queue")]
+    [ProducesResponseType<PagedListResponse<BrainMemo.Course.Contracts.Dtos.CourseReviewQueueItemDto>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> ListCourseReviewQueue(
+        [FromQuery] string? status = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
+    {
+        if (!await IsAdminAsync(ct)) return Forbid();
+
+        var result = await sender.Send(new ListCourseReviewQueueQuery(status, page, pageSize), ct).ConfigureAwait(false);
+        return result.IsSuccess ? Ok(result.Value) : MapErrorToResult(result.Error);
+    }
+
+    [HttpPost("courses/{courseId:guid}/approve")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> ApproveCoursePublish(
+        [FromRoute] Guid courseId,
+        CancellationToken ct = default)
+    {
+        if (!await IsAdminAsync(ct) || !TryGetCallerId(out Guid adminId)) return Forbid();
+
+        var result = await sender.Send(new ApproveCoursePublishCommand(courseId, adminId), ct).ConfigureAwait(false);
+        return result.IsSuccess ? NoContent() : MapErrorToResult(result.Error);
+    }
+
+    [HttpPost("courses/{courseId:guid}/reject")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RejectCoursePublish(
+        [FromRoute] Guid courseId,
+        [FromBody] RejectCoursePublishRequest request,
+        CancellationToken ct = default)
+    {
+        if (!await IsAdminAsync(ct) || !TryGetCallerId(out Guid adminId)) return Forbid();
+
+        var result = await sender.Send(new RejectCoursePublishCommand(courseId, adminId, request.Reason), ct).ConfigureAwait(false);
+        return result.IsSuccess ? NoContent() : MapErrorToResult(result.Error);
     }
 
     private bool TryGetCallerId(out Guid userId)

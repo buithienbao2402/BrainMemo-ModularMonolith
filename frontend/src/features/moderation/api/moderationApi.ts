@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient, unwrapApi } from '@/shared/api';
 import type {
   AuditLogDto,
+  CourseReviewQueueItemDto,
   CreateReportRequest,
   DirectSanctionRequest,
   LiftSanctionRequest,
@@ -21,6 +22,7 @@ export const moderationQueryKeys = {
   courseReports: (courseId: string) => ['moderation', 'courseReports', courseId] as const,
   sanctions: (params?: Record<string, unknown>) => ['moderation', 'sanctions', params ?? {}] as const,
   auditLogs: (params?: Record<string, unknown>) => ['moderation', 'auditLogs', params ?? {}] as const,
+  courseReviews: (params?: Record<string, unknown>) => ['moderation', 'courseReviews', params ?? {}] as const,
   dashboard: () => ['moderation', 'dashboard'] as const,
 };
 
@@ -201,6 +203,56 @@ export function useModerationDashboard() {
     queryKey: moderationQueryKeys.dashboard(),
     queryFn: async (): Promise<ModerationDashboardDto> => {
       return unwrapApi((apiClient as any).GET('/admin/dashboard'));
+    },
+  });
+}
+
+export function useAdminCourseReviewQueue(params?: {
+  status?: string;
+  page?: number;
+  pageSize?: number;
+}) {
+  return useQuery({
+    queryKey: moderationQueryKeys.courseReviews(params),
+    queryFn: async (): Promise<PagedListResponse<CourseReviewQueueItemDto>> => {
+      return unwrapApi(
+        (apiClient as any).GET('/admin/courses/review-queue', {
+          params: { query: params },
+        }),
+      );
+    },
+  });
+}
+
+export function useApproveCoursePublish() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (courseId: string): Promise<void> => {
+      return unwrapApi(
+        (apiClient as any).POST('/admin/courses/{courseId}/approve', {
+          params: { path: { courseId } },
+        }),
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: moderationQueryKeys.all });
+    },
+  });
+}
+
+export function useRejectCoursePublish() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ courseId, reason }: { courseId: string; reason: string }): Promise<void> => {
+      return unwrapApi(
+        (apiClient as any).POST('/admin/courses/{courseId}/reject', {
+          params: { path: { courseId } },
+          body: { reason },
+        }),
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: moderationQueryKeys.all });
     },
   });
 }

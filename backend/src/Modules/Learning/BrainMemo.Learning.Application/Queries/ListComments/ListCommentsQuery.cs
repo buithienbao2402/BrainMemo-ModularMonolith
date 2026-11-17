@@ -9,4 +9,7 @@ public sealed record ListCommentsQuery(
     Guid? ChapterId,
     int Page,
     int PageSize,
-    Guid? CurrentUserId) : IQuery<PagedResult<CommentDto>>;
+    Guid? CurrentUserId,
+    bool? IsResolved = null,
+    bool? Mine = null,
+    string? Search = null) : IQuery<PagedResult<CommentDto>>;

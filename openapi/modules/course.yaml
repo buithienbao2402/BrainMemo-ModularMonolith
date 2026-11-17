@@ -62,8 +62,15 @@ paths:
   /courses/{courseId}/nomination:
     put: {tags: [Course], operationId: nominateCourse, summary: Đề cử (FR-CRS-15; idempotent), parameters: [{$ref: '#/components/parameters/CourseId'}], responses: {'204': {description: OK}}}
     delete: {tags: [Course], operationId: withdrawNomination, summary: Thu hồi đề cử (FR-CRS-16), parameters: [{$ref: '#/components/parameters/CourseId'}], responses: {'204': {description: OK}}}
+  /courses/{courseId}/submit-review:
+    post: {tags: [Course], operationId: submitCourseForReview, summary: 'Gửi yêu cầu kiểm duyệt xuất bản khóa học (FR-CRS-17)', parameters: [{$ref: '#/components/parameters/CourseId'}], responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/CourseDto'}}}}}}
+  /courses/{courseId}/cancel-review:
+    post: {tags: [Course], operationId: cancelCourseReview, summary: 'Hủy yêu cầu kiểm duyệt xuất bản (FR-CRS-18)', parameters: [{$ref: '#/components/parameters/CourseId'}], responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/CourseDto'}}}}}}
+  /courses/{courseId}/unpublish:
+    post: {tags: [Course], operationId: unpublishCourse, summary: 'Hủy xuất bản khóa học về trạng thái Nháp (FR-CRS-19)', parameters: [{$ref: '#/components/parameters/CourseId'}], responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/CourseDto'}}}}}}
 components:
   schemas:
+    PublishStatus: {type: string, enum: [DRAFT, PENDING_APPROVAL, PUBLISHED, REJECTED]}
     CourseUpsertRequest: {type: object, properties: {name: {type: string, maxLength: 200}, description: {type: string}, accessMode: {$ref: '#/components/schemas/AccessMode'}, status: {$ref: '#/components/schemas/CourseStatus'}, tags: {type: array, maxItems: 10, items: {type: string, maxLength: 50}}, coverUploadKey: {type: string}, removeCover: {type: boolean}}}
     CourseDto:
       type: object
@@ -75,6 +82,10 @@ components:
         coverUrl: {type: string, nullable: true}
         accessMode: {$ref: '#/components/schemas/AccessMode'}
         status: {$ref: '#/components/schemas/CourseStatus'}
+        publishStatus: {$ref: '#/components/schemas/PublishStatus'}
+        submittedForReviewAt: {type: string, format: date-time, nullable: true}
+        publishedAt: {type: string, format: date-time, nullable: true}
+        rejectionReason: {type: string, nullable: true}
         isHidden: {type: boolean}
         isDeleted: {type: boolean}
         tags: {type: array, items: {type: string}}
@@ -83,6 +94,6 @@ components:
         viewer: {type: object, description: Quyền của người xem, properties: {isOwner: {type: boolean}, enrollmentStatus: {type: string, nullable: true}, canReadContent: {type: boolean}, canLearn: {type: boolean}, hasNominated: {type: boolean}}}
         ratingAvg: {type: number, nullable: true}
         ratingCount: {type: integer}
-    CourseCard: {type: object, properties: {id: {type: string, format: uuid}, name: {type: string}, coverUrl: {type: string, nullable: true}, owner: {$ref: '#/components/schemas/UserRef'}, accessMode: {$ref: '#/components/schemas/AccessMode'}, status: {$ref: '#/components/schemas/CourseStatus'}, tags: {type: array, items: {type: string}}, learnerCount: {type: integer}, ratingAvg: {type: number, nullable: true}, ratingCount: {type: integer}, nominationCount: {type: integer}, progressPercent: {type: number, nullable: true}}}
+    CourseCard: {type: object, properties: {id: {type: string, format: uuid}, name: {type: string}, coverUrl: {type: string, nullable: true}, owner: {$ref: '#/components/schemas/UserRef'}, accessMode: {$ref: '#/components/schemas/AccessMode'}, status: {$ref: '#/components/schemas/CourseStatus'}, publishStatus: {$ref: '#/components/schemas/PublishStatus'}, tags: {type: array, items: {type: string}}, learnerCount: {type: integer}, ratingAvg: {type: number, nullable: true}, ratingCount: {type: integer}, nominationCount: {type: integer}, progressPercent: {type: number, nullable: true}}}
     CourseStats: {type: object, properties: {activeLearners: {type: integer}, completedLearners: {type: integer}, completionRate: {type: number}, commentCount: {type: integer}, chapterCount: {type: integer}, nominationCount: {type: integer}}}
     EnrollmentDto: {type: object, properties: {id: {type: string, format: uuid}, courseId: {type: string, format: uuid}, user: {$ref: '#/components/schemas/UserRef'}, status: {type: string, enum: [PENDING_APPROVAL, INVITED, ACTIVE, LEFT, REMOVED]}, requestId: {type: string, format: uuid, nullable: true}, statusChangedAt: {type: string, format: date-time}}}

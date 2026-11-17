@@ -46,3 +46,20 @@ public sealed record NominationChanged(
     Guid CourseId,
     Guid UserId,
     bool IsActive) : IntegrationEvent(EventId, OccurredAt);
+
+public sealed record CourseSubmittedForReview(
+    Guid EventId,
+    DateTimeOffset OccurredAt,
+    Guid CourseId,
+    string CourseName,
+    Guid OwnerUserId) : IntegrationEvent(EventId, OccurredAt);
+
+public sealed record CourseApprovalDecided(
+    Guid EventId,
+    DateTimeOffset OccurredAt,
+    Guid CourseId,
+    string CourseName,
+    Guid OwnerUserId,
+    Guid ActorAdminId,
+    bool Approved,
+    string? RejectionReason) : IntegrationEvent(EventId, OccurredAt);

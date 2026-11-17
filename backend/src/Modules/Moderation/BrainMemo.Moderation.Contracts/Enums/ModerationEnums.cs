@@ -65,6 +65,8 @@ public enum AuditAction
     AccountLockedTemporary = 7,
     AccountLockedPermanent = 8,
     AccountUnlocked = 9,
+    CoursePublishApproved = 10,
+    CoursePublishRejected = 11,
 }
 
 public enum AuditObjectType

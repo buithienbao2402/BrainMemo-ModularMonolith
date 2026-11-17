@@ -139,7 +139,11 @@ public sealed class UpdateCourseCommandHandler(
             UpdatedAt: course.UpdatedAt,
             Viewer: viewer,
             RatingAvg: null,
-            RatingCount: 0);
+            RatingCount: 0,
+            PublishStatus: course.PublishStatus.ToApiString(),
+            SubmittedForReviewAt: course.SubmittedForReviewAt,
+            PublishedAt: course.PublishedAt,
+            RejectionReason: course.RejectionReason);
 
         return Result.Success(dto);
     }

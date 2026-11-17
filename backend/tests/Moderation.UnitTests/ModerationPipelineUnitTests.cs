@@ -664,6 +664,6 @@ public sealed class ModerationPipelineUnitTests
 
         Assert.True(result.IsSuccess);
         Assert.Equal(1, result.Value.PendingReports);
-        Assert.Equal(1, result.Value.PendingAiFlags);
+        Assert.Equal(0, result.Value.PendingCourseReviews);
     }
 }

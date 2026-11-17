@@ -1,3 +1,4 @@
+using BrainMemo.Course.Contracts;
 using BrainMemo.Moderation.Application.Abstractions;
 using BrainMemo.Moderation.Application.DTOs;
 using BrainMemo.SharedKernel.Results;
@@ -10,12 +11,24 @@ public sealed record GetModerationDashboardQuery : IRequest<Result<ModerationDas
 
 public sealed class GetModerationDashboardQueryHandler(
     IModerationRepository repository,
-    IClock clock) : IRequestHandler<GetModerationDashboardQuery, Result<ModerationDashboardDto>>
+    IClock clock,
+    ICourseContract? courseContract = null) : IRequestHandler<GetModerationDashboardQuery, Result<ModerationDashboardDto>>
 {
     public async Task<Result<ModerationDashboardDto>> Handle(GetModerationDashboardQuery query, CancellationToken ct)
     {
         DateTimeOffset utcNow = clock.UtcNow;
         ModerationDashboardDto stats = await repository.GetDashboardStatsAsync(utcNow, ct).ConfigureAwait(false);
-        return Result.Success(stats);
+
+        int pendingReviews = 0;
+        if (courseContract != null)
+        {
+            var reviewResult = courseContract.CountPendingCourseReviews();
+            if (reviewResult.IsSuccess)
+            {
+                pendingReviews = reviewResult.Value;
+            }
+        }
+
+        return Result.Success(stats with { PendingCourseReviews = pendingReviews });
     }
 }

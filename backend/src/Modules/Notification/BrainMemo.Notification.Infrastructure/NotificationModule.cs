@@ -53,5 +53,7 @@ public sealed class NotificationModule : IModule
         services.AddScoped<IIntegrationEventHandler<EnrollmentChanged>, EnrollmentChangedEventHandler>();
         services.AddScoped<IIntegrationEventHandler<CommentCreated>, CommentCreatedEventHandler>();
         services.AddScoped<IIntegrationEventHandler<ChapterPublished>, ChapterPublishedEventHandler>();
+        services.AddScoped<IIntegrationEventHandler<BrainMemo.Course.Contracts.Events.CourseApprovalDecided>, CourseApprovalDecidedEventHandler>();
+        services.AddScoped<IIntegrationEventHandler<BrainMemo.Messaging.Contracts.Events.NewMessageReceived>, NewMessageReceivedEventHandler>();
     }
 }

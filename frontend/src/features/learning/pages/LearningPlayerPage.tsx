@@ -5,10 +5,12 @@ import {
   ChevronLeft,
   ChevronRight,
   Lock,
+  MessageCircle,
 } from 'lucide-react';
 import { Button, Skeleton, ErrorState } from '@/shared/ui';
 import { useCourseQuery } from '@/features/course';
 import { useChaptersQuery } from '@/features/content';
+import { ChatDrawer } from '@/features/messaging';
 import {
   useReadChapterQuery,
   useCourseProgressQuery,
@@ -42,6 +44,7 @@ export function LearningPlayerPage() {
   // Track unlocked chapters in session
   const [unlockedChapterIds, setUnlockedChapterIds] = useState<Set<string>>(new Set());
   const [isPasscodeModalOpen, setIsPasscodeModalOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   const {
     data: chapterContent,
@@ -133,6 +136,17 @@ export function LearningPlayerPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          {user && !course?.viewer?.isOwner && course?.owner?.id !== user.id && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsChatOpen(true)}
+              className="hidden sm:inline-flex items-center gap-1.5 h-8 text-xs"
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              <span>Nhắn tin giảng viên</span>
+            </Button>
+          )}
           {activeChapterId && (
             <BookmarkButton
               courseId={courseId}
@@ -290,6 +304,14 @@ export function LearningPlayerPage() {
         chapterId={activeChapterId}
         chapterTitle={currentChapterSummary?.title}
         onSuccess={handlePasscodeUnlocked}
+      />
+
+      {/* 5. CHAT DRAWER VỚI GIẢNG VIÊN */}
+      <ChatDrawer
+        courseId={courseId}
+        courseName={courseTitle}
+        open={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
       />
     </div>
   );

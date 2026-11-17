@@ -37,6 +37,7 @@ import {
   useRejectEnrollmentRequestMutation,
   type EnrollmentRequestItem,
 } from '../api/courseApi';
+import { CoursePublishStatusBanner } from '../components/CoursePublishStatusBanner';
 import defaultCourseCover from '@/assets/courses';
 
 export function CourseOverviewPage() {
@@ -241,6 +242,9 @@ export function CourseOverviewPage() {
           </button>
         </div>
       </div>
+
+      {/* Publishing Status & Review Controls (DEC-27) */}
+      <CoursePublishStatusBanner course={course} onUpdated={() => refetch()} />
 
       {/* 3. SECTION 1: COURSE INFO CARD (Figma Frame 28:7099) */}
       <section

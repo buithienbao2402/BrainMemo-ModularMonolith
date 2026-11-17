@@ -4,5 +4,6 @@ export * from './components/ReportModal';
 export * from './pages/CourseReportsPage';
 export * from './pages/AdminReportsPage';
 export * from './pages/AdminReportDetailPage';
+export * from './pages/AdminCourseReviewsPage';
 export * from './pages/AdminSanctionsPage';
 export * from './pages/AdminAuditLogsPage';

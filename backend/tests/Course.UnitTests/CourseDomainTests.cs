@@ -42,9 +42,15 @@ public sealed class CourseDomainTests
         Assert.Equal(CourseStatus.Updating, course.Status);
         Assert.Equal(3, course.Tags.Count);
         Assert.Equal(1u, course.Revision);
-        Assert.True(course.IsEligible());
+        Assert.Equal(CoursePublishStatus.Draft, course.PublishStatus);
+        Assert.False(course.IsEligible());
         Assert.False(course.IsHidden);
         Assert.False(course.IsDeleted);
+
+        course.SubmitForReview(Now);
+        course.ApprovePublish(Guid.NewGuid(), Now);
+        Assert.Equal(CoursePublishStatus.Published, course.PublishStatus);
+        Assert.True(course.IsEligible());
     }
 
     [Theory]
@@ -205,6 +211,8 @@ public sealed class CourseDomainTests
             Now);
 
         CourseEntity course = createResult.Value;
+        course.SubmitForReview(Now);
+        course.ApprovePublish(Guid.NewGuid(), Now);
         Guid sanctionId = Guid.NewGuid();
 
         // 1. Hide

@@ -4,6 +4,7 @@ using BrainMemo.Learning.Application.Commands.CreateComment;
 using BrainMemo.Learning.Application.Commands.DeleteComment;
 using BrainMemo.Learning.Application.Commands.EditComment;
 using BrainMemo.Learning.Application.Commands.PinComment;
+using BrainMemo.Learning.Application.Commands.ResolveComment;
 using BrainMemo.Learning.Application.Commands.UnpinComment;
 using BrainMemo.Learning.Application.DTOs;
 using BrainMemo.Learning.Application.Queries.GetCommentsSummary;
@@ -25,6 +26,9 @@ public sealed class CommentsController(ISender sender) : ControllerBase
     public async Task<IActionResult> ListComments(
         [FromRoute] Guid courseId,
         [FromQuery] Guid? chapterId,
+        [FromQuery] bool? isResolved,
+        [FromQuery] bool? mine,
+        [FromQuery] string? search,
         [FromQuery] int? page,
         [FromQuery] int? pageSize,
         CancellationToken ct)
@@ -35,7 +39,10 @@ public sealed class CommentsController(ISender sender) : ControllerBase
             chapterId,
             page ?? 1,
             pageSize ?? 20,
-            currentUserId);
+            currentUserId,
+            isResolved,
+            mine,
+            search);
 
         Result<PagedResult<CommentDto>> result = await sender.Send(query, ct).ConfigureAwait(false);
 
@@ -76,7 +83,9 @@ public sealed class CommentsController(ISender sender) : ControllerBase
             request.ChapterId,
             request.ParentCommentId,
             request.Content,
-            userId);
+            userId,
+            request.Title,
+            request.BlockId);
 
         Result<CommentDto> result = await sender.Send(command, ct).ConfigureAwait(false);
 
@@ -177,6 +186,49 @@ public sealed class CommentsController(ISender sender) : ControllerBase
         return result.IsSuccess
             ? NoContent()
             : new ObjectResult(result.Error);
+    }
+
+    [Authorize]
+    [HttpPut("api/v1/comments/{id:guid}/resolve")]
+    [ProducesResponseType<CommentDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ResolveComment(
+        [FromRoute] Guid id,
+        [FromBody] ResolveCommentRequest? request,
+        CancellationToken ct)
+    {
+        if (!TryGetCurrentUserId(out Guid userId))
+        {
+            return Unauthorized(Error.Unauthenticated("Phiên đăng nhập không hợp lệ."));
+        }
+
+        ResolveCommentCommand command = new(id, request?.ResolvedCommentId, userId);
+        Result<CommentDto> result = await sender.Send(command, ct).ConfigureAwait(false);
+
+        return result.IsSuccess ? Ok(result.Value) : new ObjectResult(result.Error);
+    }
+
+    [Authorize]
+    [HttpDelete("api/v1/comments/{id:guid}/resolve")]
+    [ProducesResponseType<CommentDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UnresolveComment(
+        [FromRoute] Guid id,
+        CancellationToken ct)
+    {
+        if (!TryGetCurrentUserId(out Guid userId))
+        {
+            return Unauthorized(Error.Unauthenticated("Phiên đăng nhập không hợp lệ."));
+        }
+
+        UnresolveCommentCommand command = new(id, userId);
+        Result<CommentDto> result = await sender.Send(command, ct).ConfigureAwait(false);
+
+        return result.IsSuccess ? Ok(result.Value) : new ObjectResult(result.Error);
     }
 
     [HttpGet("api/v1/courses/{courseId:guid}/comments/summary")]

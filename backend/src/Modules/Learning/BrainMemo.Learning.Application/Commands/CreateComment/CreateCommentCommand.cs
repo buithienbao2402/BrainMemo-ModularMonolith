@@ -8,4 +8,6 @@ public sealed record CreateCommentCommand(
     Guid? ChapterId,
     Guid? ParentCommentId,
     string Content,
-    Guid CurrentUserId) : ICommand<CommentDto>;
+    Guid CurrentUserId,
+    string? Title = null,
+    Guid? BlockId = null) : ICommand<CommentDto>;

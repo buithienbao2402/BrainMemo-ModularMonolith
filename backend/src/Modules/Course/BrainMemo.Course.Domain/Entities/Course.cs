@@ -30,6 +30,7 @@ public sealed class Course : AggregateRoot
         CoverStorageKey = coverStorageKey;
         AccessMode = accessMode;
         Status = status;
+        PublishStatus = CoursePublishStatus.Draft;
         Revision = 1;
         CreatedAt = createdAt;
         UpdatedAt = createdAt;
@@ -46,6 +47,12 @@ public sealed class Course : AggregateRoot
     public string? CoverStorageKey { get; private set; }
     public CourseAccessMode AccessMode { get; private set; }
     public CourseStatus Status { get; private set; }
+    public CoursePublishStatus PublishStatus { get; private set; }
+    public DateTimeOffset? SubmittedForReviewAt { get; private set; }
+    public DateTimeOffset? PublishedAt { get; private set; }
+    public string? RejectionReason { get; private set; }
+    public Guid? ReviewedByAdminId { get; private set; }
+    public DateTimeOffset? ReviewedAt { get; private set; }
     public DateTimeOffset? HiddenAt { get; private set; }
     public Guid? HiddenSanctionId { get; private set; }
     public DateTimeOffset? DeletedAt { get; private set; }
@@ -57,8 +64,10 @@ public sealed class Course : AggregateRoot
 
     public bool IsHidden => HiddenAt.HasValue;
     public bool IsDeleted => DeletedAt.HasValue;
+    public bool IsPublished => PublishStatus == CoursePublishStatus.Published;
 
-    public bool IsEligible() => !IsDeleted && !IsHidden && AccessMode == CourseAccessMode.Public;
+    public bool IsEligible() =>
+        !IsDeleted && !IsHidden && PublishStatus == CoursePublishStatus.Published && AccessMode == CourseAccessMode.Public;
 
     public static Result<Course> Create(
         Guid id,
@@ -210,6 +219,111 @@ public sealed class Course : AggregateRoot
 
         HiddenAt = null;
         HiddenSanctionId = null;
+        UpdatedAt = now;
+        Revision++;
+        return Result.Success();
+    }
+
+    public Result SubmitForReview(DateTimeOffset now)
+    {
+        if (IsDeleted)
+        {
+            return Result.Failure(Error.Conflict("COURSE_DELETED", "Không thể gửi kiểm duyệt khóa học đã xóa."));
+        }
+
+        if (IsHidden)
+        {
+            return Result.Failure(Error.Conflict("COURSE_HIDDEN", "Không thể gửi kiểm duyệt khóa học đang bị tạm ẩn."));
+        }
+
+        if (AccessMode == CourseAccessMode.OnlyMe)
+        {
+            return Result.Failure(Error.Conflict("ONLY_ME_CANNOT_PUBLISH", "Khóa học ở chế độ Chỉ mình tôi (Only Me) không thể gửi xuất bản công khai."));
+        }
+
+        if (PublishStatus is not (CoursePublishStatus.Draft or CoursePublishStatus.Rejected))
+        {
+            return Result.Failure(Error.Conflict("INVALID_PUBLISH_TRANSITION", "Chỉ khóa học ở trạng thái Nháp hoặc Bị từ chối mới có thể gửi kiểm duyệt."));
+        }
+
+        PublishStatus = CoursePublishStatus.PendingApproval;
+        SubmittedForReviewAt = now;
+        RejectionReason = null;
+        UpdatedAt = now;
+        Revision++;
+        return Result.Success();
+    }
+
+    public Result CancelReview(DateTimeOffset now)
+    {
+        if (PublishStatus != CoursePublishStatus.PendingApproval)
+        {
+            return Result.Failure(Error.Conflict("INVALID_PUBLISH_TRANSITION", "Khóa học không ở trạng thái Chờ kiểm duyệt."));
+        }
+
+        PublishStatus = CoursePublishStatus.Draft;
+        SubmittedForReviewAt = null;
+        UpdatedAt = now;
+        Revision++;
+        return Result.Success();
+    }
+
+    public Result Unpublish(DateTimeOffset now)
+    {
+        if (PublishStatus != CoursePublishStatus.Published)
+        {
+            return Result.Failure(Error.Conflict("INVALID_PUBLISH_TRANSITION", "Khóa học chưa được xuất bản."));
+        }
+
+        PublishStatus = CoursePublishStatus.Draft;
+        UpdatedAt = now;
+        Revision++;
+        return Result.Success();
+    }
+
+    public Result ApprovePublish(Guid adminUserId, DateTimeOffset now)
+    {
+        if (IsDeleted)
+        {
+            return Result.Failure(Error.Conflict("COURSE_DELETED", "Không thể phê duyệt khóa học đã xóa."));
+        }
+
+        if (PublishStatus != CoursePublishStatus.PendingApproval)
+        {
+            return Result.Failure(Error.Conflict("INVALID_PUBLISH_TRANSITION", "Khóa học không ở trạng thái Chờ kiểm duyệt."));
+        }
+
+        PublishStatus = CoursePublishStatus.Published;
+        PublishedAt ??= now;
+        RejectionReason = null;
+        ReviewedByAdminId = adminUserId;
+        ReviewedAt = now;
+        UpdatedAt = now;
+        Revision++;
+        return Result.Success();
+    }
+
+    public Result RejectPublish(Guid adminUserId, string reason, DateTimeOffset now)
+    {
+        if (IsDeleted)
+        {
+            return Result.Failure(Error.Conflict("COURSE_DELETED", "Không thể từ chối khóa học đã xóa."));
+        }
+
+        if (PublishStatus != CoursePublishStatus.PendingApproval)
+        {
+            return Result.Failure(Error.Conflict("INVALID_PUBLISH_TRANSITION", "Khóa học không ở trạng thái Chờ kiểm duyệt."));
+        }
+
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            return Result.Failure(Error.Validation("Vui lòng nhập lý do từ chối."));
+        }
+
+        PublishStatus = CoursePublishStatus.Rejected;
+        RejectionReason = reason.Trim();
+        ReviewedByAdminId = adminUserId;
+        ReviewedAt = now;
         UpdatedAt = now;
         Revision++;
         return Result.Success();

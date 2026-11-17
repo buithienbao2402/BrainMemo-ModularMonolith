@@ -1,4 +1,6 @@
 using BrainMemo.BuildingBlocks.Abstractions.Cqrs;
+using BrainMemo.Course.Contracts;
+using BrainMemo.Course.Contracts.Dtos;
 using BrainMemo.Learning.Application.Abstractions;
 using BrainMemo.Learning.Application.DTOs;
 using BrainMemo.Learning.Domain.Entities;
@@ -6,23 +8,55 @@ using BrainMemo.Profile.Contracts;
 using BrainMemo.Profile.Contracts.Dtos;
 using BrainMemo.SharedKernel.Pagination;
 using BrainMemo.SharedKernel.Results;
+using UserRefDto = BrainMemo.Learning.Application.DTOs.UserRefDto;
 
 namespace BrainMemo.Learning.Application.Queries.ListComments;
 
 public sealed class ListCommentsQueryHandler(
     ILearningRepository learningRepository,
-    IProfileContract profileContract) : IQueryHandler<ListCommentsQuery, PagedResult<CommentDto>>
+    IProfileContract profileContract,
+    ICourseContract? courseContract = null) : IQueryHandler<ListCommentsQuery, PagedResult<CommentDto>>
 {
     public async Task<Result<PagedResult<CommentDto>>> Handle(ListCommentsQuery request, CancellationToken ct)
     {
         int page = Math.Max(1, request.Page);
         int pageSize = Math.Clamp(request.PageSize <= 0 ? 20 : request.PageSize, 1, 50);
 
+        Guid? ownerUserId = null;
+        if (courseContract != null)
+        {
+            Result<CourseAccessDto> accessResult = courseContract.GetCourseAccess(request.CourseId, request.CurrentUserId);
+            if (accessResult.IsSuccess && accessResult.Value.Exists)
+            {
+                ownerUserId = accessResult.Value.OwnerUserId;
+            }
+        }
+
         PagedResult<Comment> pagedRoots = await learningRepository
             .ListRootCommentsAsync(request.CourseId, request.ChapterId, page, pageSize, ct)
             .ConfigureAwait(false);
 
-        List<Guid> rootIds = pagedRoots.Items.Select(r => r.Id).ToList();
+        IEnumerable<Comment> filteredRoots = pagedRoots.Items;
+        if (request.IsResolved.HasValue)
+        {
+            filteredRoots = filteredRoots.Where(r => r.IsResolved == request.IsResolved.Value);
+        }
+
+        if (request.Mine == true && request.CurrentUserId.HasValue)
+        {
+            filteredRoots = filteredRoots.Where(r => r.UserId == request.CurrentUserId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            string keyword = request.Search.Trim();
+            filteredRoots = filteredRoots.Where(r =>
+                (!string.IsNullOrEmpty(r.Title) && r.Title.Contains(keyword, StringComparison.OrdinalIgnoreCase)) ||
+                r.Content.Contains(keyword, StringComparison.OrdinalIgnoreCase));
+        }
+
+        List<Comment> finalRoots = filteredRoots.ToList();
+        List<Guid> rootIds = finalRoots.Select(r => r.Id).ToList();
 
         IReadOnlyList<Comment> replies = await learningRepository
             .ListRepliesForParentsAsync(rootIds, ct)
@@ -33,7 +67,7 @@ public sealed class ListCommentsQueryHandler(
             .ToDictionary(g => g.Key, g => g.ToList());
 
         HashSet<Guid> allUserIds = new();
-        foreach (Comment root in pagedRoots.Items)
+        foreach (Comment root in finalRoots)
         {
             allUserIds.Add(root.UserId);
         }
@@ -44,8 +78,8 @@ public sealed class ListCommentsQueryHandler(
 
         Dictionary<Guid, UserRefDto> userProfiles = await LoadUserProfilesAsync(allUserIds.ToList(), ct).ConfigureAwait(false);
 
-        List<CommentDto> rootDtos = new(pagedRoots.Items.Count);
-        foreach (Comment root in pagedRoots.Items)
+        List<CommentDto> rootDtos = new(finalRoots.Count);
+        foreach (Comment root in finalRoots)
         {
             UserRefDto author = userProfiles.TryGetValue(root.UserId, out UserRefDto? a)
                 ? a
@@ -70,7 +104,14 @@ public sealed class ListCommentsQueryHandler(
                         IsPinned: reply.IsPinned,
                         EditedAt: reply.EditedAt,
                         CreatedAt: reply.CreatedAt,
-                        Replies: Array.Empty<CommentDto>()));
+                        Replies: Array.Empty<CommentDto>(),
+                        Title: reply.Title,
+                        BlockId: reply.BlockId,
+                        IsResolved: reply.IsResolved,
+                        ResolvedAt: reply.ResolvedAt,
+                        ResolvedByUserId: reply.ResolvedByUserId,
+                        ResolvedCommentId: reply.ResolvedCommentId,
+                        IsInstructorReply: ownerUserId.HasValue && reply.UserId == ownerUserId.Value));
                 }
             }
 
@@ -84,7 +125,14 @@ public sealed class ListCommentsQueryHandler(
                 IsPinned: root.IsPinned,
                 EditedAt: root.EditedAt,
                 CreatedAt: root.CreatedAt,
-                Replies: childDtos));
+                Replies: childDtos,
+                Title: root.Title,
+                BlockId: root.BlockId,
+                IsResolved: root.IsResolved,
+                ResolvedAt: root.ResolvedAt,
+                ResolvedByUserId: root.ResolvedByUserId,
+                ResolvedCommentId: root.ResolvedCommentId,
+                IsInstructorReply: ownerUserId.HasValue && root.UserId == ownerUserId.Value));
         }
 
         return new PagedResult<CommentDto>(

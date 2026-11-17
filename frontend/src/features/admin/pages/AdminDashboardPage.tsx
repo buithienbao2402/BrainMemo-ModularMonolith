@@ -49,12 +49,12 @@ export function AdminDashboardPage() {
       to: '/admin/reports?status=PENDING',
     },
     {
-      title: 'Cờ cảnh báo PhoBERT AI',
-      count: data.pendingAiFlagsCount,
+      title: 'Khóa học chờ duyệt xuất bản',
+      count: data.pendingCourseReviewsCount ?? 0,
       icon: Bot,
-      color: 'text-violet-400',
-      bgColor: 'bg-violet-500/10 border-violet-500/30',
-      to: '/admin/reports?source=AI_FINDING',
+      color: 'text-emerald-400',
+      bgColor: 'bg-emerald-500/10 border-emerald-500/30',
+      to: '/admin/course-reviews',
     },
     {
       title: 'Chế tài đang hiệu lực',
@@ -84,8 +84,15 @@ export function AdminDashboardPage() {
 
   const quickNav = [
     {
+      title: 'Kiểm duyệt xuất bản khóa học',
+      description: 'Xem xét và phê duyệt hoặc từ chối các khóa học mới được giảng viên gửi xuất bản.',
+      icon: Bot,
+      to: '/admin/course-reviews',
+      badge: `${data.pendingCourseReviewsCount ?? 0} chờ duyệt`,
+    },
+    {
       title: 'Kiểm duyệt báo cáo vi phạm',
-      description: 'Hàng đợi xem xét phản ánh từ học viên và cờ cảnh báo an toàn nội dung từ AI.',
+      description: 'Hàng đợi xem xét phản ánh vi phạm từ học viên và giảng viên.',
       icon: Flag,
       to: '/admin/reports',
       badge: `${data.pendingReportsCount} chờ`,

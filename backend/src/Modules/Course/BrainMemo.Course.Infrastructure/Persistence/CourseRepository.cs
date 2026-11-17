@@ -298,7 +298,11 @@ public sealed class CourseRepository(CourseDbContext dbContext) : ICourseReposit
     {
         IQueryable<CourseEntity> query = dbContext.Courses
             .Include(c => c.Tags)
-            .Where(c => c.OwnerUserId == userId && c.AccessMode == CourseAccessMode.Public && c.DeletedAt == null && c.HiddenAt == null)
+            .Where(c => c.OwnerUserId == userId
+                        && c.PublishStatus == Domain.Enums.CoursePublishStatus.Published
+                        && c.AccessMode == CourseAccessMode.Public
+                        && c.DeletedAt == null
+                        && c.HiddenAt == null)
             .OrderByDescending(c => c.CreatedAt);
 
         int totalCount = await query.CountAsync(ct).ConfigureAwait(false);
@@ -476,6 +480,44 @@ public sealed class CourseRepository(CourseDbContext dbContext) : ICourseReposit
         Guid? nextAfterId = items.Count > 0 ? items[^1].Id : null;
         return new Page<NominationFactDto>(facts, nextAfterId, hasMore);
     }
+
+    public async Task<PagedResult<CourseEntity>> ListByPublishStatusAsync(
+        Domain.Enums.CoursePublishStatus? status,
+        int page,
+        int pageSize,
+        CancellationToken ct = default)
+    {
+        IQueryable<CourseEntity> query = dbContext.Courses
+            .Include(c => c.Tags)
+            .Where(c => c.DeletedAt == null && c.AccessMode != CourseAccessMode.OnlyMe);
+
+        if (status.HasValue)
+        {
+            query = query.Where(c => c.PublishStatus == status.Value);
+        }
+        else
+        {
+            query = query.Where(c => c.PublishStatus == Domain.Enums.CoursePublishStatus.PendingApproval);
+        }
+
+        query = query.OrderByDescending(c => c.SubmittedForReviewAt ?? c.CreatedAt);
+
+        int totalCount = await query.CountAsync(ct).ConfigureAwait(false);
+        List<CourseEntity> items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+
+        return new PagedResult<CourseEntity>(items, page, pageSize, totalCount);
+    }
+
+    public Task<int> CountPendingReviewsAsync(CancellationToken ct = default) =>
+        dbContext.Courses.CountAsync(
+            c => c.DeletedAt == null
+                 && c.AccessMode != CourseAccessMode.OnlyMe
+                 && c.PublishStatus == Domain.Enums.CoursePublishStatus.PendingApproval,
+            ct);
 
     public Task DeletePermanentlyAsync(CourseEntity course, CancellationToken ct = default)
     {

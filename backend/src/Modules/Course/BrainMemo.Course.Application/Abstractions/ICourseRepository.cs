@@ -42,6 +42,9 @@ public interface ICourseRepository
     Task<Page<CourseSnapshotDto>> ListCourseSnapshotsAsync(Guid? afterId, int limit, CancellationToken ct = default);
     Task<Page<EnrollmentFactDto>> ListEnrollmentFactsAsync(DateTimeOffset? after, int limit, CancellationToken ct = default);
     Task<Page<NominationFactDto>> ListNominationFactsAsync(DateTimeOffset? after, int limit, CancellationToken ct = default);
+    Task<PagedResult<CourseEntity>> ListByPublishStatusAsync(Domain.Enums.CoursePublishStatus? status, int page, int pageSize, CancellationToken ct = default) =>
+        Task.FromResult(new PagedResult<CourseEntity>(Array.Empty<CourseEntity>(), page, pageSize, 0));
+    Task<int> CountPendingReviewsAsync(CancellationToken ct = default) => Task.FromResult(0);
     Task DeletePermanentlyAsync(CourseEntity course, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
 }

@@ -91,9 +91,11 @@ public sealed record AuditLogDto(
 
 public sealed record ModerationDashboardDto(
     int PendingReports,
-    int PendingAiFlags,
+    int PendingCourseReviews,
     IReadOnlyList<object> LockedUsers,
     IReadOnlyList<object> HiddenCourses);
+
+public sealed record RejectCoursePublishRequest(string Reason);
 
 public sealed record PageMetaDto(
     int Page,

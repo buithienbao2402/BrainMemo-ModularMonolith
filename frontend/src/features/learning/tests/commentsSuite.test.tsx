@@ -37,9 +37,9 @@ describe('SCR-LRN-06: Comments Suite', () => {
     });
 
     expect(
-      screen.getByPlaceholderText(/Đặt câu hỏi hoặc chia sẻ ý kiến của bạn về bài học/i)
+      screen.getByPlaceholderText(/Đặt câu hỏi chi tiết về bài học này/i)
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Gửi bình luận/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Đặt câu hỏi/i })).toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.getByText('Đã ghim bởi Giảng viên')).toBeInTheDocument();
@@ -55,16 +55,16 @@ describe('SCR-LRN-06: Comments Suite', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByPlaceholderText(/Đặt câu hỏi hoặc chia sẻ ý kiến của bạn về bài học/i)
+        screen.getByPlaceholderText(/Đặt câu hỏi chi tiết về bài học này/i)
       ).toBeInTheDocument();
     });
 
     const textarea = screen.getByPlaceholderText(
-      /Đặt câu hỏi hoặc chia sẻ ý kiến của bạn về bài học/i
+      /Đặt câu hỏi chi tiết về bài học này/i
     );
     await user.type(textarea, 'Bài học rất hay, cảm ơn thầy nhiều ạ!');
 
-    const submitBtn = screen.getByRole('button', { name: /Gửi bình luận/i });
+    const submitBtn = screen.getByRole('button', { name: /Đặt câu hỏi/i });
     expect(submitBtn).not.toBeDisabled();
     await user.click(submitBtn);
 

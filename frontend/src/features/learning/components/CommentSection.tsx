@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import {
+  CheckCircle2,
   CornerDownRight,
   Edit2,
   Flag,
   MessageSquare,
   Pin,
   PinOff,
+  Search,
   Send,
   Trash2,
   User as UserIcon,
@@ -26,7 +28,9 @@ import {
   useDeleteCommentMutation,
   useEditCommentMutation,
   usePinCommentMutation,
+  useResolveCommentMutation,
   useUnpinCommentMutation,
+  useUnresolveCommentMutation,
   type CommentDto,
 } from '../api/commentsApi';
 
@@ -60,8 +64,11 @@ export function CommentSection({
   const { user } = useAuth();
   const { pushToast } = useToast();
 
+  const [newQuestionTitle, setNewQuestionTitle] = useState('');
   const [newCommentText, setNewCommentText] = useState('');
-  const [filterByChapter, setFilterByChapter] = useState(false);
+  const [filterByChapter, setFilterByChapter] = useState(Boolean(chapterId));
+  const [qaFilter, setQaFilter] = useState<'ALL' | 'UNRESOLVED' | 'RESOLVED' | 'MINE'>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
@@ -71,6 +78,9 @@ export function CommentSection({
   const { data: summary } = useCommentsSummaryQuery(courseId);
   const { data, isLoading } = useCommentsQuery(courseId, {
     chapterId: filterByChapter ? chapterId : undefined,
+    isResolved: qaFilter === 'RESOLVED' ? true : qaFilter === 'UNRESOLVED' ? false : undefined,
+    mine: qaFilter === 'MINE' ? true : undefined,
+    search: searchQuery.trim() || undefined,
   });
 
   const { mutateAsync: createComment, isPending: isSubmitting } =
@@ -80,6 +90,8 @@ export function CommentSection({
   const { mutateAsync: deleteComment } = useDeleteCommentMutation(courseId);
   const { mutateAsync: pinComment } = usePinCommentMutation(courseId);
   const { mutateAsync: unpinComment } = useUnpinCommentMutation(courseId);
+  const { mutateAsync: resolveComment } = useResolveCommentMutation(courseId);
+  const { mutateAsync: unresolveComment } = useUnresolveCommentMutation(courseId);
 
   const comments = data?.items || [];
   const currentUserId = user?.id;
@@ -91,19 +103,35 @@ export function CommentSection({
 
     try {
       await createComment({
+        title: newQuestionTitle.trim() || undefined,
         content: trimmed,
-        chapterId: filterByChapter ? chapterId : undefined,
+        chapterId: filterByChapter ? chapterId : chapterId,
       });
+      setNewQuestionTitle('');
       setNewCommentText('');
       pushToast({
-        title: 'Bình luận thành công',
+        title: 'Đã gửi câu hỏi thành công',
         tone: 'success',
       });
     } catch {
       pushToast({
-        title: 'Không thể đăng bình luận',
+        title: 'Không thể gửi câu hỏi',
         tone: 'error',
       });
+    }
+  };
+
+  const handleToggleResolve = async (comment: CommentDto) => {
+    try {
+      if (comment.isResolved) {
+        await unresolveComment(comment.id);
+        pushToast({ title: 'Đã bỏ đánh dấu giải đáp', tone: 'default' });
+      } else {
+        await resolveComment({ id: comment.id });
+        pushToast({ title: 'Đã đánh dấu câu hỏi được giải đáp', tone: 'success' });
+      }
+    } catch {
+      pushToast({ title: 'Không thể cập nhật trạng thái giải đáp', tone: 'error' });
     }
   };
 
@@ -223,19 +251,60 @@ export function CommentSection({
               className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary cursor-pointer"
             />
             <label htmlFor="filter-chapter" className="cursor-pointer select-none">
-              Chỉ hiện bình luận chương này
+              Chỉ hiện hỏi đáp bài học này
             </label>
           </div>
         ) : null}
       </div>
 
-      {/* Composer: New Root Comment */}
+      {/* Q&A Search & Filter Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-1.5">
+          {[
+            { key: 'ALL', label: 'Tất cả' },
+            { key: 'UNRESOLVED', label: 'Chưa giải đáp' },
+            { key: 'RESOLVED', label: 'Đã giải đáp' },
+            { key: 'MINE', label: 'Câu hỏi của tôi' },
+          ].map((tab) => (
+            <Button
+              key={tab.key}
+              type="button"
+              size="sm"
+              variant={qaFilter === tab.key ? 'primary' : 'outline'}
+              className="h-7 text-xs"
+              onClick={() => setQaFilter(tab.key as any)}
+            >
+              {tab.label}
+            </Button>
+          ))}
+        </div>
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Tìm câu hỏi trong bài..."
+            className="h-8 w-full rounded-lg border border-input bg-background pl-8 pr-3 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          />
+        </div>
+      </div>
+
+      {/* Composer: New Root Question */}
       <form onSubmit={handleCreateRootComment} className="space-y-3">
+        <input
+          type="text"
+          value={newQuestionTitle}
+          onChange={(e) => setNewQuestionTitle(e.target.value)}
+          placeholder="Tiêu đề câu hỏi (tùy chọn)..."
+          maxLength={255}
+          className="w-full rounded-xl border border-input bg-background px-3.5 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        />
         <div className="relative">
           <textarea
             value={newCommentText}
             onChange={(e) => setNewCommentText(e.target.value)}
-            placeholder="Đặt câu hỏi hoặc chia sẻ ý kiến của bạn về bài học..."
+            placeholder="Đặt câu hỏi chi tiết về bài học này..."
             maxLength={2000}
             rows={3}
             className="w-full rounded-xl border border-input bg-background p-3.5 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
@@ -251,7 +320,7 @@ export function CommentSection({
               className="flex items-center gap-1.5"
             >
               <Send className="h-3.5 w-3.5" />
-              <span>Gửi bình luận</span>
+              <span>Đặt câu hỏi</span>
             </Button>
           </div>
         </div>
@@ -310,12 +379,29 @@ export function CommentSection({
                       <span className="font-semibold text-sm text-foreground">
                         {comment.author.displayName}
                       </span>
+                      {comment.isInstructorReply ? (
+                        <span className="text-[10px] font-semibold bg-primary/15 px-1.5 py-0.5 rounded text-primary">
+                          Giảng viên
+                        </span>
+                      ) : null}
                       {comment.author.id === currentUserId ? (
                         <span className="text-[10px] font-medium bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
                           Bạn
                         </span>
                       ) : null}
+                      {comment.isResolved ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-full">
+                          <CheckCircle2 className="h-3 w-3" /> Đã giải đáp
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-medium bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full">
+                          Chờ giải đáp
+                        </span>
+                      )}
                     </div>
+                    {comment.title ? (
+                      <h4 className="font-semibold text-sm text-foreground mt-1">{comment.title}</h4>
+                    ) : null}
                     <span className="text-[11px] text-muted-foreground">
                       {formatRelativeTime(comment.createdAt)}
                       {comment.editedAt ? ' (đã chỉnh sửa)' : ''}
@@ -323,8 +409,24 @@ export function CommentSection({
                   </div>
                 </div>
 
-                {/* Pin / Edit / Delete / Report actions */}
+                {/* Resolve / Pin / Edit / Delete / Report actions */}
                 <div className="flex items-center gap-1">
+                  {(isOwner || comment.author.id === currentUserId) && !comment.isDeleted ? (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={cn(
+                        'h-7 w-7',
+                        comment.isResolved
+                          ? 'text-emerald-600 hover:text-emerald-700'
+                          : 'text-muted-foreground hover:text-emerald-600'
+                      )}
+                      onClick={() => handleToggleResolve(comment)}
+                      title={comment.isResolved ? 'Bỏ đánh dấu đã giải đáp' : 'Đánh dấu đã giải đáp'}
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                    </Button>
+                  ) : null}
                   {isOwner ? (
                     <Button
                       variant="ghost"

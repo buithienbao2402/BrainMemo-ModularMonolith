@@ -232,10 +232,6 @@ public sealed class ModerationRepository(ModerationDbContext dbContext) : IModer
             .CountAsync(r => r.Status == ReportStatus.Pending && r.Source == ReportSource.User, ct)
             .ConfigureAwait(false);
 
-        int pendingAiFlags = await dbContext.Reports
-            .CountAsync(r => r.Status == ReportStatus.Pending && r.Source == ReportSource.Ai, ct)
-            .ConfigureAwait(false);
-
         var activeLockSanctions = await dbContext.Sanctions
             .AsNoTracking()
             .Where(s => s.LiftedAt == null && (s.SanctionType == SanctionType.AccountLockTemporary || s.SanctionType == SanctionType.AccountLockPermanent))
@@ -274,7 +270,7 @@ public sealed class ModerationRepository(ModerationDbContext dbContext) : IModer
 
         return new ModerationDashboardDto(
             pendingReports,
-            pendingAiFlags,
+            0,
             activeLockSanctions.Cast<object>().ToList(),
             activeHideSanctions.Cast<object>().ToList());
     }

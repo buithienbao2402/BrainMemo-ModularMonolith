@@ -72,7 +72,7 @@ describe('S10 Moderation & Admin Portal (SCR-MOD-01..06 + SCR-ADM-01, 02)', () =
   });
 
   describe('SCR-MOD-03: Admin Reports Queue (/admin/reports)', () => {
-    it('renders admin reports queue with AI Finding badge and filters', async () => {
+    it('renders admin reports queue with filters', async () => {
       setMockPersonaCookie('admin');
       setAccessToken('mock-access-token-admin');
 
@@ -86,7 +86,7 @@ describe('S10 Moderation & Admin Portal (SCR-MOD-01..06 + SCR-ADM-01, 02)', () =
         expect(screen.getByText(/Nội dung đạo văn từ khóa học khác/i)).toBeInTheDocument();
       });
 
-      expect(screen.getAllByText(/PhoBERT AI/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/Người dùng/i).length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -196,7 +196,7 @@ describe('S10 Moderation & Admin Portal (SCR-MOD-01..06 + SCR-ADM-01, 02)', () =
       });
 
       expect(screen.getByText('Báo cáo chờ xử lý')).toBeInTheDocument();
-      expect(screen.getByText('Cờ cảnh báo PhoBERT AI')).toBeInTheDocument();
+      expect(screen.getByText('Khóa học chờ duyệt xuất bản')).toBeInTheDocument();
       expect(screen.getByText('Tài khoản bị khóa')).toBeInTheDocument();
     });
   });

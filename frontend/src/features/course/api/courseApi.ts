@@ -625,5 +625,66 @@ export function useUnlockChapterMutation(courseId: string, chapterId: string) {
   });
 }
 
+/**
+ * Submit course for Admin publish approval (FR-CRS-17).
+ */
+export function useSubmitCourseReviewMutation(courseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (): Promise<CourseDto> => {
+      return unwrapApi(
+        apiClient.POST('/courses/{courseId}/submit-review', {
+          params: { path: { courseId } },
+        })
+      );
+    },
+    onSuccess: (updated) => {
+      queryClient.setQueryData(queryKeys.courses.detail(courseId), updated);
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.all });
+    },
+  });
+}
+
+/**
+ * Cancel pending publish review (FR-CRS-18).
+ */
+export function useCancelCourseReviewMutation(courseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (): Promise<CourseDto> => {
+      return unwrapApi(
+        apiClient.POST('/courses/{courseId}/cancel-review', {
+          params: { path: { courseId } },
+        })
+      );
+    },
+    onSuccess: (updated) => {
+      queryClient.setQueryData(queryKeys.courses.detail(courseId), updated);
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.all });
+    },
+  });
+}
+
+/**
+ * Unpublish a published course back to DRAFT (FR-CRS-19).
+ */
+export function useUnpublishCourseMutation(courseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (): Promise<CourseDto> => {
+      return unwrapApi(
+        apiClient.POST('/courses/{courseId}/unpublish', {
+          params: { path: { courseId } },
+        })
+      );
+    },
+    onSuccess: (updated) => {
+      queryClient.setQueryData(queryKeys.courses.detail(courseId), updated);
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.all });
+    },
+  });
+}
+
+
 
 

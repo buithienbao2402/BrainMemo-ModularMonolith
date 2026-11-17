@@ -53,22 +53,29 @@ paths:
   /courses/{courseId}/comments:
     parameters: [{$ref: '#/components/parameters/CourseId'}]
     get:
-      {tags: [Learning], operationId: listComments, summary: 'Bình luận gốc kèm trả lời (≤1 cấp); ghim lên đầu',
-       parameters: [{name: chapterId, in: query, schema: {type: string, format: uuid}}, {$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}],
+      {tags: [Learning], operationId: listComments, summary: 'Danh sách Hỏi đáp (Q&A) theo bài học kèm trả lời (≤1 cấp); ghim lên đầu (FR-LRN-10..13)',
+       parameters: [{name: chapterId, in: query, schema: {type: string, format: uuid}}, {name: isResolved, in: query, schema: {type: boolean}}, {name: mine, in: query, schema: {type: boolean}}, {name: search, in: query, schema: {type: string}}, {$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}],
        responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {items: {type: array, items: {$ref: '#/components/schemas/CommentDto'}}, meta: {$ref: '#/components/schemas/PageMeta'}}}}}}}}
     post:
-      {tags: [Learning], operationId: createComment, summary: 'Bình luận/trả lời (FR-LRN-10,11)',
-       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [content], properties: {content: {type: string}, chapterId: {type: string, format: uuid}, parentCommentId: {type: string, format: uuid}}}}}},
+      {tags: [Learning], operationId: createComment, summary: 'Đặt câu hỏi theo bài học / trả lời Q&A (FR-LRN-10,11)',
+       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [content], properties: {title: {type: string, maxLength: 255}, content: {type: string}, chapterId: {type: string, format: uuid}, blockId: {type: string, format: uuid}, parentCommentId: {type: string, format: uuid}}}}}},
        responses: {'201': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/CommentDto'}}}}}}
   /comments/{id}:
     patch:
-      {tags: [Learning], operationId: editComment, summary: Sửa bình luận của mình (FR-LRN-12), parameters: [{$ref: '#/components/parameters/Id'}],
-       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [content], properties: {content: {type: string}}}}}},
+      {tags: [Learning], operationId: editComment, summary: Sửa câu hỏi/trả lời của mình (FR-LRN-12), parameters: [{$ref: '#/components/parameters/Id'}],
+       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [content], properties: {title: {type: string, maxLength: 255}, content: {type: string}}}}}},
        responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/CommentDto'}}}}}}
     delete: {tags: [Learning], operationId: deleteComment, summary: Xóa mềm của mình, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: OK}}}
   /comments/{id}/pin:
-    put: {tags: [Learning], operationId: pinComment, summary: Ghim (Chủ khóa; FR-LRN-13), parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: OK}}}
+    put: {tags: [Learning], operationId: pinComment, summary: Ghim câu hỏi Q&A (Chủ khóa; FR-LRN-13), parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: OK}}}
     delete: {tags: [Learning], operationId: unpinComment, summary: Bỏ ghim, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: OK}}}
+  /comments/{id}/resolve:
+    put:
+      {tags: [Learning], operationId: resolveComment, summary: 'Đánh dấu câu hỏi Q&A đã giải đáp (FR-LRN-12)',
+       parameters: [{$ref: '#/components/parameters/Id'}],
+       requestBody: {required: false, content: {application/json: {schema: {type: object, properties: {resolvedCommentId: {type: string, format: uuid, nullable: true}}}}}},
+       responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/CommentDto'}}}}}}
+    delete: {tags: [Learning], operationId: unresolveComment, summary: Bỏ đánh dấu đã giải đáp, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/CommentDto'}}}}}}
 components:
   schemas:
     LearnChapterDto: {type: object, properties: {id: {type: string, format: uuid}, title: {type: string}, description: {type: string, nullable: true}, versionNo: {type: integer}, canSaveProgress: {type: boolean}, blocks: {type: array, items: {type: object, description: 'BlockDto (content) không có đáp án; QUESTION chỉ có stem+options không isCorrect; kèm completed:boolean', properties: {id: {type: string}, blockType: {$ref: '#/components/schemas/BlockType'}, position: {type: integer}, completed: {type: boolean}, title: {type: string}, body: {type: string}, resourceUrl: {type: string}, flashcards: {type: array, items: {type: object}}, question: {type: object}, quizSummary: {type: object}, assignmentSummary: {type: object}}}}}}
@@ -78,4 +85,4 @@ components:
     QuizResultDto: {type: object, properties: {attemptId: {type: string}, status: {type: string}, gradingPending: {type: boolean}, pendingManual: {type: boolean}, totalScore: {type: number, nullable: true}, maxScore: {type: number}, passScorePercent: {type: number, nullable: true}, isPassed: {type: boolean, nullable: true}, questions: {type: array, items: {type: object, description: 'Chỉ khi resultDisplay cho phép', properties: {questionId: {type: string}, isCorrect: {type: boolean, nullable: true}, pointsEarned: {type: number, nullable: true}, maxPoints: {type: number}, correctAnswer: {type: object}, explanation: {type: string}, graderFeedback: {type: string, nullable: true}}}}}}
     SubmissionUpsert: {type: object, properties: {textContent: {type: string}, fileUploadKeys: {type: array, items: {type: string}}, removeFileKeys: {type: array, items: {type: string}}}}
     SubmissionDto: {type: object, properties: {id: {type: string, format: uuid}, status: {type: string, enum: [DRAFT, SUBMITTED, GRADED]}, textContent: {type: string, nullable: true}, files: {type: array, items: {$ref: '#/components/schemas/FileRef'}}, isLate: {type: boolean, nullable: true}, submittedAt: {type: string, format: date-time, nullable: true}, score: {type: number, nullable: true}, feedback: {type: string, nullable: true}}}
-    CommentDto: {type: object, properties: {id: {type: string, format: uuid}, courseId: {type: string}, chapterId: {type: string, nullable: true}, author: {$ref: '#/components/schemas/UserRef'}, parentCommentId: {type: string, nullable: true}, content: {type: string}, isPinned: {type: boolean}, editedAt: {type: string, format: date-time, nullable: true}, createdAt: {type: string, format: date-time}, replies: {type: array, items: {type: object}}}}
+    CommentDto: {type: object, properties: {id: {type: string, format: uuid}, courseId: {type: string}, chapterId: {type: string, nullable: true}, blockId: {type: string, nullable: true}, author: {$ref: '#/components/schemas/UserRef'}, isInstructorReply: {type: boolean}, parentCommentId: {type: string, nullable: true}, title: {type: string, nullable: true}, content: {type: string}, isResolved: {type: boolean}, resolvedAt: {type: string, format: date-time, nullable: true}, resolvedByUserId: {type: string, nullable: true}, resolvedCommentId: {type: string, nullable: true}, isPinned: {type: boolean}, editedAt: {type: string, format: date-time, nullable: true}, createdAt: {type: string, format: date-time}, replies: {type: array, items: {type: object}}}}

@@ -19,9 +19,16 @@ export interface CommentDto {
   id: string;
   courseId: string;
   chapterId?: string | null;
+  blockId?: string | null;
   author: CommentAuthor;
+  isInstructorReply?: boolean;
   parentCommentId?: string | null;
+  title?: string | null;
   content: string;
+  isResolved?: boolean;
+  resolvedAt?: string | null;
+  resolvedByUserId?: string | null;
+  resolvedCommentId?: string | null;
   isPinned: boolean;
   isDeleted?: boolean;
   editedAt?: string | null;
@@ -37,6 +44,9 @@ export interface CommentsSummaryDto {
 
 export interface ListCommentsParams {
   chapterId?: string;
+  isResolved?: boolean;
+  mine?: boolean;
+  search?: string;
   page?: number;
   pageSize?: number;
 }
@@ -47,22 +57,24 @@ export interface CommentListResponse {
 }
 
 export interface CreateCommentPayload {
+  title?: string;
   content: string;
   chapterId?: string;
+  blockId?: string;
   parentCommentId?: string;
 }
 
 /**
- * List comments for a course/chapter (FR-LRN-10).
+ * List comments / Q&A for a course/chapter (FR-LRN-10..12).
  */
 export function useCommentsQuery(
   courseId: string,
   params: ListCommentsParams = {}
 ) {
-  const { chapterId, page = 1, pageSize = 20 } = params;
+  const { chapterId, isResolved, mine, search, page = 1, pageSize = 20 } = params;
 
   return useQuery({
-    queryKey: queryKeys.learning.comments(courseId, { chapterId, page, pageSize }),
+    queryKey: queryKeys.learning.comments(courseId, { chapterId, isResolved, mine, search, page, pageSize }),
     queryFn: async (): Promise<CommentListResponse> => {
       const res = await unwrapApi(
         apiClient.GET('/courses/{courseId}/comments', {
@@ -70,6 +82,9 @@ export function useCommentsQuery(
             path: { courseId },
             query: {
               chapterId,
+              isResolved,
+              mine,
+              search: search || undefined,
               page,
               pageSize,
             },
@@ -212,6 +227,49 @@ export function useUnpinCommentMutation(courseId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['learning', 'comments', courseId] });
       queryClient.invalidateQueries({ queryKey: queryKeys.learning.commentsSummary(courseId) });
+    },
+  });
+}
+
+/**
+ * Mark a lesson Q&A question as resolved (FR-LRN-12).
+ */
+export function useResolveCommentMutation(courseId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, resolvedCommentId }: { id: string; resolvedCommentId?: string }): Promise<CommentDto> => {
+      const res = await unwrapApi(
+        apiClient.PUT('/comments/{id}/resolve', {
+          params: { path: { id } },
+          body: resolvedCommentId ? { resolvedCommentId } : {},
+        })
+      );
+      return res as any;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['learning', 'comments', courseId] });
+    },
+  });
+}
+
+/**
+ * Unmark resolved status on a lesson Q&A question (FR-LRN-12).
+ */
+export function useUnresolveCommentMutation(courseId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string): Promise<CommentDto> => {
+      const res = await unwrapApi(
+        apiClient.DELETE('/comments/{id}/resolve', {
+          params: { path: { id } },
+        })
+      );
+      return res as any;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['learning', 'comments', courseId] });
     },
   });
 }

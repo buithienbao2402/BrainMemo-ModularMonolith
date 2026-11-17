@@ -4,7 +4,6 @@ import {
   AlertCircle,
   AlertTriangle,
   ArrowLeft,
-  Bot,
   CheckCircle2,
   ExternalLink,
   Eye,
@@ -211,17 +210,8 @@ export function AdminReportDetailPage() {
               <div className="rounded-xl bg-muted/40 p-3">
                 <span className="text-muted-foreground block font-medium">Nguồn báo cáo</span>
                 <span className="font-bold text-foreground mt-1 flex items-center gap-1.5">
-                  {report.source === 'AI_FINDING' ? (
-                    <>
-                      <Bot className="h-3.5 w-3.5 text-violet-400" />
-                      PhoBERT AI Flag
-                    </>
-                  ) : (
-                    <>
-                      <User className="h-3.5 w-3.5 text-blue-400" />
-                      Người dùng phản ánh
-                    </>
-                  )}
+                  <User className="h-3.5 w-3.5 text-blue-400" />
+                  Người dùng phản ánh
                 </span>
               </div>
 

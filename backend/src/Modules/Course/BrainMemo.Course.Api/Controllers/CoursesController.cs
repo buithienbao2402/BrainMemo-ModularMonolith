@@ -3,6 +3,7 @@ using BrainMemo.Course.Api.DTOs;
 using BrainMemo.Course.Application.Commands.CreateCourse;
 using BrainMemo.Course.Application.Commands.DeleteCourse;
 using BrainMemo.Course.Application.Commands.NominateCourse;
+using BrainMemo.Course.Application.Commands.PublishWorkflow;
 using BrainMemo.Course.Application.Commands.UpdateCourse;
 using BrainMemo.Course.Application.Commands.WithdrawNomination;
 using BrainMemo.Course.Application.Queries.GetCourse;
@@ -230,6 +231,54 @@ public sealed class CoursesController(ISender sender) : ControllerBase
                 return NotFound(result.Error);
             }
 
+            return new ObjectResult(result.Error);
+        }
+
+        return Ok(result.Value);
+    }
+
+    [Authorize]
+    [HttpPost("{courseId:guid}/submit-review")]
+    [ProducesResponseType<CourseDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public Task<IActionResult> SubmitForReview([FromRoute] Guid courseId, CancellationToken ct) =>
+        ExecutePublishCommandAsync(userId => new SubmitCourseForReviewCommand(courseId, userId), ct);
+
+    [Authorize]
+    [HttpPost("{courseId:guid}/cancel-review")]
+    [ProducesResponseType<CourseDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public Task<IActionResult> CancelReview([FromRoute] Guid courseId, CancellationToken ct) =>
+        ExecutePublishCommandAsync(userId => new CancelCourseReviewCommand(courseId, userId), ct);
+
+    [Authorize]
+    [HttpPost("{courseId:guid}/unpublish")]
+    [ProducesResponseType<CourseDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public Task<IActionResult> Unpublish([FromRoute] Guid courseId, CancellationToken ct) =>
+        ExecutePublishCommandAsync(userId => new UnpublishCourseCommand(courseId, userId), ct);
+
+    private async Task<IActionResult> ExecutePublishCommandAsync(
+        Func<Guid, IRequest<Result<CourseDto>>> commandFactory,
+        CancellationToken ct)
+    {
+        if (!TryGetCurrentUserId(out Guid userId))
+        {
+            return Unauthorized(Error.Unauthenticated("Phiên đăng nhập không hợp lệ."));
+        }
+
+        Result<CourseDto> result = await sender.Send(commandFactory(userId), ct).ConfigureAwait(false);
+        if (result.IsFailure)
+        {
             return new ObjectResult(result.Error);
         }
 

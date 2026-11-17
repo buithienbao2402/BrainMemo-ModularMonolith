@@ -19,4 +19,9 @@ public interface ICourseContract
     Result<Page<CourseSnapshotDto>> ListCourseSnapshots(Guid? afterId, int limit);
     Result<Page<EnrollmentFactDto>> ListEnrollmentFacts(DateTimeOffset? after, int limit);
     Result<Page<NominationFactDto>> ListNominationFacts(DateTimeOffset? after, int limit);
+    Result ApproveCoursePublish(Guid courseId, Guid actorAdminId) => Result.Failure(Error.NotFound("Not implemented."));
+    Result RejectCoursePublish(Guid courseId, Guid actorAdminId, string reason) => Result.Failure(Error.NotFound("Not implemented."));
+    Result<PagedResult<CourseReviewQueueItemDto>> ListCourseReviewQueue(string? status, int page, int pageSize) =>
+        Result.Success(new PagedResult<CourseReviewQueueItemDto>(Array.Empty<CourseReviewQueueItemDto>(), page, pageSize, 0));
+    Result<int> CountPendingCourseReviews() => Result.Success(0);
 }

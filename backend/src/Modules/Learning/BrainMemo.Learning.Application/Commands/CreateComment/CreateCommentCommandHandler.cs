@@ -82,7 +82,9 @@ public sealed class CreateCommentCommandHandler(
             request.CurrentUserId,
             request.ParentCommentId,
             request.Content,
-            now);
+            now,
+            request.Title,
+            request.BlockId);
 
         if (!createResult.IsSuccess)
         {
@@ -115,7 +117,14 @@ public sealed class CreateCommentCommandHandler(
             IsPinned: comment.IsPinned,
             EditedAt: comment.EditedAt,
             CreatedAt: comment.CreatedAt,
-            Replies: Array.Empty<CommentDto>());
+            Replies: Array.Empty<CommentDto>(),
+            Title: comment.Title,
+            BlockId: comment.BlockId,
+            IsResolved: comment.IsResolved,
+            ResolvedAt: comment.ResolvedAt,
+            ResolvedByUserId: comment.ResolvedByUserId,
+            ResolvedCommentId: comment.ResolvedCommentId,
+            IsInstructorReply: access.IsOwner);
 
         return Result.Success(dto);
     }

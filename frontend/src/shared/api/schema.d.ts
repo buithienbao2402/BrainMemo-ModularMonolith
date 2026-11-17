@@ -1022,6 +1022,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/courses/{courseId}/submit-review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Gửi yêu cầu kiểm duyệt xuất bản khóa học (FR-CRS-17) */
+        post: operations["submitCourseForReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/courses/{courseId}/cancel-review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Hủy yêu cầu kiểm duyệt xuất bản (FR-CRS-18) */
+        post: operations["cancelCourseReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/courses/{courseId}/unpublish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Hủy xuất bản khóa học về trạng thái Nháp (FR-CRS-19) */
+        post: operations["unpublishCourse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/discovery/home": {
         parameters: {
             query?: never;
@@ -1585,10 +1636,10 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Bình luận gốc kèm trả lời (≤1 cấp); ghim lên đầu */
+        /** Danh sách Hỏi đáp (Q&A) theo bài học kèm trả lời (≤1 cấp); ghim lên đầu (FR-LRN-10..13) */
         get: operations["listComments"];
         put?: never;
-        /** Bình luận/trả lời (FR-LRN-10,11) */
+        /** Đặt câu hỏi theo bài học / trả lời Q&A (FR-LRN-10,11) */
         post: operations["createComment"];
         delete?: never;
         options?: never;
@@ -1610,7 +1661,7 @@ export interface paths {
         delete: operations["deleteComment"];
         options?: never;
         head?: never;
-        /** Sửa bình luận của mình (FR-LRN-12) */
+        /** Sửa câu hỏi/trả lời của mình (FR-LRN-12) */
         patch: operations["editComment"];
         trace?: never;
     };
@@ -1622,11 +1673,134 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Ghim (Chủ khóa; FR-LRN-13) */
+        /** Ghim câu hỏi Q&A (Chủ khóa; FR-LRN-13) */
         put: operations["pinComment"];
         post?: never;
         /** Bỏ ghim */
         delete: operations["unpinComment"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/comments/{id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Đánh dấu câu hỏi Q&A đã giải đáp (FR-LRN-12) */
+        put: operations["resolveComment"];
+        post?: never;
+        /** Bỏ đánh dấu đã giải đáp */
+        delete: operations["unresolveComment"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/courses/{courseId}/messages/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mở hoặc tạo cuộc trò chuyện 1-1 với Giảng viên theo khóa học (FR-MSG-01) */
+        post: operations["openOrCreateConversation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/messages/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách cuộc trò chuyện của tôi (FR-MSG-02) */
+        get: operations["listConversations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/messages/conversations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chi tiết cuộc trò chuyện */
+        get: operations["getConversation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/messages/conversations/{id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        /** Lịch sử tin nhắn phân trang (FR-MSG-03) */
+        get: operations["listMessages"];
+        put?: never;
+        /** Gửi tin nhắn mới (FR-MSG-03) */
+        post: operations["sendMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/messages/conversations/{id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Đánh dấu đã đọc các tin nhắn từ đối phương (FR-MSG-04) */
+        put: operations["markConversationRead"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/messages/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tổng số tin nhắn chưa đọc */
+        get: operations["getUnreadMessagesCount"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1780,6 +1954,57 @@ export interface paths {
         get: operations["adminGetDashboard"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/courses/review-queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách khóa học chờ kiểm duyệt xuất bản (FR-MOD-16) */
+        get: operations["adminListCourseReviewQueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/courses/{courseId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Phê duyệt xuất bản khóa học (FR-MOD-16) */
+        post: operations["adminApproveCoursePublish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/courses/{courseId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Từ chối xuất bản khóa học kèm lý do bắt buộc (FR-MOD-16) */
+        post: operations["adminRejectCoursePublish"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2007,7 +2232,6 @@ export interface components {
             completedAt?: string | null;
         };
         SystemSettingsDto: {
-            aiFlagThreshold?: number;
             aiDailyQuota?: number;
             /** @enum {string} */
             aiLlmProvider?: "GEMINI" | "OPENAI" | "ANTHROPIC";
@@ -2263,6 +2487,8 @@ export interface components {
             /** Format: date-time */
             createdAt?: string;
         };
+        /** @enum {string} */
+        PublishStatus: "DRAFT" | "PENDING_APPROVAL" | "PUBLISHED" | "REJECTED";
         CourseUpsertRequest: {
             name?: string;
             description?: string;
@@ -2281,6 +2507,12 @@ export interface components {
             coverUrl?: string | null;
             accessMode?: components["schemas"]["AccessMode"];
             status?: components["schemas"]["CourseStatus"];
+            publishStatus?: components["schemas"]["PublishStatus"];
+            /** Format: date-time */
+            submittedForReviewAt?: string | null;
+            /** Format: date-time */
+            publishedAt?: string | null;
+            rejectionReason?: string | null;
             isHidden?: boolean;
             isDeleted?: boolean;
             tags?: string[];
@@ -2307,6 +2539,7 @@ export interface components {
             owner?: components["schemas"]["UserRef"];
             accessMode?: components["schemas"]["AccessMode"];
             status?: components["schemas"]["CourseStatus"];
+            publishStatus?: components["schemas"]["PublishStatus"];
             tags?: string[];
             learnerCount?: number;
             ratingAvg?: number | null;
@@ -2509,9 +2742,17 @@ export interface components {
             id?: string;
             courseId?: string;
             chapterId?: string | null;
+            blockId?: string | null;
             author?: components["schemas"]["UserRef"];
+            isInstructorReply?: boolean;
             parentCommentId?: string | null;
+            title?: string | null;
             content?: string;
+            isResolved?: boolean;
+            /** Format: date-time */
+            resolvedAt?: string | null;
+            resolvedByUserId?: string | null;
+            resolvedCommentId?: string | null;
             isPinned?: boolean;
             /** Format: date-time */
             editedAt?: string | null;
@@ -2519,11 +2760,57 @@ export interface components {
             createdAt?: string;
             replies?: Record<string, never>[];
         };
+        SendMessageRequest: {
+            content: string;
+            attachmentUploadKey?: string | null;
+        };
+        ConversationDto: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            courseId?: string;
+            courseName?: string;
+            student?: components["schemas"]["UserRef"];
+            instructor?: components["schemas"]["UserRef"];
+            /** Format: date-time */
+            lastMessageAt?: string;
+            lastMessagePreview?: string | null;
+            unreadCount?: number;
+            /** Format: date-time */
+            createdAt?: string;
+        };
+        MessageDto: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            conversationId?: string;
+            /** Format: uuid */
+            senderUserId?: string;
+            content?: string;
+            attachmentUrl?: string | null;
+            /** Format: date-time */
+            readAt?: string | null;
+            /** Format: date-time */
+            createdAt?: string;
+        };
+        CourseReviewQueueItemDto: {
+            /** Format: uuid */
+            courseId?: string;
+            name?: string;
+            description?: string | null;
+            accessMode?: components["schemas"]["AccessMode"];
+            /** @enum {string} */
+            publishStatus?: "PENDING_APPROVAL" | "PUBLISHED" | "REJECTED";
+            owner?: components["schemas"]["UserRef"];
+            /** Format: date-time */
+            submittedForReviewAt?: string | null;
+            rejectionReason?: string | null;
+        };
         ReportDto: {
             /** Format: uuid */
             id?: string;
             /** @enum {string} */
-            source?: "USER" | "AI";
+            source?: "USER";
             reporter?: components["schemas"]["UserRef"];
             targetType?: string;
             targetId?: string;
@@ -2540,7 +2827,6 @@ export interface components {
             /** Format: date-time */
             createdAt?: string;
             evidence?: Record<string, never>[];
-            aiScore?: number | null;
         };
         ResolveRequest: {
             /** @enum {string} */
@@ -4610,6 +4896,72 @@ export interface operations {
             };
         };
     };
+    submitCourseForReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                courseId: components["parameters"]["CourseId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseDto"];
+                };
+            };
+        };
+    };
+    cancelCourseReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                courseId: components["parameters"]["CourseId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseDto"];
+                };
+            };
+        };
+    };
+    unpublishCourse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                courseId: components["parameters"]["CourseId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseDto"];
+                };
+            };
+        };
+    };
     getHome: {
         parameters: {
             query?: never;
@@ -5488,6 +5840,9 @@ export interface operations {
         parameters: {
             query?: {
                 chapterId?: string;
+                isResolved?: boolean;
+                mine?: boolean;
+                search?: string;
                 page?: components["parameters"]["Page"];
                 pageSize?: components["parameters"]["PageSize"];
             };
@@ -5525,9 +5880,12 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
+                    title?: string;
                     content: string;
                     /** Format: uuid */
                     chapterId?: string;
+                    /** Format: uuid */
+                    blockId?: string;
                     /** Format: uuid */
                     parentCommentId?: string;
                 };
@@ -5577,6 +5935,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
+                    title?: string;
                     content: string;
                 };
             };
@@ -5633,6 +5992,224 @@ export interface operations {
             };
         };
     };
+    resolveComment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    resolvedCommentId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentDto"];
+                };
+            };
+        };
+    };
+    unresolveComment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentDto"];
+                };
+            };
+        };
+    };
+    openOrCreateConversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                courseId: components["parameters"]["CourseId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationDto"];
+                };
+            };
+        };
+    };
+    listConversations: {
+        parameters: {
+            query?: {
+                courseId?: string;
+                page?: components["parameters"]["Page"];
+                pageSize?: components["parameters"]["PageSize"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items?: components["schemas"]["ConversationDto"][];
+                        meta?: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+        };
+    };
+    getConversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationDto"];
+                };
+            };
+        };
+    };
+    listMessages: {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["Page"];
+                pageSize?: components["parameters"]["PageSize"];
+            };
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items?: components["schemas"]["MessageDto"][];
+                        meta?: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+        };
+    };
+    sendMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendMessageRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageDto"];
+                };
+            };
+        };
+    };
+    markConversationRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getUnreadMessagesCount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        unreadCount?: number;
+                    };
+                };
+            };
+        };
+    };
     createReport: {
         parameters: {
             query?: never;
@@ -5674,7 +6251,6 @@ export interface operations {
         parameters: {
             query?: {
                 status?: "PENDING" | "ACCEPTED" | "REJECTED";
-                source?: "USER" | "AI";
                 targetType?: "COURSE" | "COMMENT";
                 page?: components["parameters"]["Page"];
                 pageSize?: components["parameters"]["PageSize"];
@@ -5903,11 +6479,84 @@ export interface operations {
                 content: {
                     "application/json": {
                         pendingReports?: number;
-                        pendingAiFlags?: number;
+                        pendingCourseReviews?: number;
                         lockedUsers?: Record<string, never>[];
                         hiddenCourses?: Record<string, never>[];
                     };
                 };
+            };
+        };
+    };
+    adminListCourseReviewQueue: {
+        parameters: {
+            query?: {
+                status?: "PENDING_APPROVAL" | "PUBLISHED" | "REJECTED";
+                page?: components["parameters"]["Page"];
+                pageSize?: components["parameters"]["PageSize"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items?: components["schemas"]["CourseReviewQueueItemDto"][];
+                        meta?: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+        };
+    };
+    adminApproveCoursePublish: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                courseId: components["parameters"]["CourseId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    adminRejectCoursePublish: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                courseId: components["parameters"]["CourseId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

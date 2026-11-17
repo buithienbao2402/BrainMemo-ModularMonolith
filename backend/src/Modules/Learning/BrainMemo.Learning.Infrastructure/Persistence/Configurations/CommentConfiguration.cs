@@ -26,6 +26,11 @@ public sealed class CommentConfiguration : IEntityTypeConfiguration<Comment>
             .HasColumnType("binary(16)")
             .IsRequired(false);
 
+        builder.Property(c => c.BlockId)
+            .HasColumnName("block_id")
+            .HasColumnType("binary(16)")
+            .IsRequired(false);
+
         builder.Property(c => c.UserId)
             .HasColumnName("user_id")
             .HasColumnType("binary(16)")
@@ -36,10 +41,36 @@ public sealed class CommentConfiguration : IEntityTypeConfiguration<Comment>
             .HasColumnType("binary(16)")
             .IsRequired(false);
 
+        builder.Property(c => c.Title)
+            .HasColumnName("title")
+            .HasMaxLength(255)
+            .IsRequired(false);
+
         builder.Property(c => c.Content)
             .HasColumnName("content")
             .HasColumnType("text")
             .IsRequired();
+
+        builder.Property(c => c.IsResolved)
+            .HasColumnName("is_resolved")
+            .HasColumnType("tinyint(1)")
+            .HasDefaultValue(false)
+            .IsRequired();
+
+        builder.Property(c => c.ResolvedAt)
+            .HasColumnName("resolved_at")
+            .HasPrecision(3)
+            .IsRequired(false);
+
+        builder.Property(c => c.ResolvedByUserId)
+            .HasColumnName("resolved_by_user_id")
+            .HasColumnType("binary(16)")
+            .IsRequired(false);
+
+        builder.Property(c => c.ResolvedCommentId)
+            .HasColumnName("resolved_comment_id")
+            .HasColumnType("binary(16)")
+            .IsRequired(false);
 
         builder.Property(c => c.IsPinned)
             .HasColumnName("is_pinned")

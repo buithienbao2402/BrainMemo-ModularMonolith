@@ -15,9 +15,17 @@ public sealed record CommentDto(
     bool IsPinned,
     DateTimeOffset? EditedAt,
     DateTimeOffset CreatedAt,
-    IReadOnlyList<CommentDto> Replies);
+    IReadOnlyList<CommentDto> Replies,
+    string? Title = null,
+    Guid? BlockId = null,
+    bool IsResolved = false,
+    DateTimeOffset? ResolvedAt = null,
+    Guid? ResolvedByUserId = null,
+    Guid? ResolvedCommentId = null,
+    bool IsInstructorReply = false);
 
 public sealed record CommentsSummaryDto(
     int TotalComments,
     int RootComments,
-    int PinnedComments);
+    int PinnedComments,
+    int ResolvedComments = 0);

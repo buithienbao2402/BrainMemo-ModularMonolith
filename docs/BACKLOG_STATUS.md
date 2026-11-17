@@ -69,9 +69,16 @@
 | T-S10-BE-02 | BE-02..05 | DONE | Antigravity (BE) | dev/kim-thuan | **Full Moderation Pipeline, Sanctions & Audit (Batched):** Báo cáo vi phạm (`GET /courses/{id}/reports`), transaction IModerationTransaction, chế tài, audit log, broadcast |
 | T-S10-FE-01 | FE-01 + FE-02 | DONE | Antigravity (FE) | dev/kim-thuan | **FE Moderation & Admin Portal (Batched):** SCR-MOD-01..06 + SCR-ADM-01, 02 (9/9 tests pass, 0 type error) |
 | T-S10-INT-01 | INT-01 | DONE | Antigravity (INT) | dev/kim-thuan | **Tích hợp S10 + e2e:** Playwright e2e `moderation-and-admin-flow.spec.ts` pass 100%, 9/9 FE tests pass, BE build clean & unit tests pass |
-| **S11 – AI Services** | | | | | |
-| T-S11-BE-01 | BE-01..03 | TODO | – | – | **GenAI Quiz & Flashcard Service (Batched):** Settings, Quota, Gemini API, Background jobs sinh câu hỏi & flashcard |
-| T-S11-BE-02 | BE-04 | TODO | – | – | **PhoBERT Content Safety Service:** `ai-service` FastAPI PhoBERT + C# client + background scanner |
+| **S10.5 – Nâng cấp: Kiểm duyệt khóa học, Q&A bài học, Nhắn tin & Bỏ PhoBERT** | | | | | |
+| T-S10R-BE-01 | – | DONE | Antigravity (BE) | dev/kim-thuan | **Kiểm duyệt xuất bản khóa học (BE):** `CoursePublishStatus` (`DRAFT`/`PENDING_APPROVAL`/`PUBLISHED`/`REJECTED`), `GetCourseAccess` ẩn khóa chưa xuất bản (404), Discovery filter, Moderation review queue + Approve/Reject + Notification (`91/91` Course + `9/9` Moderation tests pass) |
+| T-S10R-BE-02 | – | DONE | Antigravity (BE) | dev/kim-thuan | **Hỏi đáp theo từng bài học (BE):** Nâng cấp `lrn_comment` thành Q&A theo `chapterId` (tiêu đề, `block_id`, trạng thái `is_resolved`, lọc/tìm kiếm, đánh dấu giải đáp, `25/25` Learning tests pass) |
+| T-S10R-BE-03 | – | DONE | Antigravity (BE) | dev/kim-thuan | **Module Messaging (BE):** Tạo mới `BrainMemo.Messaging` (`msg_conversation`, `msg_message`, migration `InitialMessaging`), nhắn tin 1-1 học viên – giảng viên, đánh dấu đã đọc, Notification (`61/61` WebApi tests pass) |
+| T-S10R-BE-04 | – | DONE | Antigravity (BE) | dev/kim-thuan | **Dọn dẹp PhoBERT (BE & Infra):** Xóa `ai-service/`, xóa `IPhoBertClient.cs`, xóa `ai_moderation_scan_log`, xóa `PendingAiFlags` & `aiFlagThreshold` khỏi OpenAPI/Backend/Docker |
+| T-S10R-FE-01 | – | DONE | Antigravity (FE) | dev/kim-thuan | **FE Kiểm duyệt khóa học & Dọn AI flag:** `CoursePublishStatusBanner` (`SCR-CRS-04`), cổng Admin duyệt khóa học `AdminCourseReviewsPage` (`SCR-MOD-07`), bỏ cờ AI (`9/9` Moderation FE tests pass) |
+| T-S10R-FE-02 | – | DONE | Antigravity (FE) | dev/kim-thuan | **FE Hỏi đáp bài học & Nhắn tin Giảng viên:** Tab Q&A bài học (`CommentSection`), `ChatDrawer` & Messages Hub `/me/messages` (`MessagesPage`), `tsc -b --noEmit` clean |
+| T-S10R-INT-01 | – | DONE | Antigravity (INT) | dev/kim-thuan | **Tích hợp & Kiểm thử:** OpenAPI bundle (12 modules, 123 paths), Backend build 0 errors, `211/211` backend unit/host tests pass, FE typecheck & modified Vitest suites pass |
+| **S11 – AI Services (GenAI Only)** | | | | | |
+| T-S11-BE-01 | BE-01..03 | TODO | – | – | **GenAI Quiz & Flashcard Service (Batched):** Settings (`aiDailyQuota`, `aiLlmProvider`), Quota, Gemini API, Background jobs sinh câu hỏi & flashcard *(Đã bỏ T-S11-BE-02 PhoBERT theo DEC-30)* |
 | T-S11-FE-01 | FE-01 | TODO | – | – | **FE AI Features & Quota Management (Batched):** SCR-AI-01, 02 + SCR-ADM-03 |
 | T-S11-INT-01 | INT-01 | TODO | – | – | Tích hợp S11 + e2e |
 | **S12 – Hoàn thiện & Triển khai** | | | | | |

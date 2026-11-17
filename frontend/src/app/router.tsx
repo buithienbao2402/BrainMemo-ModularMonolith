@@ -53,10 +53,12 @@ import {
   CourseDiscoveryPage,
 } from '@/features/discovery';
 import { NotificationsPage } from '@/features/notification';
+import { MessagesPage } from '@/features/messaging';
 import {
   CourseReportsPage,
   AdminReportsPage,
   AdminReportDetailPage,
+  AdminCourseReviewsPage,
   AdminSanctionsPage,
   AdminAuditLogsPage,
 } from '@/features/moderation';
@@ -183,6 +185,10 @@ export const appRoutes: RouteObject[] = [
           {
             path: '/me/bookmarks',
             element: <MyBookmarksPage />,
+          },
+          {
+            path: '/me/messages',
+            element: <MessagesPage />,
           },
           {
             path: '/notifications',
@@ -326,6 +332,10 @@ export const appRoutes: RouteObject[] = [
           {
             path: 'reports',
             element: <AdminReportsPage />,
+          },
+          {
+            path: 'course-reviews',
+            element: <AdminCourseReviewsPage />,
           },
           {
             path: 'reports/:id',

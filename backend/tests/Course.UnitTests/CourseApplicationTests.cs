@@ -100,6 +100,8 @@ public sealed class CourseApplicationTests
             Now);
 
         CourseEntity course = result.Value;
+        course.SubmitForReview(Now);
+        course.ApprovePublish(Guid.NewGuid(), Now);
         Assert.True(course.IsEligible());
 
         CourseUpserted @event = CourseEventFactory.CreateUpsertedEvent(course, Now);

@@ -43,6 +43,7 @@ public static class ModuleArchitectureSpec
             ["Assessment"] = "ast_",
             ["Discovery"] = "dsc_",
             ["AI"] = "ai_",
+            ["Messaging"] = "msg_",
         };
 
     public static IReadOnlyList<string> AllModuleNames { get; } =

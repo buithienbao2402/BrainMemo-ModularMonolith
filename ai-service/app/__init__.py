@@ -1,2 +1,0 @@
-# BrainMemo AI Service package
-
