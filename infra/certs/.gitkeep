@@ -1,0 +1,3 @@
+# Place Cloudflare Origin CA or Let's Encrypt certificates here:
+# - origin.pem
+# - origin.key
