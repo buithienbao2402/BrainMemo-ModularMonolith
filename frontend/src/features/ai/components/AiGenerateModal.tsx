@@ -52,19 +52,12 @@ export function AiGenerateModal({
       setActiveTab(defaultTab);
       if (currentChapterId) {
         setSelectedChapterId(currentChapterId);
-        setSourceKind('CHAPTER');
       }
       setActiveJobId(null);
       setErrorMsg(null);
       refetchQuota();
     }
   }, [isOpen, defaultTab, currentChapterId, refetchQuota]);
-
-  useEffect(() => {
-    if (jobData?.status === 'COMPLETED' && onSuccess) {
-      onSuccess(jobData);
-    }
-  }, [jobData, onSuccess]);
 
   if (!isOpen) return null;
 
@@ -236,6 +229,7 @@ export function AiGenerateModal({
                 <Button
                   variant="primary"
                   onClick={() => {
+                    if (onSuccess && jobData) onSuccess(jobData);
                     onClose();
                   }}
                 >
