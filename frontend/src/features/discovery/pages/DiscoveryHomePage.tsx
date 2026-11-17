@@ -196,11 +196,19 @@ export function DiscoveryHomePage() {
       {/* 5. Bảng xếp hạng Top 10 (Leaderboard FR-DSC-10) */}
       <section className="space-y-4">
         <div className="flex flex-col gap-3 border-b border-border/60 pb-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2">
-            <Trophy className="h-5 w-5 text-amber-500" />
-            <h2 className="font-serif text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-              Bảng xếp hạng Top 10
-            </h2>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Trophy className="h-5 w-5 text-amber-500" />
+              <h2 className="font-serif text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+                Bảng xếp hạng Top 10
+              </h2>
+            </div>
+            <Link
+              to="/top10"
+              className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-0.5"
+            >
+              Xem tất cả &rarr;
+            </Link>
           </div>
 
           {/* Metric & Window Controls */}

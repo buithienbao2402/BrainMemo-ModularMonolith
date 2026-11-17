@@ -161,4 +161,40 @@ describe('S5 Discovery Suite (SCR-DSC-01, SCR-DSC-02)', () => {
       });
     });
   });
+
+  describe('SCR-DSC-03: Bảng xếp hạng Top 10 (/top10)', () => {
+    it('renders leaderboard heading, podium, and full list', async () => {
+      renderAppAt('/top10');
+
+      await waitFor(() => {
+        expect(screen.getByRole('heading', { level: 1, name: /Bảng Xếp Hạng Top 10 Khóa Học/i })).toBeInTheDocument();
+      });
+
+      expect(screen.getByText(/SCR-DSC-03 Leaderboard/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Học viên/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Đánh giá/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Đề cử & Hoàn thành/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Tuần này/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Tháng này/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Toàn thời gian/i })).toBeInTheDocument();
+    });
+
+    it('switches metrics and time windows on /top10 page', async () => {
+      const user = userEvent.setup();
+      renderAppAt('/top10');
+
+      await waitFor(() => {
+        expect(screen.getByRole('heading', { level: 1, name: /Bảng Xếp Hạng Top 10 Khóa Học/i })).toBeInTheDocument();
+      });
+
+      const ratingBtn = screen.getByRole('button', { name: /Đánh giá/i });
+      await user.click(ratingBtn);
+
+      const monthBtn = screen.getByRole('button', { name: /Tháng này/i });
+      await user.click(monthBtn);
+
+      expect(ratingBtn).toBeInTheDocument();
+      expect(monthBtn).toBeInTheDocument();
+    });
+  });
 });

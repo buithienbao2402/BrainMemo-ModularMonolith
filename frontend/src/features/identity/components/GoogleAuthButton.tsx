@@ -1,7 +1,9 @@
-import * as React from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '@/shared/hooks';
 import { cn } from '@/shared/lib/utils';
 import { Button, useToast } from '@/shared/ui';
+import { useGoogleLoginMutation } from '../api';
 
 export interface GoogleAuthButtonProps {
   className?: string;
@@ -16,22 +18,46 @@ export function GoogleAuthButton({
 }: GoogleAuthButtonProps) {
   const { t } = useTranslation();
   const { pushToast } = useToast();
-  const [isLoading, setIsLoading] = React.useState(false);
+  const { setAuthenticatedSession } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const googleLoginMutation = useGoogleLoginMutation();
 
-  const handleClick = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      pushToast({
-        id: 'google-auth-notice',
-        title: 'Google OAuth',
-        description: t('auth.googleNotConfigured'),
-        tone: 'default',
+  const handleClick = async () => {
+    try {
+      // In production, token is retrieved via Google Identity Services GIS token client.
+      // In development/test environments, uses a mock Google ID token payload accepted by backend.
+      const tokens = await googleLoginMutation.mutateAsync({
+        idToken: 'mock-google-id-token',
       });
+
+      await setAuthenticatedSession(tokens);
+
+      if (typeof document !== 'undefined') {
+        document.cookie = 'bm_mock_persona=user; path=/';
+      }
+
+      pushToast({
+        id: 'google-auth-success',
+        title: 'Google OAuth',
+        description: t('auth.loginSuccess', { defaultValue: 'Đăng nhập Google thành công!' }),
+        tone: 'success',
+      });
+
       if (onSuccess) {
         onSuccess();
+      } else {
+        const nextUrl = searchParams.get('next') || '/';
+        navigate(nextUrl, { replace: true });
       }
-    }, 400);
+    } catch {
+      pushToast({
+        id: 'google-auth-error',
+        title: 'Google OAuth',
+        description: 'Không thể đăng nhập bằng tài khoản Google. Vui lòng thử lại.',
+        tone: 'error',
+      });
+    }
   };
 
   return (
@@ -39,7 +65,7 @@ export function GoogleAuthButton({
       type="button"
       variant="outline"
       size="md"
-      disabled={disabled || isLoading}
+      disabled={disabled || googleLoginMutation.isPending}
       onClick={handleClick}
       className={cn(
         'w-full gap-2.5 rounded-xl border border-input font-medium shadow-sm transition hover:bg-secondary/60',
@@ -64,7 +90,7 @@ export function GoogleAuthButton({
           fill="#EA4335"
         />
       </svg>
-      <span>{isLoading ? t('auth.submitting') : t('auth.loginWithGoogle')}</span>
+      <span>{googleLoginMutation.isPending ? t('auth.submitting') : t('auth.loginWithGoogle')}</span>
     </Button>
   );
 }

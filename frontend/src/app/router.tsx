@@ -51,6 +51,7 @@ import {
 import {
   DiscoveryHomePage,
   CourseDiscoveryPage,
+  Top10LeaderboardPage,
 } from '@/features/discovery';
 import { NotificationsPage } from '@/features/notification';
 import { MessagesPage } from '@/features/messaging';
@@ -85,6 +86,7 @@ export const appRoutes: RouteObject[] = [
         element: <PublicLayout />,
         children: [
           { path: '/', element: <DiscoveryHomePage /> },
+          { path: '/top10', element: <Top10LeaderboardPage /> },
           {
             path: '/courses',
             element: <CourseDiscoveryPage />,

@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { mapValidationErrorsToFields, toApiProblemError } from '@/shared/api';
 import { Button, Input } from '@/shared/ui';
 import { useRegisterMutation } from '../api';
-import { PasswordInput } from '../components';
+import { GoogleAuthButton, PasswordInput } from '../components';
 import { registerSchema, type RegisterFormData } from '../schemas';
 
 export function RegisterPage() {
@@ -227,6 +227,19 @@ export function RegisterPage() {
             </Button>
           </div>
         </form>
+
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-border" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-card px-2 text-muted-foreground dark:bg-[#131319]">
+              {t('auth.orDivider')}
+            </span>
+          </div>
+        </div>
+
+        <GoogleAuthButton disabled={registerMutation.isPending} />
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
           {t('auth.hasAccount')}{' '}
