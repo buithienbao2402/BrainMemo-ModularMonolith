@@ -215,7 +215,7 @@ export function MyBookmarksPage() {
       ) : (
         <div className="space-y-4">
           {bookmarks.map((bm, index) => {
-            const fallback = FALLBACK_BOOKMARKS[index % FALLBACK_BOOKMARKS.length];
+            const fallback = FALLBACK_BOOKMARKS[index % FALLBACK_BOOKMARKS.length] ?? FALLBACK_BOOKMARKS[0]!;
             const tag = bm.tag || fallback.tag || 'Lập trình';
             const totalLessons = bm.totalLessons || fallback.totalLessons || 20;
             const completedLessons = bm.completedLessons || fallback.completedLessons || 8;
