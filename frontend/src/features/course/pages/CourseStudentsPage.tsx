@@ -13,7 +13,6 @@ import {
   SlidersHorizontal,
   ChevronLeft,
   ChevronRight as ChevronRightIcon,
-  TrendingUp,
   UserX,
   RotateCcw,
   Lock,
@@ -747,14 +746,7 @@ export function CourseStudentsPage() {
                             </span>
                           </div>
                         ) : (
-                          <div className="flex items-center justify-end gap-1">
-                            <button
-                              type="button"
-                              title="Xem tiến độ học tập"
-                              className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                            >
-                              <TrendingUp className="h-4 w-4" />
-                            </button>
+                          <div className="flex items-center justify-end">
                             <Button
                               type="button"
                               variant="ghost"
