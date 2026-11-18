@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Users, Star } from 'lucide-react';
 import type { CourseCard } from '../api/courseApi';
 import { CourseAccessBadge, CourseStatusBadge } from './CourseBadges';
+import defaultCourseCover from '@/assets/courses';
 
 interface CourseCardItemProps {
   course: CourseCard;
@@ -32,17 +33,14 @@ export function CourseCardItem({ course, showProgress = false }: CourseCardItemP
         to={`/courses/${course.id}`}
         className="relative aspect-video w-full overflow-hidden bg-muted"
       >
-        {course.coverUrl ? (
-          <img
-            src={course.coverUrl}
-            alt={course.name || 'Cover'}
-            className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
-        ) : (
-          <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-brand-orange/20 via-primary/10 to-brand-orange/30 text-brand-orange font-bold text-xl">
-            BrainMemo
-          </div>
-        )}
+        <img
+          src={course.coverUrl || defaultCourseCover}
+          alt={course.name || 'Cover'}
+          onError={(e) => {
+            e.currentTarget.src = defaultCourseCover;
+          }}
+          className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+        />
 
         <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1.5">
           {course.accessMode && <CourseAccessBadge mode={course.accessMode} />}

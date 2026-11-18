@@ -1,5 +1,5 @@
-import { PlayCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import defaultCourseCover from '@/assets/courses';
 
 export interface InProgressCourseItem {
   id: string;
@@ -69,19 +69,15 @@ export function ContinueLearningSection({
           >
             <div>
               {/* Thumbnail Header */}
-              <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-gradient-to-br from-[#1c1c24] via-[#232330] to-[#16161e] border border-border/50 mb-3 flex items-center justify-center">
-                {course.coverUrl ? (
-                  <img
-                    src={course.coverUrl}
-                    alt={course.title}
-                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                ) : (
-                  <div className="relative flex flex-col items-center justify-center p-3 text-center">
-                    <div className="absolute inset-0 bg-[radial-gradient(#ff7a1a_1px,transparent_1px)] [background-size:12px_12px] opacity-20" />
-                    <PlayCircle className="h-10 w-10 text-brand-orange/80 group-hover:scale-110 group-hover:text-brand-orange transition-all" />
-                  </div>
-                )}
+              <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-border/50 mb-3 bg-muted">
+                <img
+                  src={course.coverUrl || defaultCourseCover}
+                  alt={course.title}
+                  onError={(e) => {
+                    e.currentTarget.src = defaultCourseCover;
+                  }}
+                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                />
               </div>
 
               {/* Course Title */}

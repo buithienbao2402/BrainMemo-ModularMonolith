@@ -1,5 +1,6 @@
-import { ChevronRight, Cpu, Palette, Shield, Server, FlaskConical, Atom, Sparkles, Calculator, BookOpen, Database } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import defaultCourseCover from '@/assets/courses';
 
 interface MiniCourseRow {
   id: string;
@@ -102,33 +103,6 @@ const MOCK_COMPLETED: MiniCourseRow[] = [
   },
 ];
 
-function renderRowIcon(type: MiniCourseRow['iconType']) {
-  switch (type) {
-    case 'esp32':
-      return <Cpu className="h-4 w-4 text-teal-400" />;
-    case 'uiux':
-      return <Palette className="h-4 w-4 text-pink-400" />;
-    case 'security':
-      return <Shield className="h-4 w-4 text-rose-400" />;
-    case 'devops':
-      return <Server className="h-4 w-4 text-sky-400" />;
-    case 'chemistry':
-      return <FlaskConical className="h-4 w-4 text-emerald-400" />;
-    case 'physics':
-      return <Atom className="h-4 w-4 text-amber-400" />;
-    case 'ai':
-      return <Sparkles className="h-4 w-4 text-emerald-400" />;
-    case 'algebra':
-      return <Calculator className="h-4 w-4 text-blue-400" />;
-    case 'study':
-      return <BookOpen className="h-4 w-4 text-purple-400" />;
-    case 'database':
-      return <Database className="h-4 w-4 text-indigo-400" />;
-    default:
-      return <Server className="h-4 w-4 text-brand-orange" />;
-  }
-}
-
 export function NewLaunchAndCompletedSection() {
   return (
     <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -157,8 +131,12 @@ export function NewLaunchAndCompletedSection() {
               className="flex items-center justify-between gap-3 p-2 rounded-xl hover:bg-muted/40 transition-colors group"
             >
               <div className="flex items-center gap-3 min-w-0">
-                <div className="h-9 w-9 shrink-0 rounded-xl bg-[#1c1c24] dark:bg-[#181820] border border-border/60 flex items-center justify-center">
-                  {renderRowIcon(c.iconType)}
+                <div className="h-9 w-9 shrink-0 rounded-xl overflow-hidden border border-border/60 bg-muted">
+                  <img
+                    src={defaultCourseCover}
+                    alt={c.title}
+                    className="h-full w-full object-cover"
+                  />
                 </div>
                 <div className="min-w-0 truncate">
                   <Link
@@ -205,8 +183,12 @@ export function NewLaunchAndCompletedSection() {
               className="flex items-center justify-between gap-3 p-2 rounded-xl hover:bg-muted/40 transition-colors group"
             >
               <div className="flex items-center gap-3 min-w-0">
-                <div className="h-9 w-9 shrink-0 rounded-xl bg-[#1c1c24] dark:bg-[#181820] border border-border/60 flex items-center justify-center">
-                  {renderRowIcon(c.iconType)}
+                <div className="h-9 w-9 shrink-0 rounded-xl overflow-hidden border border-border/60 bg-muted">
+                  <img
+                    src={defaultCourseCover}
+                    alt={c.title}
+                    className="h-full w-full object-cover"
+                  />
                 </div>
                 <div className="min-w-0 truncate">
                   <span className="inline-block rounded-md bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.2 text-[9px] font-semibold text-emerald-400 mb-0.5">

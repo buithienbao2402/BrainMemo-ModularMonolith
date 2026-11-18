@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Heart, Star, Flame, Crown, Code2, Sparkles, Binary, Layout, Atom, Database, Shield, Cpu, BookOpen, Layers } from 'lucide-react';
+import { Heart, Star, Flame, Crown } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import defaultCourseCover from '@/assets/courses';
 
 interface LeaderboardItem {
   rank: number;
@@ -50,32 +51,6 @@ const TOP_RATINGS: LeaderboardItem[] = [
   { rank: 10, id: 'crs-stu-11', title: 'Kỹ Năng Đọc Nhanh & Ghi Nhớ', authorName: 'Hoàng Yến', metricValue: '⭐ 4.5 (110)', iconType: 'study' },
 ];
 
-function renderMiniIcon(type: LeaderboardItem['iconType']) {
-  switch (type) {
-    case 'python':
-      return <Code2 className="h-3.5 w-3.5 text-amber-400" />;
-    case 'ai':
-      return <Sparkles className="h-3.5 w-3.5 text-emerald-400" />;
-    case 'math':
-      return <Binary className="h-3.5 w-3.5 text-blue-400" />;
-    case 'frontend':
-      return <Layout className="h-3.5 w-3.5 text-cyan-400" />;
-    case 'database':
-      return <Database className="h-3.5 w-3.5 text-indigo-400" />;
-    case 'physics':
-      return <Atom className="h-3.5 w-3.5 text-purple-400" />;
-    case 'ml':
-      return <Cpu className="h-3.5 w-3.5 text-pink-400" />;
-    case 'os':
-      return <Shield className="h-3.5 w-3.5 text-teal-400" />;
-    case 'algebra':
-      return <Layers className="h-3.5 w-3.5 text-amber-500" />;
-    case 'study':
-      return <BookOpen className="h-3.5 w-3.5 text-yellow-400" />;
-    default:
-      return <Code2 className="h-3.5 w-3.5 text-brand-orange" />;
-  }
-}
 
 export function LeaderboardSection() {
   const [windowPeriod, setWindowPeriod] = useState<'WEEK' | 'MONTH' | 'ALL_TIME'>('WEEK');
@@ -173,8 +148,12 @@ export function LeaderboardSection() {
                     </span>
                   )}
 
-                  <div className="h-7 w-7 shrink-0 rounded-md bg-[#1c1c24] dark:bg-[#181820] border border-border/60 flex items-center justify-center">
-                    {renderMiniIcon(item.iconType)}
+                  <div className="h-7 w-7 shrink-0 rounded-md overflow-hidden border border-border/60 bg-muted">
+                    <img
+                      src={defaultCourseCover}
+                      alt={item.title}
+                      className="h-full w-full object-cover"
+                    />
                   </div>
 
                   <div className="truncate min-w-0">
@@ -233,8 +212,12 @@ export function LeaderboardSection() {
                     </span>
                   )}
 
-                  <div className="h-7 w-7 shrink-0 rounded-md bg-[#1c1c24] dark:bg-[#181820] border border-border/60 flex items-center justify-center">
-                    {renderMiniIcon(item.iconType)}
+                  <div className="h-7 w-7 shrink-0 rounded-md overflow-hidden border border-border/60 bg-muted">
+                    <img
+                      src={defaultCourseCover}
+                      alt={item.title}
+                      className="h-full w-full object-cover"
+                    />
                   </div>
 
                   <div className="truncate min-w-0">
@@ -293,8 +276,12 @@ export function LeaderboardSection() {
                     </span>
                   )}
 
-                  <div className="h-7 w-7 shrink-0 rounded-md bg-[#1c1c24] dark:bg-[#181820] border border-border/60 flex items-center justify-center">
-                    {renderMiniIcon(item.iconType)}
+                  <div className="h-7 w-7 shrink-0 rounded-md overflow-hidden border border-border/60 bg-muted">
+                    <img
+                      src={defaultCourseCover}
+                      alt={item.title}
+                      className="h-full w-full object-cover"
+                    />
                   </div>
 
                   <div className="truncate min-w-0">

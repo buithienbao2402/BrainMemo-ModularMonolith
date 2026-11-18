@@ -1,5 +1,6 @@
-import { Heart, Cpu, Code2, GitFork, Layout, Atom } from 'lucide-react';
+import { Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import defaultCourseCover from '@/assets/courses';
 
 interface NominatedCourseItem {
   id: string;
@@ -47,23 +48,6 @@ const MOCK_NOMINATED_COURSES: NominatedCourseItem[] = [
   },
 ];
 
-function renderNominatedIcon(type: NominatedCourseItem['iconType']) {
-  switch (type) {
-    case 'cpu':
-      return <Cpu className="h-6 w-6 text-amber-400" />;
-    case 'code':
-      return <Code2 className="h-6 w-6 text-emerald-400" />;
-    case 'gitfork':
-      return <GitFork className="h-6 w-6 text-blue-400" />;
-    case 'layout':
-      return <Layout className="h-6 w-6 text-cyan-400" />;
-    case 'atom':
-      return <Atom className="h-6 w-6 text-purple-400" />;
-    default:
-      return <Cpu className="h-6 w-6 text-brand-orange" />;
-  }
-}
-
 export function NominatedCoursesSection({
   courses = MOCK_NOMINATED_COURSES,
 }: {
@@ -87,9 +71,13 @@ export function NominatedCoursesSection({
             className="group flex flex-col justify-between rounded-2xl border border-border bg-card p-4 shadow-xs transition-all hover:border-brand-orange/40 hover:shadow-md"
           >
             <div>
-              {/* Top Box containing colorful icon */}
-              <div className="aspect-video w-full rounded-xl bg-[#1c1c24] dark:bg-[#181820] border border-border/60 flex items-center justify-center mb-3">
-                {renderNominatedIcon(item.iconType)}
+              {/* Top Box containing course cover */}
+              <div className="aspect-video w-full rounded-xl overflow-hidden border border-border/60 mb-3 bg-muted">
+                <img
+                  src={defaultCourseCover}
+                  alt={item.title}
+                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                />
               </div>
 
               {/* Title & Author */}

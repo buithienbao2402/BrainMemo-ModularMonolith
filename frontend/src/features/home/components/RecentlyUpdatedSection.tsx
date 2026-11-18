@@ -1,5 +1,6 @@
-import { ChevronRight, Code2, Sparkles, Binary, Layout, Atom, Globe, Lock } from 'lucide-react';
+import { ChevronRight, Globe, Lock } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import defaultCourseCover from '@/assets/courses';
 
 export interface HorizontalCourseRowItem {
   id: string;
@@ -77,22 +78,6 @@ const DEFAULT_RECENTLY_UPDATED: HorizontalCourseRowItem[] = [
   },
 ];
 
-function renderCourseIcon(type: HorizontalCourseRowItem['iconType']) {
-  switch (type) {
-    case 'python':
-      return <Code2 className="h-6 w-6 text-amber-400" />;
-    case 'ai':
-      return <Sparkles className="h-6 w-6 text-emerald-400" />;
-    case 'math':
-      return <Binary className="h-6 w-6 text-blue-400" />;
-    case 'frontend':
-      return <Layout className="h-6 w-6 text-cyan-400" />;
-    case 'physics':
-      return <Atom className="h-6 w-6 text-purple-400" />;
-    default:
-      return <Code2 className="h-6 w-6 text-brand-orange" />;
-  }
-}
 
 export function RecentlyUpdatedSection({
   courses = DEFAULT_RECENTLY_UPDATED,
@@ -127,8 +112,12 @@ export function RecentlyUpdatedSection({
           >
             {/* Left: Icon Thumbnail + Information */}
             <div className="flex items-start sm:items-center gap-3.5 sm:gap-4 min-w-0">
-              <div className="h-14 w-14 sm:h-16 sm:w-16 shrink-0 rounded-xl bg-[#1c1c24] dark:bg-[#181820] border border-border/60 flex items-center justify-center">
-                {renderCourseIcon(course.iconType)}
+              <div className="h-14 w-14 sm:h-16 sm:w-16 shrink-0 rounded-xl overflow-hidden border border-border/60 bg-muted">
+                <img
+                  src={defaultCourseCover}
+                  alt={course.title}
+                  className="h-full w-full object-cover"
+                />
               </div>
 
               <div className="space-y-1.5 min-w-0">

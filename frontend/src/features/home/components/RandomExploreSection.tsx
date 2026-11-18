@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { RefreshCw, Users, BookOpen, Globe, Lock, BarChart3, Languages, GitFork, Code2, Boxes, Waves, Scan, Server, TrendingUp, BookmarkCheck } from 'lucide-react';
+import { RefreshCw, Users, BookOpen, Globe, Lock } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import defaultCourseCover from '@/assets/courses';
 
 interface RandomCourseCardItem {
   id: string;
@@ -127,33 +128,6 @@ const POOL_OF_COURSES: RandomCourseCardItem[] = [
   },
 ];
 
-function renderCardIcon(type: RandomCourseCardItem['iconType']) {
-  switch (type) {
-    case 'barchart':
-      return <BarChart3 className="h-7 w-7 text-amber-400" />;
-    case 'languages':
-      return <Languages className="h-7 w-7 text-emerald-400" />;
-    case 'gitfork':
-      return <GitFork className="h-7 w-7 text-sky-400" />;
-    case 'code':
-      return <Code2 className="h-7 w-7 text-cyan-400" />;
-    case 'boxes':
-      return <Boxes className="h-7 w-7 text-purple-400" />;
-    case 'waves':
-      return <Waves className="h-7 w-7 text-teal-400" />;
-    case 'scan':
-      return <Scan className="h-7 w-7 text-cyan-400" />;
-    case 'server':
-      return <Server className="h-7 w-7 text-blue-400" />;
-    case 'trend':
-      return <TrendingUp className="h-7 w-7 text-pink-400" />;
-    case 'bookmark':
-      return <BookmarkCheck className="h-7 w-7 text-amber-400" />;
-    default:
-      return <Code2 className="h-7 w-7 text-brand-orange" />;
-  }
-}
-
 function getTagClass(color: RandomCourseCardItem['tagColor']) {
   switch (color) {
     case 'amber':
@@ -236,9 +210,13 @@ export function RandomExploreSection() {
                 </span>
               </div>
 
-              {/* Center colorful icon illustration */}
-              <div className="my-3 flex h-14 items-center justify-center">
-                {renderCardIcon(item.iconType)}
+              {/* Center course cover thumbnail */}
+              <div className="my-2.5 aspect-video w-full rounded-xl overflow-hidden border border-border/60 bg-muted">
+                <img
+                  src={defaultCourseCover}
+                  alt={item.title}
+                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                />
               </div>
 
               {/* Title & Author */}

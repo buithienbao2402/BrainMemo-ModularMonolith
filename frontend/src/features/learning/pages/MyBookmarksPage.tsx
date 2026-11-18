@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { Skeleton, ErrorState, useToast } from '@/shared/ui';
 import { useMyBookmarksQuery } from '../api/learningApi';
+import defaultCourseCover from '@/assets/courses';
 
 interface EnrichedBookmark {
   courseId: string;
@@ -204,17 +205,23 @@ export function MyBookmarksPage() {
                 className="group flex flex-col md:flex-row md:items-center justify-between gap-5 rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-xs transition-all hover:border-brand-orange/40 hover:shadow-md"
               >
                 {/* Left: Cover Thumbnail (Mặc định) */}
-                <div className="relative aspect-[16/9] w-full md:w-64 shrink-0 overflow-hidden rounded-xl border border-border bg-gradient-to-br from-muted/80 via-secondary/70 to-muted/40 dark:from-[#1c1c24] dark:via-[#232330] dark:to-[#14141c] flex items-center justify-center">
-                  <div className="absolute inset-0 bg-[radial-gradient(#ff7a1a_1px,transparent_1px)] [background-size:12px_12px] opacity-15" />
-                  <BookOpen className="h-10 w-10 text-brand-orange/80 group-hover:scale-105 transition-transform" />
+                <div className="relative aspect-[16/9] w-full md:w-64 shrink-0 overflow-hidden rounded-xl border border-border bg-muted">
+                  <img
+                    src={bm.coverImage || defaultCourseCover}
+                    alt={bm.courseName}
+                    onError={(e) => {
+                      e.currentTarget.src = defaultCourseCover;
+                    }}
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
 
                   {/* Top-left tag badge */}
-                  <span className="absolute top-2.5 left-2.5 rounded-md bg-black/60 dark:bg-black/75 backdrop-blur-xs px-2 py-0.5 text-[11px] font-bold text-white border border-white/10">
+                  <span className="absolute top-2.5 left-2.5 rounded-md bg-black/70 backdrop-blur-xs px-2 py-0.5 text-[11px] font-bold text-white border border-white/10">
                     {tag}
                   </span>
 
                   {/* Bottom-right lesson count badge */}
-                  <span className="absolute bottom-2.5 right-2.5 rounded-md bg-black/60 dark:bg-black/75 backdrop-blur-xs px-2 py-0.5 text-[10px] font-medium text-white/90">
+                  <span className="absolute bottom-2.5 right-2.5 rounded-md bg-black/75 backdrop-blur-xs px-2 py-0.5 text-[10px] font-medium text-white/90">
                     {totalLessons} bài
                   </span>
                 </div>
