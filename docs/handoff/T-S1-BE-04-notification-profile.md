@@ -3,7 +3,7 @@
 - **Task**: `T-S1-BE-04` (Gộp BE-05 + BE-06 theo Task Batching)
 - **Role**: BE
 - **Branch**: `feat/T-S1-BE-04-notification-profile`
-- **Status**: `REVIEW`
+- **Status**: `DONE`
 
 ## 1. Phạm vi đã triển khai
 

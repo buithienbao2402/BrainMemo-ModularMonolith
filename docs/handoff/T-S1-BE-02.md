@@ -3,7 +3,7 @@
 - **Task**: `T-S1-BE-02`
 - **Role**: BE
 - **Branch**: `feat/T-S1-BE-02-register-verify-email`
-- **Status**: `REVIEW`
+- **Status**: `DONE`
 
 ## 1. Phạm vi đã triển khai
 
