@@ -56,6 +56,13 @@ public sealed class NotificationRepository(
             .ConfigureAwait(false);
     }
 
+    public async Task<bool> ExistsByEventAndRecipientAsync(Guid sourceEventId, Guid recipientUserId, CancellationToken ct = default)
+    {
+        return await dbContext.Notifications
+            .AnyAsync(n => n.SourceEventId == sourceEventId && n.RecipientUserId == recipientUserId, ct)
+            .ConfigureAwait(false);
+    }
+
     public async Task<int> MarkAllAsReadAsync(Guid recipientUserId, DateTimeOffset utcNow, CancellationToken ct = default)
     {
         return await dbContext.Notifications

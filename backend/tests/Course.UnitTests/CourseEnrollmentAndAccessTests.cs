@@ -297,6 +297,15 @@ public sealed class CourseEnrollmentAndAccessTests
         public Task<bool> HasNominatedAsync(Guid courseId, Guid userId, CancellationToken ct = default) =>
             Task.FromResult(Nominations.Any(n => n.CourseId == courseId && n.UserId == userId && n.WithdrawnAt == null));
 
+        public Task<Nomination?> GetActiveNominationAsync(Guid courseId, Guid userId, CancellationToken ct = default) =>
+            Task.FromResult(Nominations.FirstOrDefault(n => n.CourseId == courseId && n.UserId == userId && n.WithdrawnAt == null));
+
+        public Task AddNominationAsync(Nomination nomination, CancellationToken ct = default)
+        {
+            Nominations.Add(nomination);
+            return Task.CompletedTask;
+        }
+
         public Task<CourseStatsDto> GetCourseStatsAsync(Guid courseId, CancellationToken ct = default) =>
             Task.FromResult(new CourseStatsDto(0, 0, 0, 0, 0, 0));
 

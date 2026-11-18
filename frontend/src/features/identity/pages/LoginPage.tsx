@@ -71,12 +71,12 @@ export function LoginPage() {
         password: formData.password,
       });
 
-      await setAuthenticatedSession(tokens);
-
       if (typeof document !== 'undefined') {
         const persona = formData.email.includes('admin') ? 'admin' : 'user';
-        document.cookie = `bm_mock_persona=${persona}; path=/`;
+        document.cookie = `bm_mock_persona=${persona}; path=/; max-age=86400; SameSite=Lax`;
       }
+
+      await setAuthenticatedSession(tokens);
 
       pushToast({
         id: 'login-success',

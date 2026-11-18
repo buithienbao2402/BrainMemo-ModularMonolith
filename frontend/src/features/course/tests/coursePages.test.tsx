@@ -261,7 +261,7 @@ describe('Course Pages (SCR-CRS-01..03)', () => {
         'href',
         '/courses/my-course-1/manage/content'
       );
-      expect(screen.getByRole('button', { name: /^Danh sách học viên$/i })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /Danh sách học viên/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /^Chấm điểm\s*12$/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /^Chuẩn đầu ra$/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /^Thống kê$/i })).toBeInTheDocument();

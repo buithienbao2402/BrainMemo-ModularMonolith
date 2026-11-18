@@ -44,6 +44,31 @@ public sealed class CourseConfiguration : IEntityTypeConfiguration<CourseEntity>
             .HasMaxLength(20)
             .IsRequired();
 
+        builder.Property(c => c.PublishStatus)
+            .HasColumnName("publish_status")
+            .HasConversion<string>()
+            .HasMaxLength(30)
+            .IsRequired();
+
+        builder.Property(c => c.SubmittedForReviewAt)
+            .HasColumnName("submitted_for_review_at")
+            .HasPrecision(3);
+
+        builder.Property(c => c.PublishedAt)
+            .HasColumnName("published_at")
+            .HasPrecision(3);
+
+        builder.Property(c => c.RejectionReason)
+            .HasColumnName("rejection_reason")
+            .HasMaxLength(1000);
+
+        builder.Property(c => c.ReviewedByAdminId)
+            .HasColumnName("reviewed_by_admin_id");
+
+        builder.Property(c => c.ReviewedAt)
+            .HasColumnName("reviewed_at")
+            .HasPrecision(3);
+
         builder.Property(c => c.HiddenAt)
             .HasColumnName("hidden_at")
             .HasPrecision(3);

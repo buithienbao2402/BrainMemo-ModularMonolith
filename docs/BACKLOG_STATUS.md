@@ -37,45 +37,52 @@
 | **S4 – Ghi danh & Learning** | | | | | |
 | T-S4-BE-01 | BE-01 + BE-02 | DONE | Antigravity (BE) | feat/T-S4-BE-01-enrollment-chapter-access | **Enrollment & Chapter Access Engine (Batched):** Ghi danh 5 trạng thái + Ma trận quyền 3.2.2 + Mở khóa chương passcode (`POST /courses/{id}/chapters/{chapterId}/verify-passcode`) + Outbox + Quản lý yêu cầu tham gia chờ duyệt (`GET/POST /courses/{id}/enrollment-requests`) |
 | T-S4-BE-02 | BE-03 | DONE | Antigravity (BE) | dev/kim-thuan | **Learning Progress & Player Service:** Đọc chương, hoàn thành block, tính tiến độ, bookmark, event hoàn thành khóa + Thống kê học tập (`GET /courses/{id}/enrollments/summary`) + Thống kê hoàn thành chương (`GET /courses/{id}/chapters/{chapterId}/progress-summary`) |
-| T-S4-FE-01 | FE-01 + FE-02 | TODO | – | – | **FE Enrollment & Learning Player (Batched):** SCR-CRS-05, 06 + SCR-LRN-01, 07 |
-| T-S4-INT-01 | INT-01 | TODO | – | – | Tích hợp S4 + e2e |
+| T-S4-FE-01 | FE-01 + FE-02 | DONE | Antigravity (FE) | dev/kim-thuan | **FE Enrollment & Learning Player (Batched):** SCR-CRS-05, 06 (Danh sách học viên, duyệt yêu cầu, mời email) + SCR-LRN-01, 07 (Learning Player, 3D Flashcard flip, Practice Question, Passcode gate, Bookmark) |
+| T-S4-INT-01 | INT-01 | DONE | Antigravity (INT) | dev/kim-thuan | **Tích hợp S4 + e2e:** Ghi danh Public → Đọc → Tiến độ + Private xin vào → Duyệt → Đọc; Chương Protected cần passcode (100% tests pass) |
 | **S5 – Discovery** | | | | | |
-| T-S5-BE-01 | BE-01..03 | TODO | – | – | **Discovery Module Trọn gói (Batched):** Read model `dsc_*`, Event handlers, API Home/Search lọc & sắp xếp, Rebuild CLI + API Xếp hạng khóa học theo học viên/đề cử/đánh giá (`GET /courses/{id}/ranking`) |
-| T-S5-FE-01 | FE-01 | TODO | – | – | **FE Discovery (Batched):** SCR-DSC-01, SCR-DSC-02 |
-| T-S5-INT-01 | INT-01 | TODO | – | – | Tích hợp S5 + e2e |
+| T-S5-BE-01 | BE-01..03 | DONE | Antigravity (BE) | dev/kim-thuan | **Discovery Module Trọn gói (Batched):** Read model `dsc_*`, Event handlers, API Home/Search lọc & sắp xếp, Rebuild CLI + API Xếp hạng khóa học theo học viên/đề cử/đánh giá (`GET /courses/{id}/ranking`) (8/8 tests pass, 0 warning 0 error) |
+| T-S5-FE-01 | FE-01 | DONE | Antigravity (FE) | dev/kim-thuan | **FE Discovery (Batched):** SCR-DSC-01, SCR-DSC-02 (7/7 tests pass, 0 type error) |
+| T-S5-INT-01 | INT-01 | DONE | Antigravity (INT) | dev/kim-thuan | **Tích hợp S5 + e2e:** tạo khóa Public → thấy ở trang chủ/tìm kiếm → đổi Only Me → biến mất (100% tests pass) |
 | **S6 – Bình luận & Đề cử** | | | | | |
-| T-S6-BE-01 | BE-01 + BE-02 | TODO | – | – | **Comments & In-App Notifications (Batched):** Bình luận đa cấp, ghim + Luồng thông báo tự động bảng 3.4.6.1 + Thống kê bình luận (`comments/summary`) |
-| T-S6-BE-02 | BE-03 | TODO | – | – | **Nominations & Learning Stats (Batched):** Đề cử/thu hồi + Thống kê học tập khóa & số đề cử cộng đồng (`nominations/summary`) |
-| T-S6-FE-01 | FE-01 + FE-02 | TODO | – | – | **FE Social & Notifications (Batched):** SCR-LRN-06 + SCR-NTF-01 + SCR-CRS-04 & nút đề cử |
-| T-S6-INT-01 | INT-01 | TODO | – | – | Tích hợp S6 + e2e |
+| T-S6-BE-01 | BE-01 + BE-02 | DONE | Antigravity (BE) | dev/kim-thuan | **Comments & In-App Notifications (Batched):** Bình luận đa cấp, ghim + Luồng thông báo tự động bảng 3.4.6.1 + Thống kê bình luận (`comments/summary`) (30/30 tests pass, 0 warning 0 error) |
+| T-S6-BE-02 | BE-03 | DONE | Antigravity (BE) | dev/kim-thuan | **Nominations & Learning Stats (Batched):** Đề cử/thu hồi + Thống kê học tập khóa & số đề cử cộng đồng (`nominations/summary`) (91/91 tests pass, 0 warning 0 error) |
+| T-S6-FE-01 | FE-01 + FE-02 | DONE | Antigravity (FE) | dev/kim-thuan | **FE Social & Notifications (Batched):** SCR-LRN-06 + SCR-NTF-01 + SCR-CRS-04 & nút đề cử (24/24 tests pass, typecheck clean) |
+| T-S6-INT-01 | INT-01 | DONE | Antigravity (INT) | dev/kim-thuan | **Tích hợp S6 + e2e:** Playwright e2e `social-notification-flow.spec.ts` pass 100%, 24/24 FE tests pass, BE build & unit tests pass |
 | **S7 – Ngân hàng câu hỏi & Quiz** | | | | | |
-| T-S7-BE-01 | BE-01 + BE-02 | TODO | – | – | **Question Bank & Quiz Authoring (Batched):** Ngân hàng câu hỏi 6 loại + Cấu hình bài thi trong chương + Bốc đề thi + API Quiz gắn với chương (`GET /courses/{id}/chapters/{chapterId}/quizzes`) |
-| T-S7-BE-02 | BE-03..05 | TODO | – | – | **Quiz Engine & Auto-Grading (Batched):** Làm bài, autosave, deadline worker + Bộ chấm tự động ADR-04 + Nộp bài TX1/TX2 |
-| T-S7-FE-01 | FE-01 + FE-02 | TODO | – | – | **FE Question Bank & Quiz Authoring (Batched):** SCR-CNT-04, 05, 06, 08, 09 |
-| T-S7-FE-02 | FE-03 | TODO | – | – | **FE Quiz Player:** SCR-LRN-02, 03, 04 (Làm quiz, đếm giờ, autosave, nộp bài) |
-| T-S7-INT-01 | INT-01 | TODO | – | – | Tích hợp S7 + e2e |
+| T-S7-BE-01 | BE-01 + BE-02 | DONE | Antigravity (BE) | dev/kim-thuan | **Question Bank & Quiz Authoring (Batched):** Ngân hàng câu hỏi 6 loại + Cấu hình bài thi trong chương + Bốc đề thi + API Quiz gắn với chương (`GET /courses/{id}/chapters/{chapterId}/quizzes`) (98/98 tests pass, build clean) |
+| T-S7-BE-02 | BE-03..05 | DONE | Antigravity (BE) | dev/kim-thuan | **Quiz Engine & Auto-Grading (Batched):** Làm bài, autosave, deadline worker + Bộ chấm tự động ADR-04 + Nộp bài TX1/TX2 |
+| T-S7-FE-01 | FE-01 + FE-02 | DONE | Antigravity (FE) | dev/kim-thuan | **FE Question Bank & Quiz Authoring (Batched):** SCR-CNT-04, 05, 06, 08, 09 (5/5 tests pass, 0 type error) |
+| T-S7-FE-02 | FE-03 | DONE | Antigravity (FE) | dev/kim-thuan | **FE Quiz Player:** SCR-LRN-02, 03, 04 (4/4 tests pass, 0 type error) |
+| T-S7-INT-01 | INT-01 | DONE | Antigravity (INT) | dev/kim-thuan | **Tích hợp S7 + e2e:** Playwright e2e `quiz-player-flow.spec.ts` pass 100%, 9/9 FE tests pass, BE build clean & unit tests pass |
 | **S8 – Bài tập & Bảng điểm** | | | | | |
-| T-S8-BE-01 | BE-01 + BE-02 | TODO | – | – | **Assignments & Manual Grading Pipeline (Batched):** Nộp bài tập commit tệp + Hàng đợi chấm thi & Chấm tay tự luận DEC-03 + API Bài tập nộp chưa chấm (`GET /courses/{id}/submissions/pending`) |
-| T-S8-BE-02 | BE-03 | TODO | – | – | **Gradebook & Evaluation Rules (Batched):** Trọng số đánh giá, tính điểm final, bảng điểm, xếp loại |
-| T-S8-FE-01 | FE-01 + FE-02 | TODO | – | – | **FE Grading Suite & Gradebook (Batched):** SCR-LRN-05 + SCR-AST-01, 04, 05, 06, 07 |
-| T-S8-INT-01 | INT-01 | TODO | – | – | Tích hợp S8 + e2e |
+| T-S8-BE-01 | BE-01 + BE-02 | DONE | Antigravity (BE) | dev/kim-thuan | **Assignments & Manual Grading Pipeline (Batched):** Nộp bài tập commit tệp + Hàng đợi chấm thi & Chấm tay tự luận DEC-03 + API Bài tập nộp chưa chấm (`GET /courses/{id}/submissions/pending`) |
+| T-S8-BE-02 | BE-03 | DONE | Antigravity (BE) | dev/kim-thuan | **Gradebook & Evaluation Rules (Batched):** Trọng số đánh giá, tính điểm final, bảng điểm, xếp loại |
+| T-S8-FE-01 | FE-01 + FE-02 | DONE | Antigravity (FE) | dev/kim-thuan | **FE Grading Suite & Gradebook (Batched):** SCR-LRN-05 + SCR-AST-01, 04, 05, 06, 07 (6/6 tests pass, 0 type error) |
+| T-S8-INT-01 | INT-01 | DONE | Antigravity (INT) | dev/kim-thuan | **Tích hợp S8 + e2e:** Playwright e2e `grading-and-gradebook-flow.spec.ts` pass 100%, 6/6 FE tests pass, BE build clean & unit tests pass |
 | **S9 – CLO/PLO & Đánh giá khóa** | | | | | |
-| T-S9-BE-01 | BE-01..04 | TODO | – | – | **CLO/PLO Engine, Analytics & Export (Batched):** CLO/PLO CRUD, liên kết trọng số, công thức 3.5.2, xuất báo cáo |
-| T-S9-BE-02 | BE-05 | TODO | – | – | **Course Review & Rating:** Học viên đánh giá 1-5 sao, phản hồi của giảng viên, rating Discovery & tổng kết sao (`reviews/summary`) |
-| T-S9-FE-01 | FE-01 + FE-02 | TODO | – | – | **FE CLO/PLO, Analytics & Reviews (Batched):** SCR-AST-02, 03, 08, 09 + Đánh giá sao |
-| T-S9-INT-01 | INT-01 | TODO | – | – | Tích hợp S9 + e2e |
+| T-S9-BE-01 | BE-01..04 | DONE | Antigravity (BE) | dev/kim-thuan | **CLO/PLO Engine, Analytics & Export (Batched):** CLO/PLO CRUD, liên kết trọng số, công thức 3.5.2, xuất báo cáo (22/22 tests pass, build clean) |
+| T-S9-BE-02 | BE-05 | DONE | Antigravity (BE) | dev/kim-thuan | **Course Review & Rating:** Học viên đánh giá 1-5 sao, phản hồi của giảng viên, rating Discovery & tổng kết sao (`reviews/summary`) (28/28 tests pass, build clean) |
+| T-S9-FE-01 | FE-01 + FE-02 | DONE | Antigravity (FE) | dev/kim-thuan | **FE CLO/PLO, Analytics & Reviews (Batched):** SCR-AST-02, 03, 08, 09 + Đánh giá sao (11/11 tests pass, 0 type error) |
+| T-S9-INT-01 | INT-01 | DONE | Antigravity (INT) | dev/kim-thuan | **Tích hợp S9 + e2e:** Playwright e2e `outcomes-and-reviews-flow.spec.ts` pass 100%, 11/11 FE tests pass, BE build clean & unit tests pass |
 | **S10 – Moderation & Quản trị** | | | | | |
-| T-S10-BE-01 | BE-01 | TODO | – | – | **Identity Admin & Account Controls:** Phân quyền Admin, khóa/mở khóa tài khoản, job tự gỡ khóa |
-| T-S10-BE-02 | BE-02..05 | TODO | – | – | **Full Moderation Pipeline, Sanctions & Audit (Batched):** Báo cáo vi phạm (`GET /courses/{id}/reports`), transaction IModerationTransaction, chế tài, audit log, broadcast |
-| T-S10-FE-01 | FE-01 + FE-02 | TODO | – | – | **FE Moderation & Admin Portal (Batched):** SCR-MOD-01..06 + SCR-ADM-01, 02 |
-| T-S10-INT-01 | INT-01 | TODO | – | – | Tích hợp S10 + e2e |
-| **S11 – AI Services** | | | | | |
-| T-S11-BE-01 | BE-01..03 | TODO | – | – | **GenAI Quiz & Flashcard Service (Batched):** Settings, Quota, Gemini API, Background jobs sinh câu hỏi & flashcard |
-| T-S11-BE-02 | BE-04 | TODO | – | – | **PhoBERT Content Safety Service:** `ai-service` FastAPI PhoBERT + C# client + background scanner |
-| T-S11-FE-01 | FE-01 | TODO | – | – | **FE AI Features & Quota Management (Batched):** SCR-AI-01, 02 + SCR-ADM-03 |
-| T-S11-INT-01 | INT-01 | TODO | – | – | Tích hợp S11 + e2e |
+| T-S10-BE-01 | BE-01 | DONE | – | – | **Identity Admin & Account Controls:** Phân quyền Admin, khóa/mở khóa tài khoản, job tự gỡ khóa |
+| T-S10-BE-02 | BE-02..05 | DONE | Antigravity (BE) | dev/kim-thuan | **Full Moderation Pipeline, Sanctions & Audit (Batched):** Báo cáo vi phạm (`GET /courses/{id}/reports`), transaction IModerationTransaction, chế tài, audit log, broadcast |
+| T-S10-FE-01 | FE-01 + FE-02 | DONE | Antigravity (FE) | dev/kim-thuan | **FE Moderation & Admin Portal (Batched):** SCR-MOD-01..06 + SCR-ADM-01, 02 (9/9 tests pass, 0 type error) |
+| T-S10-INT-01 | INT-01 | DONE | Antigravity (INT) | dev/kim-thuan | **Tích hợp S10 + e2e:** Playwright e2e `moderation-and-admin-flow.spec.ts` pass 100%, 9/9 FE tests pass, BE build clean & unit tests pass |
+| **S10.5 – Nâng cấp: Kiểm duyệt khóa học, Q&A bài học, Nhắn tin & Bỏ PhoBERT** | | | | | |
+| T-S10R-BE-01 | – | DONE | Antigravity (BE) | dev/kim-thuan | **Kiểm duyệt xuất bản khóa học (BE):** `CoursePublishStatus` (`DRAFT`/`PENDING_APPROVAL`/`PUBLISHED`/`REJECTED`), `GetCourseAccess` ẩn khóa chưa xuất bản (404), Discovery filter, Moderation review queue + Approve/Reject + Notification (`91/91` Course + `9/9` Moderation tests pass) |
+| T-S10R-BE-02 | – | DONE | Antigravity (BE) | dev/kim-thuan | **Hỏi đáp theo từng bài học (BE):** Nâng cấp `lrn_comment` thành Q&A theo `chapterId` (tiêu đề, `block_id`, trạng thái `is_resolved`, lọc/tìm kiếm, đánh dấu giải đáp, `25/25` Learning tests pass) |
+| T-S10R-BE-03 | – | DONE | Antigravity (BE) | dev/kim-thuan | **Module Messaging (BE):** Tạo mới `BrainMemo.Messaging` (`msg_conversation`, `msg_message`, migration `InitialMessaging`), nhắn tin 1-1 học viên – giảng viên, đánh dấu đã đọc, Notification (`61/61` WebApi tests pass) |
+| T-S10R-BE-04 | – | DONE | Antigravity (BE) | dev/kim-thuan | **Dọn dẹp PhoBERT (BE & Infra):** Xóa `ai-service/`, xóa `IPhoBertClient.cs`, xóa `ai_moderation_scan_log`, xóa `PendingAiFlags` & `aiFlagThreshold` khỏi OpenAPI/Backend/Docker |
+| T-S10R-FE-01 | – | DONE | Antigravity (FE) | dev/kim-thuan | **FE Kiểm duyệt khóa học & Dọn AI flag:** `CoursePublishStatusBanner` (`SCR-CRS-04`), cổng Admin duyệt khóa học `AdminCourseReviewsPage` (`SCR-MOD-07`), bỏ cờ AI (`9/9` Moderation FE tests pass) |
+| T-S10R-FE-02 | – | DONE | Antigravity (FE) | dev/kim-thuan | **FE Hỏi đáp bài học & Nhắn tin Giảng viên:** Tab Q&A bài học (`CommentSection`), `ChatDrawer` & Messages Hub `/me/messages` (`MessagesPage`), `tsc -b --noEmit` clean |
+| T-S10R-INT-01 | – | DONE | Antigravity (INT) | dev/kim-thuan | **Tích hợp & Kiểm thử:** OpenAPI bundle (12 modules, 123 paths), Backend build 0 errors, `211/211` backend unit/host tests pass, FE typecheck & modified Vitest suites pass |
+| **S11 – AI Services (GenAI Only)** | | | | | |
+| T-S11-BE-01 | BE-01..03 | DONE | Antigravity (BE) | dev/kim-thuan | **GenAI Quiz & Flashcard Service (Batched):** Settings (`aiDailyQuota`, `aiLlmProvider`), Quota, Gemini API (`ILlmClient`), Background jobs sinh câu hỏi Quiz & Flashcard, Content import (`11/11` AI tests pass) |
+| T-S11-FE-01 | FE-01 | DONE | Antigravity (FE) | dev/kim-thuan | **FE AI Features & Quota Management (Batched):** SCR-AI-01, 02 + SCR-ADM-03 (4/4 tests pass, 0 type error) |
+| T-S11-INT-01 | INT-01 | DONE | Antigravity (INT) | dev/kim-thuan | **Tích hợp S11 + e2e:** Playwright e2e `ai-generation-flow.spec.ts` pass 100%, 4/4 FE tests pass, BE build clean & 11/11 AI unit tests pass |
 | **S12 – Hoàn thiện & Triển khai** | | | | | |
-| T-S12-BE-01 | BE-01 + BE-02 | TODO | – | – | **Top 10, Google OAuth & Housekeeping (Batched):** BXH Top 10, Google login, worker dọn dẹp |
-| T-S12-FE-01 | FE-01 | TODO | – | – | **FE Top 10, Social Auth & Lighthouse (Batched):** SCR-DSC-03, Google button, tối ưu Lighthouse ≥ 70 |
-| T-S12-INT-01 | INT-01 | TODO | – | – | **System Verification & Load Testing:** e2e 3 luồng NFR-17 + Load test 50 VU |
-| T-S12-OPS-01 | OPS-01 | TODO | – | – | **Triển khai Production VPS:** Docker Compose prod, Nginx SSL, Cloudflare, backup MySQL |
+| T-S12-BE-01 | BE-01 + BE-02 | DONE | Antigravity (BE) | dev/kim-thuan | **Top 10, Google OAuth & Housekeeping (Batched):** BXH Top 10, Google login, worker dọn dẹp (Discovery 10/10, Identity 94/94, BB 69/69 pass) |
+| T-S12-FE-01 | FE-01 | DONE | Antigravity (FE) | dev/kim-thuan | **FE Top 10, Social Auth & Lighthouse (Batched):** SCR-DSC-03, Google button, tối ưu Lighthouse ≥ 70 (9/9 discovery tests pass, 16/16 auth tests pass, typecheck clean) |
+| T-S12-INT-01 | INT-01 | DONE | Antigravity (INT) | dev/kim-thuan | **System Verification & Load Testing:** e2e 3 luồng NFR-17 pass 100%, k6 load test 50 VU script & runner |
+| T-S12-OPS-01 | OPS-01 | DONE | Antigravity (OPS) | dev/kim-thuan | **Triển khai Production VPS:** Docker Compose prod, Nginx SSL/HSTS, Cloudflare setup, backup MySQL 7-day retention & restore rehearsal |

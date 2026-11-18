@@ -129,13 +129,25 @@ Quy ước trạng thái trên `docs/BACKLOG_STATUS.md`: `TODO` | `IN_PROGRESS` 
 
 ---
 
-## S11 – AI Services (GenAI & Content Safety)
+## S10.5 – Nâng cấp: Kiểm duyệt khóa học, Q&A bài học, Nhắn tin & Bỏ PhoBERT
 | ID | Gốc | Vai | Nội dung | Phụ thuộc | Hoàn thành khi |
 |:--|:--|:-:|:--|:--|:--|
-| T-S11-BE-01 | BE-01..03 | BE | **GenAI Quiz & Flashcard Service (Batched):** Cấu hình `sys_setting` & quota hàng ngày của người dùng; `ILlmClient` (Gemini API, timeout, circuit breaker); Background jobs sinh câu hỏi Quiz & Flashcard nháp tự động từ tài liệu | S10, S7 | Kiểm soát quota đồng thời chống lạm dụng; import dạng nháp DRAFT/PENDING; chặn xuất bản khi chưa duyệt |
-| T-S11-BE-02 | BE-04 | BE | **PhoBERT Content Safety Service:** `ai-service` Python FastAPI + mô hình PhoBERT ONNX int8 (`/score`); C# `IPhoBertClient`; Background worker quét bình luận/nội dung khóa mới để tự động gắn cờ vi phạm | BE-01 | Tự động gắn cờ vi phạm vào hàng đợi Moderation; lỗi AI không làm nghẽn luồng chính |
+| T-S10R-BE-01 | – | BE | **Kiểm duyệt xuất bản khóa học:** Thêm `publish_status` (`DRAFT`/`PENDING_APPROVAL`/`PUBLISHED`/`REJECTED`) vào `crs_course`; API submit-review, cancel-review, unpublish; `GetCourseAccess` trả 404 với khóa chưa xuất bản; Discovery chỉ index khóa `PUBLISHED`; Moderation API hàng đợi duyệt/từ chối khóa + Notification | S10 | Chỉ khóa `PUBLISHED` xuất hiện trên nền tảng với người khác; unit & integration test pass |
+| T-S10R-BE-02 | – | BE | **Hỏi đáp theo từng bài học (Lesson Q&A):** Nâng cấp `lrn_comment` bắt buộc `chapter_id`, thêm `title`, `is_resolved`, `resolved_comment_id`, `block_id`; API `/courses/{id}/chapters/{chapterId}/qa` hỗ trợ lọc & đánh dấu đã giải đáp | S6 | Học viên hỏi đáp theo từng bài, đánh dấu giải đáp, lọc câu hỏi |
+| T-S10R-BE-03 | – | BE | **Module Messaging:** Tạo mới `BrainMemo.Messaging` (`msg_conversation`, `msg_message`); API mở hội thoại với giảng viên theo khóa, gửi tin nhắn, lịch sử phân trang, đánh dấu đã đọc, thông báo Notification | S2 | Học viên & giảng viên nhắn tin 1-1 mượt mà; Architecture.Tests pass |
+| T-S10R-BE-04 | – | BE/OPS | **Loại bỏ AI PhoBERT:** Xóa thư mục `ai-service/`, xóa `ai_moderation_scan_log`, xóa `ai.flag_threshold` và `PendingAiFlags` khỏi Moderation & Infra | S10 | Không còn bất kỳ tham chiếu/container PhoBERT nào |
+| T-S10R-FE-01 | – | FE | **FE Kiểm duyệt khóa học & Dọn AI flag:** UI gửi duyệt, trạng thái xuất bản, lý do từ chối ở Course; trang Admin duyệt khóa học (`SCR-MOD-07`); xóa cờ AI ở Moderation | T-S10R-BE-01/04 | Luồng gửi duyệt & Admin duyệt hoạt động hoàn chỉnh |
+| T-S10R-FE-02 | – | FE | **FE Hỏi đáp bài học & Nhắn tin Giảng viên:** Tab Q&A trong Learning Player (`SCR-LRN-06`); Chat Drawer & trang Tin nhắn `/me/messages` (`SCR-MSG-01/02`) | T-S10R-BE-02/03 | Học viên hỏi đáp theo bài và chat trực tiếp với giảng viên |
+| T-S10R-INT-01 | – | INT | **Tích hợp & E2E Nâng cấp:** Kiểm thử e2e 3 luồng: kiểm duyệt xuất bản khóa học, hỏi đáp bài học, nhắn tin với giảng viên | S10.5 BE/FE | 100% BE/FE tests & E2E pass |
+
+---
+
+## S11 – AI Services (GenAI Only)
+| ID | Gốc | Vai | Nội dung | Phụ thuộc | Hoàn thành khi |
+|:--|:--|:-:|:--|:--|:--|
+| T-S11-BE-01 | BE-01..03 | BE | **GenAI Quiz & Flashcard Service (Batched):** Cấu hình `sys_setting` (`aiDailyQuota`, `aiLlmProvider`) & quota hàng ngày của người dùng; `ILlmClient` (Gemini API, timeout, circuit breaker); Background jobs sinh câu hỏi Quiz & Flashcard nháp tự động từ tài liệu *(Đã bỏ T-S11-BE-02 PhoBERT theo DEC-30)* | S10.5, S7 | Kiểm soát quota đồng thời chống lạm dụng; import dạng nháp DRAFT/PENDING; chặn xuất bản khi chưa duyệt |
 | T-S11-FE-01 | FE-01 | FE | **FE AI Features & Quota Management (Batched):** SCR-AI-01, 02 (Giao diện yêu cầu AI sinh câu hỏi/flashcard, theo dõi tiến độ job, duyệt nội dung sinh) + SCR-ADM-03 (Quản trị quota và cấu hình AI) | S7 FE-01 | Hiển thị quota trực quan; thao tác duyệt/sửa nội dung AI đề xuất tiện lợi |
-| T-S11-INT-01 | INT-01 | INT | Tích hợp S11 + e2e: Gửi tài liệu yêu cầu AI sinh Quiz → Worker sinh hoàn tất → Giảng viên duyệt vào bài thi; Học viên bình luận xấu → PhoBERT gắn cờ vi phạm | BE-01..02, FE-01 | e2e xanh |
+| T-S11-INT-01 | INT-01 | INT | Tích hợp S11 + e2e: Gửi tài liệu yêu cầu AI sinh Quiz → Worker sinh hoàn tất → Giảng viên duyệt vào bài thi | BE-01, FE-01 | e2e xanh |
 
 ---
 

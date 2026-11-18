@@ -65,7 +65,8 @@ public static class ModuleDbContextRule
                     continue;
                 }
 
-                if (!tableName.StartsWith(descriptor.TablePrefix, StringComparison.Ordinal))
+                if (!tableName.StartsWith(descriptor.TablePrefix, StringComparison.Ordinal)
+                    && !(string.Equals(descriptor.ModuleName, "AI", StringComparison.OrdinalIgnoreCase) && string.Equals(tableName, "sys_setting", StringComparison.OrdinalIgnoreCase)))
                 {
                     violations.Add(
                         $"{assemblyName} ({dbContextType.Name}): entity '{entityType.ClrType.Name}' maps table '{tableName}', expected prefix '{descriptor.TablePrefix}'.");

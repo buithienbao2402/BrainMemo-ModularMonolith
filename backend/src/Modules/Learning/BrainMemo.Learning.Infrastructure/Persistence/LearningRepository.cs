@@ -125,6 +125,191 @@ public sealed class LearningRepository(LearningDbContext dbContext) : ILearningR
         return new Page<Guid>(items, lastId, hasMore);
     }
 
+    public async Task<Comment?> GetCommentByIdAsync(Guid commentId, CancellationToken ct = default)
+    {
+        return await dbContext.Comments
+            .Include(c => c.Replies)
+            .FirstOrDefaultAsync(c => c.Id == commentId, ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task AddCommentAsync(Comment comment, CancellationToken ct = default)
+    {
+        await dbContext.Comments.AddAsync(comment, ct).ConfigureAwait(false);
+    }
+
+    public async Task<PagedResult<Comment>> ListRootCommentsAsync(
+        Guid courseId,
+        Guid? chapterId,
+        int page,
+        int pageSize,
+        CancellationToken ct = default)
+    {
+        IQueryable<Comment> query = dbContext.Comments
+            .AsNoTracking()
+            .Where(c => c.CourseId == courseId && c.ParentCommentId == null && c.DeletedAt == null);
+
+        if (chapterId.HasValue)
+        {
+            query = query.Where(c => c.ChapterId == chapterId.Value);
+        }
+
+        int totalItems = await query.CountAsync(ct).ConfigureAwait(false);
+
+        List<Comment> items = await query
+            .OrderByDescending(c => c.IsPinned)
+            .ThenByDescending(c => c.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+
+        return new PagedResult<Comment>(items, page, pageSize, totalItems);
+    }
+
+    public async Task<IReadOnlyList<Comment>> ListRepliesForParentsAsync(
+        IReadOnlyList<Guid> parentCommentIds,
+        CancellationToken ct = default)
+    {
+        if (parentCommentIds.Count == 0)
+        {
+            return Array.Empty<Comment>();
+        }
+
+        return await dbContext.Comments
+            .AsNoTracking()
+            .Where(c => c.ParentCommentId != null && parentCommentIds.Contains(c.ParentCommentId.Value) && c.DeletedAt == null)
+            .OrderBy(c => c.CreatedAt)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<int> CountCommentsAsync(Guid courseId, Guid? chapterId = null, CancellationToken ct = default)
+    {
+        IQueryable<Comment> query = dbContext.Comments
+            .Where(c => c.CourseId == courseId && c.DeletedAt == null);
+
+        if (chapterId.HasValue)
+        {
+            query = query.Where(c => c.ChapterId == chapterId.Value);
+        }
+
+        return await query.CountAsync(ct).ConfigureAwait(false);
+    }
+
+    public async Task<int> CountRootCommentsAsync(Guid courseId, Guid? chapterId = null, CancellationToken ct = default)
+    {
+        IQueryable<Comment> query = dbContext.Comments
+            .Where(c => c.CourseId == courseId && c.ParentCommentId == null && c.DeletedAt == null);
+
+        if (chapterId.HasValue)
+        {
+            query = query.Where(c => c.ChapterId == chapterId.Value);
+        }
+
+        return await query.CountAsync(ct).ConfigureAwait(false);
+    }
+
+    public async Task<int> CountPinnedCommentsAsync(Guid courseId, CancellationToken ct = default)
+    {
+        return await dbContext.Comments
+            .Where(c => c.CourseId == courseId && c.IsPinned && c.DeletedAt == null)
+            .CountAsync(ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<QuizAttempt?> GetQuizAttemptByIdAsync(Guid attemptId, CancellationToken ct = default)
+    {
+        return await dbContext.QuizAttempts
+            .FirstOrDefaultAsync(q => q.Id == attemptId, ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<QuizAttempt?> GetActiveQuizAttemptAsync(Guid userId, Guid quizBlockId, CancellationToken ct = default)
+    {
+        return await dbContext.QuizAttempts
+            .FirstOrDefaultAsync(q => q.UserId == userId && q.QuizBlockId == quizBlockId && q.Status == "IN_PROGRESS", ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<int> CountQuizAttemptsAsync(Guid userId, Guid quizBlockId, CancellationToken ct = default)
+    {
+        return await dbContext.QuizAttempts
+            .Where(q => q.UserId == userId && q.QuizBlockId == quizBlockId)
+            .CountAsync(ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyList<QuizAttempt>> ListQuizAttemptsAsync(Guid userId, Guid quizBlockId, CancellationToken ct = default)
+    {
+        return await dbContext.QuizAttempts
+            .Where(q => q.UserId == userId && q.QuizBlockId == quizBlockId)
+            .OrderBy(q => q.AttemptNo)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task AddQuizAttemptWithAnswersAsync(QuizAttempt attempt, IReadOnlyList<QuizAttemptAnswer> answers, CancellationToken ct = default)
+    {
+        await dbContext.QuizAttempts.AddAsync(attempt, ct).ConfigureAwait(false);
+        if (answers.Count > 0)
+        {
+            await dbContext.QuizAttemptAnswers.AddRangeAsync(answers, ct).ConfigureAwait(false);
+        }
+    }
+
+    public async Task<IReadOnlyList<QuizAttemptAnswer>> GetQuizAttemptAnswersAsync(Guid attemptId, CancellationToken ct = default)
+    {
+        return await dbContext.QuizAttemptAnswers
+            .Where(a => a.AttemptId == attemptId)
+            .OrderBy(a => a.QuestionPosition)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<QuizAttemptAnswer?> GetQuizAttemptAnswerAsync(Guid attemptId, Guid questionId, CancellationToken ct = default)
+    {
+        return await dbContext.QuizAttemptAnswers
+            .FirstOrDefaultAsync(a => a.AttemptId == attemptId && a.QuestionId == questionId, ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyList<QuizAttempt>> ListExpiredInProgressAttemptsAsync(DateTimeOffset now, CancellationToken ct = default)
+    {
+        return await dbContext.QuizAttempts
+            .Where(q => q.Status == "IN_PROGRESS" && q.DeadlineAt < now)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<AssignmentSubmission?> GetAssignmentSubmissionAsync(Guid userId, Guid assignmentBlockId, CancellationToken ct = default)
+    {
+        return await dbContext.AssignmentSubmissions
+            .FirstOrDefaultAsync(s => s.UserId == userId && s.AssignmentBlockId == assignmentBlockId, ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<AssignmentSubmission?> GetAssignmentSubmissionByIdAsync(Guid submissionId, CancellationToken ct = default)
+    {
+        return await dbContext.AssignmentSubmissions
+            .FirstOrDefaultAsync(s => s.Id == submissionId, ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyList<AssignmentSubmission>> ListPendingAssignmentSubmissionsAsync(Guid courseId, CancellationToken ct = default)
+    {
+        return await dbContext.AssignmentSubmissions
+            .Where(s => s.CourseId == courseId && s.Status == "SUBMITTED")
+            .OrderBy(s => s.SubmittedAt)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task AddAssignmentSubmissionAsync(AssignmentSubmission submission, CancellationToken ct = default)
+    {
+        await dbContext.AssignmentSubmissions.AddAsync(submission, ct).ConfigureAwait(false);
+    }
+
     public async Task SaveChangesAsync(CancellationToken ct = default)
     {
         await dbContext.SaveChangesAsync(ct).ConfigureAwait(false);

@@ -3,7 +3,7 @@
 - **Task**: `T-S1-INT-01`
 - **Role**: INT
 - **Branch**: `feat/T-S1-INT-01-e2e-auth-flow`
-- **Status**: `REVIEW`
+- **Status**: `DONE`
 
 ## 1. Phạm vi đã triển khai
 

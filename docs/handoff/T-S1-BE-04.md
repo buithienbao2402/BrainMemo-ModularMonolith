@@ -3,7 +3,7 @@
 - **Task**: `T-S1-BE-04`
 - **Role**: BE
 - **Branch**: `feat/T-S1-BE-04-password-flows-me`
-- **Status**: `REVIEW`
+- **Status**: `DONE`
 
 ## 1. Phạm vi đã triển khai
 

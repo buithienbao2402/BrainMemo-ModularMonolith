@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\BrainMemo.BuildingBlocks.Abstractions\BrainMemo.BuildingBlocks.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BrainMemo.SharedKernel\BrainMemo.SharedKernel.csproj" />
+  </ItemGroup>
+</Project>

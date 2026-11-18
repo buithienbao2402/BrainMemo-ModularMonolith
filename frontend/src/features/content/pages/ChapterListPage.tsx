@@ -3,12 +3,6 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Home,
   ChevronRight,
-  LayoutDashboard,
-  BookOpen,
-  Users,
-  CheckSquare,
-  GraduationCap,
-  BarChart3,
   Search,
   PlusCircle,
   Plus,
@@ -45,6 +39,7 @@ import {
   useToast,
 } from '@/shared/ui';
 import { useCourseQuery } from '@/features/course/api/courseApi';
+import { CourseManageSubNav } from '@/features/course/components/CourseManageSubNav';
 import {
   useChaptersQuery,
   useDeleteChapterMutation,
@@ -246,92 +241,8 @@ export function ChapterListPage() {
         </span>
       </nav>
 
-      {/* 2. SUB-NAVIGATION TABS: Thống nhất dùng chung thanh tab bar của trang Tổng quan */}
-      <div className="border-b border-border/70 pb-3 overflow-x-auto">
-        <div className="flex items-center gap-2 min-w-max">
-          {/* Link Tab: Tổng quan */}
-          <Link
-            to={`/courses/${courseId}/manage`}
-            className="flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-xs sm:text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-          >
-            <LayoutDashboard className="h-4 w-4" />
-            <span>Tổng quan</span>
-          </Link>
-
-          {/* Active Tab: Danh sách chương (Pill cam thống nhất) */}
-          <div className="bg-[#ff7a1a] text-[#5e2700] flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-xs sm:text-sm shadow-xs select-none">
-            <BookOpen className="h-4 w-4" />
-            <span>Danh sách chương</span>
-          </div>
-
-          {/* Link Tab: Danh sách học viên */}
-          <button
-            type="button"
-            onClick={() =>
-              pushToast({
-                title: 'Quản lý học viên',
-                description: 'Mô-đun quản lý học viên chi tiết thuộc phạm vi Slice 4 (S4).',
-                tone: 'default',
-              })
-            }
-            className="flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-xs sm:text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-          >
-            <Users className="h-4 w-4" />
-            <span>Danh sách học viên</span>
-          </button>
-
-          {/* Link Tab: Chấm điểm (badge 12) */}
-          <button
-            type="button"
-            onClick={() =>
-              pushToast({
-                title: 'Hệ thống chấm điểm',
-                description: 'Hàng đợi chấm thi & bảng điểm thuộc phạm vi Slice 8 (S8).',
-                tone: 'default',
-              })
-            }
-            className="flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-xs sm:text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-          >
-            <CheckSquare className="h-4 w-4" />
-            <span>Chấm điểm</span>
-            <span className="bg-[#93000a] text-[#ffdad6] text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-              12
-            </span>
-          </button>
-
-          {/* Link Tab: Chuẩn đầu ra */}
-          <button
-            type="button"
-            onClick={() =>
-              pushToast({
-                title: 'Chuẩn đầu ra (CLO/PLO)',
-                description: 'Hệ thống quản lý chuẩn đầu ra thuộc phạm vi Slice 9 (S9).',
-                tone: 'default',
-              })
-            }
-            className="flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-xs sm:text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-          >
-            <GraduationCap className="h-4 w-4" />
-            <span>Chuẩn đầu ra</span>
-          </button>
-
-          {/* Link Tab: Thống kê */}
-          <button
-            type="button"
-            onClick={() =>
-              pushToast({
-                title: 'Báo cáo thống kê',
-                description: 'Hệ thống phân tích & xuất báo cáo chi tiết thuộc phạm vi Slice 9 (S9).',
-                tone: 'default',
-              })
-            }
-            className="flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-xs sm:text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-          >
-            <BarChart3 className="h-4 w-4" />
-            <span>Thống kê</span>
-          </button>
-        </div>
-      </div>
+      {/* 2. SUB-NAVIGATION TABS */}
+      <CourseManageSubNav courseId={courseId} activeTab="content" />
 
       {/* 3. ONLY ME NOTICE BANNER (Chỉ hiển thị khi khóa học ở chế độ ONLY_ME) */}
       {isOnlyMeNoticeVisible && course?.accessMode === 'ONLY_ME' && (

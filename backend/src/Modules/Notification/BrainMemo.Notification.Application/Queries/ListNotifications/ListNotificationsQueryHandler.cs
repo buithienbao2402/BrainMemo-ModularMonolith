@@ -3,6 +3,7 @@ using BrainMemo.BuildingBlocks.Abstractions.Cqrs;
 using BrainMemo.Notification.Application.Abstractions;
 using BrainMemo.Notification.Application.DTOs;
 using BrainMemo.Notification.Domain.Entities;
+using BrainMemo.Notification.Domain.Enums;
 using BrainMemo.SharedKernel.Pagination;
 using BrainMemo.SharedKernel.Results;
 
@@ -40,7 +41,7 @@ internal sealed class ListNotificationsQueryHandler(
 
             dtos.Add(new NotificationDto(
                 item.Id,
-                item.Type.ToString().ToUpperInvariant(),
+                item.Type.ToSnakeCaseUpper(),
                 payloadElement,
                 title,
                 body,

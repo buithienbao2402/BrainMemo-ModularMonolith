@@ -80,3 +80,9 @@ Hãy đọc AGENT.md (đính kèm) và làm đúng task trên. Tài liệu đín
 [FE] Ảnh PNG: <SCR-...>.
 Nếu có điểm chưa rõ hoặc mâu thuẫn, hỏi tôi trước khi viết code.
 ```
+
+## 11
+
+“Không dùng npx/tải package ngoài để tra cứu; không chạy search skill trừ khi task là UI.”
+“Chỉ đọc file liên quan trực tiếp, không quét toàn repo.”
+“Chỉ chạy test của module bị đổi: vitest run <path>, không chạy full suite.”

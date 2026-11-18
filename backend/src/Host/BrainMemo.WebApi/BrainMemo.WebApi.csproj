@@ -21,6 +21,21 @@
     <ProjectReference Include="..\..\Modules\Learning\BrainMemo.Learning.Api\BrainMemo.Learning.Api.csproj" />
     <ProjectReference Include="..\..\Modules\Learning\BrainMemo.Learning.Contracts\BrainMemo.Learning.Contracts.csproj" />
     <ProjectReference Include="..\..\Modules\Learning\BrainMemo.Learning.Infrastructure\BrainMemo.Learning.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Discovery\BrainMemo.Discovery.Api\BrainMemo.Discovery.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Discovery\BrainMemo.Discovery.Contracts\BrainMemo.Discovery.Contracts.csproj" />
+    <ProjectReference Include="..\..\Modules\Discovery\BrainMemo.Discovery.Infrastructure\BrainMemo.Discovery.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Assessment\BrainMemo.Assessment.Api\BrainMemo.Assessment.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Assessment\BrainMemo.Assessment.Contracts\BrainMemo.Assessment.Contracts.csproj" />
+    <ProjectReference Include="..\..\Modules\Assessment\BrainMemo.Assessment.Infrastructure\BrainMemo.Assessment.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Moderation\BrainMemo.Moderation.Api\BrainMemo.Moderation.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Moderation\BrainMemo.Moderation.Contracts\BrainMemo.Moderation.Contracts.csproj" />
+    <ProjectReference Include="..\..\Modules\Moderation\BrainMemo.Moderation.Infrastructure\BrainMemo.Moderation.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Messaging\BrainMemo.Messaging.Api\BrainMemo.Messaging.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Messaging\BrainMemo.Messaging.Contracts\BrainMemo.Messaging.Contracts.csproj" />
+    <ProjectReference Include="..\..\Modules\Messaging\BrainMemo.Messaging.Infrastructure\BrainMemo.Messaging.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\AI\BrainMemo.AI.Api\BrainMemo.AI.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\AI\BrainMemo.AI.Contracts\BrainMemo.AI.Contracts.csproj" />
+    <ProjectReference Include="..\..\Modules\AI\BrainMemo.AI.Infrastructure\BrainMemo.AI.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

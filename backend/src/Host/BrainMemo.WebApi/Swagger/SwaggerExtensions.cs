@@ -22,6 +22,9 @@ public static class SwaggerExtensions
                 Description = "BrainMemo Modular Monolith Web API (/api/v1)",
             });
 
+            // Phân biệt các Schema trùng tên class giữa các Module bằng Full Namespace
+            options.CustomSchemaIds(type => (type.FullName ?? type.Name).Replace("+", "."));
+
             OpenApiSecurityScheme bearerScheme = new()
             {
                 Name = "Authorization",

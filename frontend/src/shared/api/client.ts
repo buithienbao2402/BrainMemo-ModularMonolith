@@ -41,6 +41,7 @@ export interface ManagedApiClient {
 const NO_AUTO_REFRESH_SUFFIXES = [
   '/auth/refresh',
   '/auth/login',
+  '/auth/google',
   '/auth/register',
   '/auth/forgot-password',
   '/auth/reset-password',

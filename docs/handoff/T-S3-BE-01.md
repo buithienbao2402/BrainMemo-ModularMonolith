@@ -5,7 +5,7 @@
 - **Mô tả:** Content Domain, Resource Library & Drafting (Batched): Domain + EF Core Migration 15 bảng `cnt_*` (không outbox per ADR-02); Quản lý tài nguyên khóa học: commit `uploadKey` qua S3/R2 storage, whitelist MIME & kích thước (DEC-05: Ảnh ≤ 5 MB, Tệp ≤ 20 MB), xóa mềm (trả 409 `RESOURCE_IN_USE` nếu đang có Block sử dụng), presigned download GET (TTL 15 phút, DEC-06); CRUD chương (`cnt_chapter`), sắp xếp thứ tự (`reorder`), lấy mục lục; Lưu nháp (`PUT /courses/{id}/chapters/{chapterId}`): Khóa lạc quan (`baseVersionNo`), trả 409 `VERSION_CONFLICT` nếu xung đột; 7 loại Block (`RICH_TEXT`, `IMAGE`, `VIDEO`, `AUDIO`, `FILE`, `MARKDOWN`, `FLASHCARD`, `QUESTION`, `ASSIGNMENT`, `QUIZ`); làm sạch HTML (`HtmlSanitizer`) chống XSS; tạo JSON snapshot (`schemaVersion=1`) bất biến chỉ chứa `questionId` (tuyệt đối KHÔNG chứa đáp án/options); Khung dịch vụ `IContentContract`.
 - **Nhánh Git:** `feat/T-S3-BE-01-content-drafting`
 - **Vai trò:** Backend Developer (BE)
-- **Tình trạng:** REVIEW (Đồng bộ toàn diện với develop, 61/61 tests pass, build 0 warning 0 error)
+- **Tình trạng:** DONE (Đồng bộ toàn diện với develop, 61/61 tests pass, build 0 warning 0 error)
 
 ---
 

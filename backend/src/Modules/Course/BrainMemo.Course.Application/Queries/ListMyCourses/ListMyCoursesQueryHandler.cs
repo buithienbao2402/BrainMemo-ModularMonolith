@@ -1,6 +1,7 @@
 using BrainMemo.BuildingBlocks.Abstractions.Cqrs;
 using BrainMemo.BuildingBlocks.Abstractions.Storage;
 using BrainMemo.Course.Application.Abstractions;
+using BrainMemo.Course.Application.Common;
 using BrainMemo.Course.Contracts.Dtos;
 using BrainMemo.Profile.Contracts;
 using BrainMemo.Profile.Contracts.Dtos;
@@ -74,7 +75,8 @@ public sealed class ListMyCoursesQueryHandler(
                 RatingAvg: null,
                 RatingCount: 0,
                 NominationCount: nominationCount,
-                ProgressPercent: null));
+                ProgressPercent: null,
+                PublishStatus: c.PublishStatus.ToApiString()));
         }
 
         PagedResult<CourseCardDto> result = new(

@@ -10,7 +10,9 @@ import {
   Lock,
   RotateCcw,
   AlertTriangle,
+  Sparkles,
 } from 'lucide-react';
+import { AiGenerateModal } from '@/features/ai';
 import {
   Button,
   Dialog,
@@ -167,6 +169,9 @@ export function ChapterEditorPage() {
   // Publish blocked dialog
   const [publishBlockedDialogOpen, setPublishBlockedDialogOpen] = useState(false);
   const [publishBlockedMessage, setPublishBlockedMessage] = useState('');
+
+  // AI Generate Modal
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
   // Chapter Draft Query (for edit mode)
   const {
@@ -1214,6 +1219,21 @@ export function ChapterEditorPage() {
 
           {/* Right: Actions */}
           <div className="flex items-center gap-2 shrink-0">
+            {/* Tạo nội dung với AI */}
+            {!isNewMode && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsAiModalOpen(true)}
+                className="text-xs h-8 px-3 font-medium border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-300 dark:hover:bg-purple-950/40 flex items-center gap-1.5"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                <span className="hidden md:inline">Tạo nội dung với AI</span>
+                <span className="md:hidden">AI</span>
+              </Button>
+            )}
+
             {/* Lưu nháp (Chỉ lưu khi click) */}
             <Button
               type="button"
@@ -1551,6 +1571,19 @@ export function ChapterEditorPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 12. MODAL: AI GENERATION */}
+      <AiGenerateModal
+        isOpen={isAiModalOpen}
+        onClose={() => setIsAiModalOpen(false)}
+        courseId={courseId}
+        currentChapterId={chapterId}
+        defaultTab="FLASHCARD"
+        onSuccess={() => {
+          setIsAiModalOpen(false);
+          refetch();
+        }}
+      />
     </div>
   );
 }

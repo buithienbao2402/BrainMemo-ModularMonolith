@@ -540,11 +540,11 @@ sequenceDiagram
 
 ---
 
-### SD-10 (AI Module): Sinh nội dung AI & Quét kiểm duyệt tự động
+### SD-10 (AI Module): Sinh nội dung AI (Quiz & Flashcard)
 
-- **Mục đích nghiệp vụ:** Chủ khóa dùng AI sinh câu hỏi (luôn ở trạng thái Nháp, duyệt mới thành Sẵn sàng - Human-in-the-loop). Mô hình PhoBERT quét ngầm phân loại mức độ độc hại sau khi lưu; vượt ngưỡng cảnh báo thì tự động gắn cờ tạo báo cáo chuyển Admin xử lý (AI không tự ý xóa bài/xử phạt).
-- **Mã FR liên quan:** `FR-AI-01`, `FR-AI-02`, `FR-AI-03`, `FR-MOD-03`, `Mục 3.10.1`, `NFR-13`, `NFR-22`.
-- **Actor và Lifelines:** `Owner`, `AI`, `LLM`, `Content`, `Source` (Learning/Course), `PhoBERT`, `Moderation`.
+- **Mục đích nghiệp vụ:** Chủ khóa dùng AI sinh câu hỏi hoặc flashcard (luôn ở trạng thái Nháp, duyệt mới thành Sẵn sàng - Human-in-the-loop). *(Đã loại bỏ nhánh quét vi phạm PhoBERT theo DEC-30).*
+- **Mã FR liên quan:** `FR-AI-01`, `FR-AI-02`, `Mục 3.10.1`, `NFR-13`, `NFR-22`.
+- **Actor và Lifelines:** `Owner`, `AI`, `LLM`, `Content`.
 
 ```mermaid
 sequenceDiagram
@@ -553,12 +553,8 @@ sequenceDiagram
     participant AI as "AI Module"
     participant LLM as "External LLM API"
     participant Content as "Content Module"
-    participant Source as "Learning / Course (nguồn event)"
-    participant PhoBERT as "PhoBERT Service (Python)"
-    participant Moderation as "Moderation Module"
 
-    %% Nhánh 1: Sinh câu hỏi tự động (Human-in-the-loop)
-    Owner->>AI: Yêu cầu sinh câu hỏi (courseId, văn bản dán hoặc chapterId, số lượng, độ khó)
+    Owner->>AI: Yêu cầu sinh câu hỏi / flashcard (courseId, văn bản dán hoặc chapterId, số lượng, độ khó)
     activate AI
     AI->>AI: Kiểm tra và tăng ai_user_daily_quota (used_count < quota_limit)
     alt Hết hạn mức gọi AI trong ngày
@@ -568,34 +564,128 @@ sequenceDiagram
             AI->>Content: [Contract] GetChapterTextForAi(chapterId, ownerId)
             Content-->>AI: Nội dung văn bản chương học
         end
-        AI->>LLM: Sinh câu hỏi trắc nghiệm (timeout 30s)
-        LLM-->>AI: Danh sách câu hỏi, phương án và đáp án giải thích
-        AI->>Content: [Contract] ImportAiGeneratedQuestions(courseId, ownerId, aiJobId, items)
-        Content->>Content: Lưu vào cnt_question với status = 'DRAFT', origin = 'AI'
-        Content-->>AI: Đã lưu bản nháp vào ngân hàng
-        AI-->>Owner: Hiển thị danh sách câu hỏi nháp
-        Owner->>Content: Xem trước, chỉnh sửa câu từ và bấm Duyệt (DRAFT -> READY)
-        Content-->>Owner: Câu hỏi chính thức sẵn sàng đưa vào đề thi
-    end
-    deactivate AI
-
-    %% Nhánh 2: Quét kiểm duyệt độc hại ngầm bằng PhoBERT (chạy sau lưu, không chặn người dùng)
-    Source-->>AI: [Event] CommentCreated / CourseUpserted (eligible = true, nội dung cần quét)
-    activate AI
-    AI->>PhoBERT: Phân tích độ độc hại văn bản (timeout 10s)
-    alt Dịch vụ AI lỗi hoặc timeout
-        PhoBERT-->>AI: Lỗi kết nối
-        AI->>AI: Ghi ai_moderation_scan_log (error_message, flagged = FALSE) và bỏ qua
-    else Phân tích thành công
-        PhoBERT-->>AI: Trả về toxicity_score
-        AI->>AI: Ghi ai_moderation_scan_log (score, threshold_used, flagged = (score >= threshold))
-        opt score  >=  Ngưỡng cảnh báo Admin cấu hình
-            AI->>Moderation: [Contract] SubmitAiFlag(aiFindingId, targetType, targetId, score, contentSnapshot)
-            Moderation->>Moderation: Tạo bản ghi mod_report nguồn 'AI', status = 'PENDING'
-        end
+        AI->>LLM: Sinh câu hỏi trắc nghiệm / flashcard (timeout 30s)
+        LLM-->>AI: Danh sách item sinh ra
+        AI->>Content: [Contract] ImportAiGeneratedQuestions / ImportAiGeneratedFlashcards
+        Content->>Content: Lưu ở trạng thái 'DRAFT' / 'PENDING'
+        Content-->>AI: Đã lưu bản nháp
+        AI-->>Owner: Trả về jobId (202 Accepted -> FE polling)
+        Owner->>Content: Xem trước, chỉnh sửa và bấm Duyệt (DRAFT -> READY)
+        Content-->>Owner: Nội dung chính thức sẵn sàng sử dụng
     end
     deactivate AI
 ```
 
-- **Mô tả ngắn gọn:** Sinh quiz bằng LLM $\to$ lưu bản Nháp $\to$ Chủ khóa duyệt mới đưa vào ngân hàng đề. Quét PhoBERT nhận sự kiện chạy nền; nếu phát hiện vi phạm thì tạo báo cáo gắn cờ gửi về hàng đợi Admin, AI không tự ý xóa dữ liệu.
-- **Quy tắc quan trọng:** Khóa Only Me không bao giờ bị quét. Quota gọi AI được kiểm soát chặt chẽ theo ngày.
+- **Mô tả ngắn gọn:** Sinh quiz/flashcard bất đồng bộ bằng LLM $\to$ lưu bản Nháp $\to$ Chủ khóa duyệt mới đưa vào ngân hàng đề / chương học.
+
+---
+
+### SD-11 (Course & Moderation): Kiểm duyệt xuất bản khóa học
+
+- **Mục đích nghiệp vụ:** Mọi khóa học mới tạo ở trạng thái `DRAFT` (chỉ Chủ khóa xem được). Để hiển thị với người khác trên nền tảng, Chủ khóa phải gửi duyệt và được Admin phê duyệt xuất bản.
+- **Mã FR liên quan:** `FR-CRS-17`, `FR-CRS-18`, `FR-CRS-19`, `FR-MOD-16`.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Owner as "Chủ khóa"
+    participant Course as "Course Module"
+    participant Moderation as "Moderation Module"
+    actor Admin as "Admin"
+    participant Discovery as "Discovery Module"
+    participant Notification as "Notification Module"
+
+    Owner->>Course: Gửi yêu cầu xuất bản (POST /courses/{id}/submit-review)
+    Course->>Course: Kiểm tra hợp lệ -> chuyển publish_status = 'PENDING_APPROVAL'
+    Course--)Notification: [Outbox Event] CourseSubmittedForReview
+    Course-->>Owner: 200 OK (Chờ kiểm duyệt)
+
+    Admin->>Moderation: Xem danh sách khóa chờ duyệt (GET /admin/courses/review-queue)
+    Moderation->>Course: [Contract] GetCourseAccess(courseId, adminId, MODERATION_REVIEW)
+    Course-->>Moderation: Trả thông tin & nội dung khóa học (chỉ đọc)
+
+    alt Admin Phê duyệt
+        Admin->>Moderation: Phê duyệt xuất bản (POST /admin/courses/{id}/approve)
+        Moderation->>Course: [Contract] ApproveCoursePublish(courseId, adminId)
+        Course->>Course: Cập nhật publish_status = 'PUBLISHED', published_at = now
+        Course--)Discovery: [Outbox Event] CourseUpserted(eligible = true)
+        Discovery->>Discovery: Ghi vào dsc_course_entry (xuất hiện trên nền tảng)
+        Moderation->>Moderation: Ghi mod_audit_log
+        Moderation--)Notification: [Event] CourseApprovalDecided(APPROVED)
+        Notification-->>Owner: Thông báo khóa học đã được xuất bản
+    else Admin Từ chối
+        Admin->>Moderation: Từ chối (POST /admin/courses/{id}/reject, reason)
+        Moderation->>Course: [Contract] RejectCoursePublish(courseId, adminId, reason)
+        Course->>Course: Cập nhật publish_status = 'REJECTED', rejection_reason = reason
+        Moderation->>Moderation: Ghi mod_audit_log
+        Moderation--)Notification: [Event] CourseApprovalDecided(REJECTED, reason)
+        Notification-->>Owner: Thông báo lý do bị từ chối để chỉnh sửa và gửi lại
+    end
+```
+
+---
+
+### SD-12 (Learning): Hỏi đáp theo từng bài học (Lesson Q&A)
+
+- **Mục đích nghiệp vụ:** Học viên đang học đặt câu hỏi gắn với bài học (Chương) cụ thể; Giảng viên và học viên khác trả lời; đánh dấu Đã giải đáp.
+- **Mã FR liên quan:** `FR-LRN-10`, `FR-LRN-11`, `FR-LRN-12`, `FR-LRN-13`.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Learner as "Học viên"
+    actor Instructor as "Giảng viên (Chủ khóa)"
+    participant Learning as "Learning Module"
+    participant Course as "Course Module"
+    participant Notification as "Notification Module"
+
+    Learner->>Learning: Đặt câu hỏi trong bài học (POST /courses/{id}/chapters/{chapterId}/qa)
+    Learning->>Course: [Contract] CheckChapterAccess(courseId, chapterId, learnerId)
+    Course-->>Learning: Hợp lệ (ACTIVE & đã mở khóa chương)
+    Learning->>Learning: Lưu câu hỏi gốc vào lrn_comment (title, content, chapter_id, is_resolved=false)
+    Learning--)Notification: [Event] LessonQuestionAsked -> thông báo tới Giảng viên
+    Learning-->>Learner: 201 Created
+
+    Instructor->>Learning: Trả lời câu hỏi (POST .../qa/{qaId}/replies)
+    Learning->>Learning: Lưu reply (parent_comment_id = qaId)
+    Learning--)Notification: [Event] LessonQuestionReplied -> thông báo tới Học viên
+    Learning-->>Instructor: 201 Created
+
+    Learner->>Learning: Đánh dấu đã giải đáp (PUT .../qa/{qaId}/resolve)
+    Learning->>Learning: Cập nhật is_resolved = true, resolved_by_user_id = learnerId
+    Learning-->>Learner: 200 OK
+```
+
+---
+
+### SD-13 (Messaging): Nhắn tin trực tiếp 1-1 với Giảng viên
+
+- **Mục đích nghiệp vụ:** Học viên đang theo học nhắn tin riêng tư 1-1 với Giảng viên theo từng khóa học.
+- **Mã FR liên quan:** `FR-MSG-01`, `FR-MSG-02`, `FR-MSG-03`, `FR-MSG-04`, `FR-MSG-05`.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Learner as "Học viên"
+    actor Instructor as "Giảng viên"
+    participant Messaging as "Messaging Module"
+    participant Course as "Course Module"
+    participant Notification as "Notification Module"
+
+    Learner->>Messaging: Mở / tạo hội thoại với giảng viên (POST /courses/{id}/messages/conversations)
+    Messaging->>Course: [Contract] GetCourseAccess(courseId, learnerId)
+    Course-->>Messaging: Khóa PUBLISHED, học viên ACTIVE, trả về ownerUserId
+    Messaging->>Messaging: Tìm hoặc tạo msg_conversation(course_id, student_id, instructor_id)
+    Messaging-->>Learner: Trả conversationId
+
+    Learner->>Messaging: Gửi tin nhắn (POST /messages/conversations/{convId}/messages)
+    Messaging->>Messaging: Lưu msg_message, cập nhật last_message_at & preview
+    Messaging--)Notification: [Event] NewMessageReceived -> tạo thông báo cho Giảng viên
+    Messaging-->>Learner: 201 Created
+
+    Instructor->>Messaging: Xem danh sách hội thoại & đọc tin nhắn
+    Instructor->>Messaging: Đánh dấu đã đọc (PUT /messages/conversations/{convId}/read)
+    Messaging->>Messaging: Cập nhật read_at cho các tin nhắn chưa đọc
+    Instructor->>Messaging: Gửi tin nhắn phản hồi
+    Messaging--)Notification: [Event] NewMessageReceived -> thông báo cho Học viên
+```

@@ -11,7 +11,7 @@
    - Di chuyển `DAC_TA_YEU_CAU_HE_THONG.md`, `THIET_KE_CSDL.md`, `SEQUENCE_DIAGRAMS.md`, `CLASS_DIAGRAM.md`, `KIEN_TRUC_HE_THONG.md` từ `docs/` sang `docs/spec/`.
    - Giữ nguyên các file điều phối và tài liệu phụ ở `docs/` (`DECISIONS.md`, `REPO_STRUCTURE.md`, `FRONTEND_SPEC.md`, `PRIORITY.md`, `BACKLOG.md`, `BACKLOG_STATUS.md`, `PROMPTS_ANTIGRAVITY.md`, `BFD.pdf`, `USE_CASE_TONG_QUAT.jpg`, `schema.sql`).
    - Khởi tạo `docs/OPEN_QUESTIONS.md`, `docs/handoff/`, `docs/design/figma-png/`.
-   - Khởi tạo bảng trạng thái cho toàn bộ 92 task trong `docs/BACKLOG_STATUS.md` và đặt `T-S0-OPS-01` sang `REVIEW`.
+   - Khởi tạo bảng trạng thái cho toàn bộ 92 task trong `docs/BACKLOG_STATUS.md` và đặt `T-S0-OPS-01` sang `DONE`.
 
 2. **Khởi tạo cây thư mục monorepo chuẩn theo `docs/REPO_STRUCTURE.md`:**
    - `backend/src/BuildingBlocks/{BrainMemo.SharedKernel,BrainMemo.BuildingBlocks.Abstractions,BrainMemo.BuildingBlocks.Infrastructure}`

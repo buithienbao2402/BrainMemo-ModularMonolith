@@ -96,21 +96,6 @@ services:
       timeout: 5s
       retries: 10
 
-  ai-service:
-    build:
-      context: ../ai-service
-      dockerfile: Dockerfile
-    container_name: brainmemo-ai-service-dev
-    restart: unless-stopped
-    ports:
-      - "${AI_SERVICE_PORT:-8000}:8000"
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
-
 volumes:
   mysql_data:
   minio_data:

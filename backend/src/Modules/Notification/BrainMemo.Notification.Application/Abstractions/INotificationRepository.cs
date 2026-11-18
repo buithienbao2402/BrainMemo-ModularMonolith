@@ -17,6 +17,8 @@ public interface INotificationRepository
 
     Task<NotificationItem?> FindByIdAsync(Guid id, Guid recipientUserId, CancellationToken ct = default);
 
+    Task<bool> ExistsByEventAndRecipientAsync(Guid sourceEventId, Guid recipientUserId, CancellationToken ct = default);
+
     Task<int> MarkAllAsReadAsync(Guid recipientUserId, DateTimeOffset utcNow, CancellationToken ct = default);
 
     Task<Result> AddNotificationAsync(NotificationItem item, CancellationToken ct = default);

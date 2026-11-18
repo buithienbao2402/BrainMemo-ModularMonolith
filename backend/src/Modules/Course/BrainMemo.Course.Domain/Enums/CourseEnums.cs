@@ -14,6 +14,14 @@ public enum CourseStatus
     Paused = 3,
 }
 
+public enum CoursePublishStatus
+{
+    Draft = 1,
+    PendingApproval = 2,
+    Published = 3,
+    Rejected = 4,
+}
+
 public enum EnrollmentStatus
 {
     PendingApproval = 1,

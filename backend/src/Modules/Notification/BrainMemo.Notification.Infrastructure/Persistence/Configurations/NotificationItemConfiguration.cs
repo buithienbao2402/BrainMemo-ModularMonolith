@@ -1,4 +1,5 @@
 using BrainMemo.Notification.Domain.Entities;
+using BrainMemo.Notification.Infrastructure.Persistence.Converters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -24,7 +25,7 @@ public sealed class NotificationItemConfiguration : IEntityTypeConfiguration<Not
 
         builder.Property(n => n.Type)
             .HasColumnName("type")
-            .HasConversion<string>()
+            .HasConversion<NotificationTypeValueConverter>()
             .HasMaxLength(50)
             .IsRequired();
 

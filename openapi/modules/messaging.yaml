@@ -1,0 +1,65 @@
+paths:
+  /courses/{courseId}/messages/conversations:
+    post:
+      {tags: [Messaging], operationId: openOrCreateConversation, summary: 'Mở hoặc tạo cuộc trò chuyện 1-1 với Giảng viên theo khóa học (FR-MSG-01)',
+       parameters: [{$ref: '#/components/parameters/CourseId'}],
+       responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/ConversationDto'}}}}}}
+  /messages/conversations:
+    get:
+      {tags: [Messaging], operationId: listConversations, summary: 'Danh sách cuộc trò chuyện của tôi (FR-MSG-02)',
+       parameters: [{name: courseId, in: query, schema: {type: string, format: uuid}}, {$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}],
+       responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {items: {type: array, items: {$ref: '#/components/schemas/ConversationDto'}}, meta: {$ref: '#/components/schemas/PageMeta'}}}}}}}}
+  /messages/conversations/{id}:
+    get:
+      {tags: [Messaging], operationId: getConversation, summary: 'Chi tiết cuộc trò chuyện',
+       parameters: [{$ref: '#/components/parameters/Id'}],
+       responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/ConversationDto'}}}}}}
+  /messages/conversations/{id}/messages:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    get:
+      {tags: [Messaging], operationId: listMessages, summary: 'Lịch sử tin nhắn phân trang (FR-MSG-03)',
+       parameters: [{$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}],
+       responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {items: {type: array, items: {$ref: '#/components/schemas/MessageDto'}}, meta: {$ref: '#/components/schemas/PageMeta'}}}}}}}}
+    post:
+      {tags: [Messaging], operationId: sendMessage, summary: 'Gửi tin nhắn mới (FR-MSG-03)',
+       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/SendMessageRequest'}}}},
+       responses: {'201': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/MessageDto'}}}}}}
+  /messages/conversations/{id}/read:
+    put:
+      {tags: [Messaging], operationId: markConversationRead, summary: 'Đánh dấu đã đọc các tin nhắn từ đối phương (FR-MSG-04)',
+       parameters: [{$ref: '#/components/parameters/Id'}],
+       responses: {'204': {description: OK}}}
+  /messages/unread-count:
+    get:
+      {tags: [Messaging], operationId: getUnreadMessagesCount, summary: 'Tổng số tin nhắn chưa đọc',
+       responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {unreadCount: {type: integer}}}}}}}}
+components:
+  schemas:
+    SendMessageRequest:
+      type: object
+      required: [content]
+      properties:
+        content: {type: string, minLength: 1, maxLength: 5000}
+        attachmentUploadKey: {type: string, nullable: true}
+    ConversationDto:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        courseId: {type: string, format: uuid}
+        courseName: {type: string}
+        student: {$ref: '#/components/schemas/UserRef'}
+        instructor: {$ref: '#/components/schemas/UserRef'}
+        lastMessageAt: {type: string, format: date-time}
+        lastMessagePreview: {type: string, nullable: true}
+        unreadCount: {type: integer}
+        createdAt: {type: string, format: date-time}
+    MessageDto:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        conversationId: {type: string, format: uuid}
+        senderUserId: {type: string, format: uuid}
+        content: {type: string}
+        attachmentUrl: {type: string, nullable: true}
+        readAt: {type: string, format: date-time, nullable: true}
+        createdAt: {type: string, format: date-time}

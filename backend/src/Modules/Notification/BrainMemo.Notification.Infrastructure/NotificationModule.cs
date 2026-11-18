@@ -1,7 +1,10 @@
 using BrainMemo.BuildingBlocks.Abstractions.Email;
 using BrainMemo.BuildingBlocks.Abstractions.Events;
 using BrainMemo.BuildingBlocks.Abstractions.Modules;
+using BrainMemo.Content.Contracts.Events;
+using BrainMemo.Course.Contracts.Events;
 using BrainMemo.Identity.Contracts.Events;
+using BrainMemo.Learning.Contracts.Events;
 using BrainMemo.Notification.Application.Abstractions;
 using BrainMemo.Notification.Application.EventHandlers;
 using BrainMemo.Notification.Application.Options;
@@ -47,5 +50,10 @@ public sealed class NotificationModule : IModule
         services.AddScoped<IIntegrationEventHandler<EmailVerificationRequested>, EmailVerificationRequestedEventHandler>();
         services.AddScoped<IIntegrationEventHandler<PasswordResetRequested>, PasswordResetRequestedEventHandler>();
         services.AddScoped<IIntegrationEventHandler<AccountLocked>, AccountLockedEventHandler>();
+        services.AddScoped<IIntegrationEventHandler<EnrollmentChanged>, EnrollmentChangedEventHandler>();
+        services.AddScoped<IIntegrationEventHandler<CommentCreated>, CommentCreatedEventHandler>();
+        services.AddScoped<IIntegrationEventHandler<ChapterPublished>, ChapterPublishedEventHandler>();
+        services.AddScoped<IIntegrationEventHandler<BrainMemo.Course.Contracts.Events.CourseApprovalDecided>, CourseApprovalDecidedEventHandler>();
+        services.AddScoped<IIntegrationEventHandler<BrainMemo.Messaging.Contracts.Events.NewMessageReceived>, NewMessageReceivedEventHandler>();
     }
 }

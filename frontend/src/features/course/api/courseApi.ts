@@ -233,7 +233,30 @@ export function useNominateCourseMutation(courseId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.courses.detail(courseId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.nominationsSummary(courseId) });
     },
+  });
+}
+
+export interface NominationSummaryDto {
+  nominationCount: number;
+  hasNominated: boolean;
+}
+
+/**
+ * Get nomination count and user status for a course (FR-CRS-15, 16).
+ */
+export function useNominationSummaryQuery(courseId: string) {
+  return useQuery({
+    queryKey: queryKeys.courses.nominationsSummary(courseId),
+    queryFn: async (): Promise<NominationSummaryDto> => {
+      return unwrapApi(
+        apiClient.GET('/courses/{courseId}/nominations/summary' as any, {
+          params: { path: { courseId } },
+        })
+      );
+    },
+    enabled: !!courseId,
   });
 }
 
@@ -255,6 +278,7 @@ export function useWithdrawNominationMutation(courseId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.courses.detail(courseId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.nominationsSummary(courseId) });
     },
   });
 }
@@ -404,4 +428,263 @@ export function useRejectEnrollmentRequestMutation(courseId: string) {
     },
   });
 }
+
+export interface ListEnrollmentsResponse {
+  items?: EnrollmentDto[];
+  meta?: PageMeta;
+}
+
+/**
+ * List enrollments for a course with optional status filter (FR-CRS-12).
+ */
+export function useEnrollmentsQuery(
+  courseId: string,
+  params?: { status?: string; page?: number; pageSize?: number }
+) {
+  const { status, page = 1, pageSize = 20 } = params ?? {};
+
+  return useQuery({
+    queryKey: queryKeys.courses.students(courseId, status),
+    queryFn: async (): Promise<ListEnrollmentsResponse> => {
+      return unwrapApi(
+        apiClient.GET('/courses/{courseId}/enrollments', {
+          params: {
+            path: { courseId },
+            query: {
+              ...(status ? { status: status as any } : {}),
+              page,
+              pageSize,
+            },
+          },
+        })
+      );
+    },
+    enabled: Boolean(courseId),
+  });
+}
+
+/**
+ * Invite a learner by email (FR-CRS-09).
+ */
+export function useInviteLearnerMutation(courseId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (email: string): Promise<EnrollmentDto> => {
+      return unwrapApi(
+        apiClient.POST('/courses/{courseId}/invitations', {
+          params: {
+            path: { courseId },
+          },
+          body: { email },
+        })
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.students(courseId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.overview(courseId) });
+    },
+  });
+}
+
+/**
+ * Decide (accept / reject) an enrollment request for private course (FR-CRS-10).
+ */
+export function useDecideEnrollmentRequestMutation(courseId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      requestId,
+      decision,
+    }: {
+      requestId: string;
+      decision: 'ACCEPTED' | 'REJECTED';
+    }): Promise<void> => {
+      return unwrapApi(
+        apiClient.POST('/courses/{courseId}/enrollment-requests/{requestId}/decision', {
+          params: {
+            path: { courseId, requestId },
+          },
+          body: { decision },
+        })
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.students(courseId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.overview(courseId) });
+    },
+  });
+}
+
+/**
+ * Remove a learner from a course (FR-CRS-13).
+ */
+export function useRemoveLearnerMutation(courseId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (userId: string): Promise<void> => {
+      return unwrapApi(
+        apiClient.DELETE('/courses/{courseId}/enrollments/{userId}', {
+          params: {
+            path: { courseId, userId },
+          },
+        })
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.students(courseId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.overview(courseId) });
+    },
+  });
+}
+
+export interface ChapterAccessDto {
+  accessMode: 'PUBLIC' | 'PROTECTED';
+  passcode?: string;
+  passcodeVersion?: number;
+}
+
+/**
+ * Get chapter access configuration (FR-CRS-07).
+ */
+export function useChapterAccessQuery(courseId: string, chapterId: string) {
+  return useQuery({
+    queryKey: queryKeys.content.chapterAccess(courseId, chapterId),
+    queryFn: async (): Promise<ChapterAccessDto> => {
+      const res = await unwrapApi(
+        apiClient.GET('/courses/{courseId}/chapters/{chapterId}/access', {
+          params: {
+            path: { courseId, chapterId },
+          },
+        })
+      );
+      return res as unknown as ChapterAccessDto;
+    },
+    enabled: Boolean(courseId && chapterId),
+  });
+}
+
+/**
+ * Configure chapter access mode and passcode (FR-CRS-07).
+ */
+export function useSetChapterAccessMutation(courseId: string, chapterId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (body: {
+      accessMode: 'PUBLIC' | 'PROTECTED';
+      passcode?: string;
+    }): Promise<void> => {
+      return unwrapApi(
+        apiClient.PUT('/courses/{courseId}/chapters/{chapterId}/access', {
+          params: {
+            path: { courseId, chapterId },
+          },
+          body: {
+            accessMode: body.accessMode,
+            passcode: body.passcode || '',
+          },
+        })
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.content.chapterAccess(courseId, chapterId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.content.chapters(courseId),
+      });
+    },
+  });
+}
+
+/**
+ * Unlock a protected chapter using passcode (FR-CRS-07).
+ */
+export function useUnlockChapterMutation(courseId: string, chapterId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (passcode: string): Promise<void> => {
+      return unwrapApi(
+        apiClient.POST('/courses/{courseId}/chapters/{chapterId}/unlock', {
+          params: {
+            path: { courseId, chapterId },
+          },
+          body: { passcode },
+        })
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.learning.chapter(courseId, chapterId),
+      });
+    },
+  });
+}
+
+/**
+ * Submit course for Admin publish approval (FR-CRS-17).
+ */
+export function useSubmitCourseReviewMutation(courseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (): Promise<CourseDto> => {
+      return unwrapApi(
+        apiClient.POST('/courses/{courseId}/submit-review', {
+          params: { path: { courseId } },
+        })
+      );
+    },
+    onSuccess: (updated) => {
+      queryClient.setQueryData(queryKeys.courses.detail(courseId), updated);
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.all });
+    },
+  });
+}
+
+/**
+ * Cancel pending publish review (FR-CRS-18).
+ */
+export function useCancelCourseReviewMutation(courseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (): Promise<CourseDto> => {
+      return unwrapApi(
+        apiClient.POST('/courses/{courseId}/cancel-review', {
+          params: { path: { courseId } },
+        })
+      );
+    },
+    onSuccess: (updated) => {
+      queryClient.setQueryData(queryKeys.courses.detail(courseId), updated);
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.all });
+    },
+  });
+}
+
+/**
+ * Unpublish a published course back to DRAFT (FR-CRS-19).
+ */
+export function useUnpublishCourseMutation(courseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (): Promise<CourseDto> => {
+      return unwrapApi(
+        apiClient.POST('/courses/{courseId}/unpublish', {
+          params: { path: { courseId } },
+        })
+      );
+    },
+    onSuccess: (updated) => {
+      queryClient.setQueryData(queryKeys.courses.detail(courseId), updated);
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.all });
+    },
+  });
+}
+
+
+
 

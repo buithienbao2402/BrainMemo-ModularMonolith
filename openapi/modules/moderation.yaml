@@ -7,7 +7,7 @@ paths:
   /admin/reports:
     get:
       {tags: [Admin], operationId: adminListReports, summary: Hàng đợi (FR-MOD-03),
-       parameters: [{name: status, in: query, schema: {type: string, enum: [PENDING, ACCEPTED, REJECTED]}}, {name: source, in: query, schema: {type: string, enum: [USER, AI]}}, {name: targetType, in: query, schema: {type: string, enum: [COURSE, COMMENT]}}, {$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}],
+       parameters: [{name: status, in: query, schema: {type: string, enum: [PENDING, ACCEPTED, REJECTED]}}, {name: targetType, in: query, schema: {type: string, enum: [COURSE, COMMENT]}}, {$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}],
        responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {items: {type: array, items: {$ref: '#/components/schemas/ReportDto'}}, meta: {$ref: '#/components/schemas/PageMeta'}}}}}}}}
   /admin/reports/{id}:
     get: {tags: [Admin], operationId: adminGetReport, summary: 'Chi tiết (kèm bằng chứng, URL ảnh Presigned)', parameters: [{$ref: '#/components/parameters/Id'}], responses: {'200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/ReportDto'}}}}}}
@@ -43,9 +43,26 @@ paths:
        parameters: [{name: action, in: query, schema: {type: string}}, {name: objectType, in: query, schema: {type: string}}, {name: actorUserId, in: query, schema: {type: string, format: uuid}}, {name: from, in: query, schema: {type: string, format: date-time}}, {name: to, in: query, schema: {type: string, format: date-time}}, {$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}],
        responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {items: {type: array, items: {type: object, additionalProperties: true}}, meta: {$ref: '#/components/schemas/PageMeta'}}}}}}}}
   /admin/dashboard:
-    get: {tags: [Admin], operationId: adminGetDashboard, summary: Dashboard (FR-MOD-15), responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {pendingReports: {type: integer}, pendingAiFlags: {type: integer}, lockedUsers: {type: array, items: {type: object}}, hiddenCourses: {type: array, items: {type: object}}}}}}}}}
+    get: {tags: [Admin], operationId: adminGetDashboard, summary: Dashboard (FR-MOD-15), responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {pendingReports: {type: integer}, pendingCourseReviews: {type: integer}, lockedUsers: {type: array, items: {type: object}}, hiddenCourses: {type: array, items: {type: object}}}}}}}}}
+  /admin/courses/review-queue:
+    get:
+      {tags: [Admin], operationId: adminListCourseReviewQueue, summary: 'Danh sách khóa học chờ kiểm duyệt xuất bản (FR-MOD-16)',
+       parameters: [{name: status, in: query, schema: {type: string, enum: [PENDING_APPROVAL, PUBLISHED, REJECTED]}}, {$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/PageSize'}],
+       responses: {'200': {description: OK, content: {application/json: {schema: {type: object, properties: {items: {type: array, items: {$ref: '#/components/schemas/CourseReviewQueueItemDto'}}, meta: {$ref: '#/components/schemas/PageMeta'}}}}}}}}
+  /admin/courses/{courseId}/approve:
+    post:
+      {tags: [Admin], operationId: adminApproveCoursePublish, summary: 'Phê duyệt xuất bản khóa học (FR-MOD-16)',
+       parameters: [{$ref: '#/components/parameters/CourseId'}],
+       responses: {'204': {description: OK}}}
+  /admin/courses/{courseId}/reject:
+    post:
+      {tags: [Admin], operationId: adminRejectCoursePublish, summary: 'Từ chối xuất bản khóa học kèm lý do bắt buộc (FR-MOD-16)',
+       parameters: [{$ref: '#/components/parameters/CourseId'}],
+       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [reason], properties: {reason: {type: string, maxLength: 1000}}}}}},
+       responses: {'204': {description: OK}}}
 components:
   schemas:
-    ReportDto: {type: object, properties: {id: {type: string, format: uuid}, source: {type: string, enum: [USER, AI]}, reporter: {$ref: '#/components/schemas/UserRef'}, targetType: {type: string}, targetId: {type: string}, targetCourseId: {type: string}, targetOwner: {$ref: '#/components/schemas/UserRef'}, reasonCode: {type: string}, description: {type: string, nullable: true}, targetSnapshot: {type: string, nullable: true}, status: {type: string, enum: [PENDING, ACCEPTED, REJECTED]}, resolutionReason: {type: string, nullable: true}, resolvedAt: {type: string, format: date-time, nullable: true}, createdAt: {type: string, format: date-time}, evidence: {type: array, items: {type: object}}, aiScore: {type: number, nullable: true}}}
+    CourseReviewQueueItemDto: {type: object, properties: {courseId: {type: string, format: uuid}, name: {type: string}, description: {type: string, nullable: true}, accessMode: {$ref: '#/components/schemas/AccessMode'}, publishStatus: {type: string, enum: [PENDING_APPROVAL, PUBLISHED, REJECTED]}, owner: {$ref: '#/components/schemas/UserRef'}, submittedForReviewAt: {type: string, format: date-time, nullable: true}, rejectionReason: {type: string, nullable: true}}}
+    ReportDto: {type: object, properties: {id: {type: string, format: uuid}, source: {type: string, enum: [USER]}, reporter: {$ref: '#/components/schemas/UserRef'}, targetType: {type: string}, targetId: {type: string}, targetCourseId: {type: string}, targetOwner: {$ref: '#/components/schemas/UserRef'}, reasonCode: {type: string}, description: {type: string, nullable: true}, targetSnapshot: {type: string, nullable: true}, status: {type: string, enum: [PENDING, ACCEPTED, REJECTED]}, resolutionReason: {type: string, nullable: true}, resolvedAt: {type: string, format: date-time, nullable: true}, createdAt: {type: string, format: date-time}, evidence: {type: array, items: {type: object}}}}
     ResolveRequest: {type: object, required: [decision, reason], properties: {decision: {type: string, enum: [ACCEPTED, REJECTED]}, reason: {type: string, maxLength: 1000}, sanctions: {type: array, items: {$ref: '#/components/schemas/SanctionRequest'}}, confirmPermanentDelete: {type: boolean}}}
     SanctionRequest: {type: object, required: [sanctionType, targetId, reason], properties: {sanctionType: {type: string, enum: [COMMENT_DELETE, COURSE_HIDE, ACCOUNT_LOCK_TEMPORARY, ACCOUNT_LOCK_PERMANENT, COURSE_PERMANENT_DELETE]}, targetId: {type: string, format: uuid}, reason: {type: string}, expiresAt: {type: string, format: date-time, nullable: true}, confirm: {type: boolean}}}

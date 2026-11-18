@@ -5,9 +5,11 @@ import {
   FileWarning,
   Flag,
   LayoutDashboard,
+  Megaphone,
   Menu,
   ScrollText,
   Settings,
+  ShieldAlert,
   Users,
   X,
 } from 'lucide-react';
@@ -30,12 +32,14 @@ interface AdminNavItem {
 
 const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { to: '/admin', labelKey: 'admin.nav.overview', icon: LayoutDashboard, end: true },
-  { to: '/admin/moderation', labelKey: 'admin.nav.moderation', icon: FileWarning },
   { to: '/admin/reports', labelKey: 'admin.nav.reports', icon: Flag },
+  { to: '/admin/sanctions', labelKey: 'admin.nav.sanctions', icon: ShieldAlert },
   { to: '/admin/users', labelKey: 'admin.nav.users', icon: Users },
+  { to: '/admin/announcements', labelKey: 'admin.nav.announcements', icon: Megaphone },
+  { to: '/admin/audit-logs', labelKey: 'admin.nav.auditLogs', icon: ScrollText },
+  { to: '/admin/moderation', labelKey: 'admin.nav.moderation', icon: FileWarning },
   { to: '/admin/courses', labelKey: 'admin.nav.courses', icon: BookOpen },
   { to: '/admin/ai-settings', labelKey: 'admin.nav.aiSettings', icon: Bot },
-  { to: '/admin/audit-logs', labelKey: 'admin.nav.auditLogs', icon: ScrollText },
   { to: '/admin/settings', labelKey: 'admin.nav.systemSettings', icon: Settings },
 ];
 

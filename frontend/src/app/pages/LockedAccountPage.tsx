@@ -4,6 +4,7 @@ import logoDark from '@/assets/brand/logo-dark.png';
 import logoLight from '@/assets/brand/logo-light.png';
 import { TemporaryLockedView } from './locked/TemporaryLockedView';
 import { PermanentLockedView } from './locked/PermanentLockedView';
+import { SiteFooter } from '@/app/layouts/SiteFooter';
 
 export function LockedAccountPage() {
   const { lockedAccount, clearLockedAccount, logout, user, profile } = useAuth();
@@ -83,16 +84,8 @@ export function LockedAccountPage() {
         </div>
       </main>
 
-      {/* Bottom Footer Area matching Figma */}
-      <footer className="w-full border-t border-border/40 px-6 py-5 text-xs text-muted-foreground sm:px-12">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 text-center sm:flex-row sm:text-left">
-          <p>
-            <span className="font-bold text-foreground">BrainMemo</span> • Khám phá tri thức, mở
-            mang tầm mắt
-          </p>
-          <p>© 2026 BrainMemo LMS. Tất cả các quyền được bảo lưu.</p>
-        </div>
-      </footer>
+      {/* Shared Site Footer */}
+      <SiteFooter />
     </div>
   );
 }

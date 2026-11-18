@@ -304,16 +304,23 @@ CREATE TABLE crs_course (
   name              VARCHAR(200) NOT NULL,
   description       TEXT         NULL,
   cover_storage_key VARCHAR(500) NULL DEFAULT NULL,
-  access_mode       ENUM('PUBLIC','PRIVATE','ONLY_ME') NOT NULL,
-  status            ENUM('UPDATING','COMPLETED','PAUSED') NOT NULL DEFAULT 'UPDATING',
-  hidden_at         DATETIME(3)  NULL DEFAULT NULL,
-  hidden_sanction_id BINARY(16)  NULL DEFAULT NULL COMMENT 'logical ref mod_sanction.id',
-  deleted_at        DATETIME(3)  NULL DEFAULT NULL,
-  revision          INT UNSIGNED NOT NULL DEFAULT 1,
-  created_at        DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  updated_at        DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT 'ung dung dat, khong tu cap nhat',
+  access_mode             ENUM('PUBLIC','PRIVATE','ONLY_ME') NOT NULL,
+  status                  ENUM('UPDATING','COMPLETED','PAUSED') NOT NULL DEFAULT 'UPDATING',
+  publish_status          ENUM('DRAFT','PENDING_APPROVAL','PUBLISHED','REJECTED') NOT NULL DEFAULT 'DRAFT',
+  submitted_for_review_at DATETIME(3)  NULL DEFAULT NULL,
+  published_at            DATETIME(3)  NULL DEFAULT NULL,
+  rejection_reason        VARCHAR(1000) NULL DEFAULT NULL,
+  reviewed_by_admin_id    BINARY(16)   NULL DEFAULT NULL COMMENT 'logical ref idn_user.id',
+  reviewed_at             DATETIME(3)  NULL DEFAULT NULL,
+  hidden_at               DATETIME(3)  NULL DEFAULT NULL,
+  hidden_sanction_id      BINARY(16)   NULL DEFAULT NULL COMMENT 'logical ref mod_sanction.id',
+  deleted_at              DATETIME(3)  NULL DEFAULT NULL,
+  revision                INT UNSIGNED NOT NULL DEFAULT 1,
+  created_at              DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_at              DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT 'ung dung dat, khong tu cap nhat',
   PRIMARY KEY (id),
   KEY ix_crs_course_owner (owner_user_id, deleted_at, created_at),
+  KEY ix_crs_course_publish_status (publish_status, deleted_at, created_at),
   CONSTRAINT ck_crs_course_hidden CHECK ((hidden_at IS NULL) = (hidden_sanction_id IS NULL)),
   CONSTRAINT ck_crs_course_only_me_not_hidden CHECK (access_mode <> 'ONLY_ME' OR hidden_at IS NULL)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -700,21 +707,27 @@ CREATE TABLE lrn_bookmark (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE lrn_comment (
-  id                BINARY(16)  NOT NULL,
-  course_id         BINARY(16)  NOT NULL COMMENT 'logical ref crs_course.id',
-  chapter_id        BINARY(16)  NULL DEFAULT NULL COMMENT 'NULL = cap khoa',
-  user_id           BINARY(16)  NOT NULL COMMENT 'tac gia, logical ref idn_user.id',
-  parent_comment_id BINARY(16)  NULL DEFAULT NULL,
-  content           TEXT        NOT NULL,
-  is_pinned         BOOLEAN     NOT NULL DEFAULT FALSE,
-  pinned_at         DATETIME(3) NULL DEFAULT NULL,
-  pinned_by_user_id BINARY(16)  NULL DEFAULT NULL,
-  edited_at         DATETIME(3) NULL DEFAULT NULL,
-  deleted_at        DATETIME(3) NULL DEFAULT NULL,
-  created_at        DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  updated_at        DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  id                  BINARY(16)   NOT NULL,
+  course_id           BINARY(16)   NOT NULL COMMENT 'logical ref crs_course.id',
+  chapter_id          BINARY(16)   NULL DEFAULT NULL COMMENT 'logical ref cnt_chapter.id (bat buoc cho Lesson Q&A)',
+  block_id            BINARY(16)   NULL DEFAULT NULL COMMENT 'tuy chon logical ref cnt_block.id',
+  user_id             BINARY(16)   NOT NULL COMMENT 'tac gia, logical ref idn_user.id',
+  parent_comment_id   BINARY(16)   NULL DEFAULT NULL,
+  title               VARCHAR(255) NULL DEFAULT NULL COMMENT 'tieu de cau hoi (chi cau hoi goc)',
+  content             TEXT         NOT NULL,
+  is_resolved         BOOLEAN      NOT NULL DEFAULT FALSE,
+  resolved_at         DATETIME(3)  NULL DEFAULT NULL,
+  resolved_by_user_id BINARY(16)   NULL DEFAULT NULL,
+  resolved_comment_id BINARY(16)   NULL DEFAULT NULL,
+  is_pinned           BOOLEAN      NOT NULL DEFAULT FALSE,
+  pinned_at           DATETIME(3)  NULL DEFAULT NULL,
+  pinned_by_user_id   BINARY(16)   NULL DEFAULT NULL,
+  edited_at           DATETIME(3)  NULL DEFAULT NULL,
+  deleted_at          DATETIME(3)  NULL DEFAULT NULL,
+  created_at          DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_at          DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
   PRIMARY KEY (id),
-  KEY ix_lrn_comment_course_chapter (course_id, chapter_id, deleted_at, created_at),
+  KEY ix_lrn_comment_course_chapter (course_id, chapter_id, deleted_at, is_resolved, created_at),
   KEY ix_lrn_comment_parent (parent_comment_id, created_at),
   KEY ix_lrn_comment_pinned (course_id, is_pinned, deleted_at),
   CONSTRAINT fk_lrn_comment_parent FOREIGN KEY (parent_comment_id) REFERENCES lrn_comment (id) ON DELETE RESTRICT,
@@ -1021,28 +1034,6 @@ CREATE TABLE ai_generation_job (
   CONSTRAINT ck_ai_job_completed CHECK (status <> 'COMPLETED' OR (result_count IS NOT NULL AND completed_at IS NOT NULL))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE ai_moderation_scan_log (
-  id                   BINARY(16)    NOT NULL,
-  scan_type            ENUM('COMMENT','COURSE_NAME','COURSE_DESCRIPTION') NOT NULL,
-  target_id            BINARY(16)    NOT NULL COMMENT 'logical ref lrn_comment.id or crs_course.id',
-  target_course_id     BINARY(16)    NULL DEFAULT NULL COMMENT 'logical ref crs_course.id',
-  content_snapshot     TEXT          NOT NULL,
-  model_name           VARCHAR(50)   NOT NULL DEFAULT 'PhoBERT',
-  model_version        VARCHAR(50)   NULL DEFAULT NULL,
-  score                DECIMAL(5,4)  NULL DEFAULT NULL,
-  threshold_used       DECIMAL(5,4)  NULL DEFAULT NULL,
-  flagged              BOOLEAN       NOT NULL DEFAULT FALSE,
-  moderation_report_id BINARY(16)    NULL DEFAULT NULL COMMENT 'logical ref mod_report.id',
-  scanned_at           DATETIME(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  error_message        VARCHAR(500)  NULL DEFAULT NULL,
-  PRIMARY KEY (id),
-  KEY ix_ai_scan_target (scan_type, target_id, scanned_at),
-  KEY ix_ai_scan_flagged (flagged, moderation_report_id, scanned_at),
-  KEY ix_ai_scan_course (target_course_id),
-  CONSTRAINT ck_ai_scan_flagged_score CHECK (flagged = FALSE OR score IS NOT NULL),
-  CONSTRAINT ck_ai_scan_report_flagged CHECK (moderation_report_id IS NULL OR flagged = TRUE)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
 CREATE TABLE ai_user_daily_quota (
   id          BINARY(16)   NOT NULL,
   user_id     BINARY(16)   NOT NULL COMMENT 'logical ref idn_user.id',
@@ -1054,6 +1045,39 @@ CREATE TABLE ai_user_daily_quota (
   PRIMARY KEY (id),
   UNIQUE KEY uk_ai_quota_user_date (user_id, quota_date),
   CONSTRAINT ck_ai_quota_limit CHECK (used_count <= quota_limit)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- =======================================
+-- MODULE 11: MESSAGING (msg_) - 2 bang
+-- =======================================
+
+CREATE TABLE msg_conversation (
+  id                   BINARY(16)   NOT NULL,
+  course_id            BINARY(16)   NOT NULL COMMENT 'logical ref crs_course.id',
+  student_user_id      BINARY(16)   NOT NULL COMMENT 'logical ref idn_user.id',
+  instructor_user_id   BINARY(16)   NOT NULL COMMENT 'logical ref idn_user.id',
+  last_message_at      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  last_message_preview VARCHAR(255) NULL DEFAULT NULL,
+  created_at           DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_at           DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_msg_conv_course_student_instructor (course_id, student_user_id, instructor_user_id),
+  KEY ix_msg_conv_student (student_user_id, last_message_at),
+  KEY ix_msg_conv_instructor (instructor_user_id, last_message_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE msg_message (
+  id                     BINARY(16)   NOT NULL,
+  conversation_id        BINARY(16)   NOT NULL,
+  sender_user_id         BINARY(16)   NOT NULL COMMENT 'logical ref idn_user.id',
+  content                TEXT         NOT NULL,
+  attachment_storage_key VARCHAR(500) NULL DEFAULT NULL,
+  read_at                DATETIME(3)  NULL DEFAULT NULL,
+  created_at             DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (id),
+  KEY ix_msg_message_conv_time (conversation_id, created_at),
+  KEY ix_msg_message_unread (conversation_id, sender_user_id, read_at),
+  CONSTRAINT fk_msg_message_conv FOREIGN KEY (conversation_id) REFERENCES msg_conversation (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- =======================================
@@ -1069,5 +1093,5 @@ CREATE TABLE sys_setting (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- =======================================
--- KET THUC: 59 bang / 10 module + sys_setting
+-- KET THUC: 60 bang / 11 module + sys_setting
 -- =======================================

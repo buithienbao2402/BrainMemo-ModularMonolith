@@ -18,6 +18,7 @@ tags:
   - {name: Assessment}
   - {name: Discovery}
   - {name: Notification}
+  - {name: Messaging}
   - {name: Moderation}
   - {name: AI}
   - {name: Admin}

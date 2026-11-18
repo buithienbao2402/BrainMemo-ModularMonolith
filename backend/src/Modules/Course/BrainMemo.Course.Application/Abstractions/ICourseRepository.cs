@@ -29,6 +29,8 @@ public interface ICourseRepository
     Task AddChapterUnlockAsync(ChapterUnlock unlock, CancellationToken ct = default);
     Task RemoveChapterUnlocksByChapterIdAsync(Guid chapterId, CancellationToken ct = default);
     Task<bool> HasNominatedAsync(Guid courseId, Guid userId, CancellationToken ct = default);
+    Task<Nomination?> GetActiveNominationAsync(Guid courseId, Guid userId, CancellationToken ct = default);
+    Task AddNominationAsync(Nomination nomination, CancellationToken ct = default);
     Task<CourseStatsDto> GetCourseStatsAsync(Guid courseId, CancellationToken ct = default);
     Task<int> GetLearnerCountAsync(Guid courseId, CancellationToken ct = default);
     Task<int> GetNominationCountAsync(Guid courseId, CancellationToken ct = default);
@@ -40,6 +42,9 @@ public interface ICourseRepository
     Task<Page<CourseSnapshotDto>> ListCourseSnapshotsAsync(Guid? afterId, int limit, CancellationToken ct = default);
     Task<Page<EnrollmentFactDto>> ListEnrollmentFactsAsync(DateTimeOffset? after, int limit, CancellationToken ct = default);
     Task<Page<NominationFactDto>> ListNominationFactsAsync(DateTimeOffset? after, int limit, CancellationToken ct = default);
+    Task<PagedResult<CourseEntity>> ListByPublishStatusAsync(Domain.Enums.CoursePublishStatus? status, int page, int pageSize, CancellationToken ct = default) =>
+        Task.FromResult(new PagedResult<CourseEntity>(Array.Empty<CourseEntity>(), page, pageSize, 0));
+    Task<int> CountPendingReviewsAsync(CancellationToken ct = default) => Task.FromResult(0);
     Task DeletePermanentlyAsync(CourseEntity course, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
 }

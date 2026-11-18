@@ -115,16 +115,17 @@ flowchart LR
     PRF["<b>Profile</b> prf_<br/>AR: prf_user_profile"]
     MOD["<b>Moderation</b> mod_<br/>AR: mod_report<br/>mod_sanction"]
     NTF["<b>Notification</b> ntf_<br/>AR: ntf_notification<br/>ntf_announcement"]
+    MSG["<b>Messaging</b> msg_<br/>AR: msg_conversation<br/>msg_message"]
     CRS["<b>Course</b> crs_<br/>AR: crs_course<br/>crs_enrollment<br/>crs_nomination<br/>crs_outbox_event"]
     CNT["<b>Content</b> cnt_<br/>AR: cnt_chapter<br/>cnt_question_bank<br/>cnt_resource"]
-    LRN["<b>Learning</b> lrn_<br/>AR: lrn_quiz_attempt<br/>lrn_comment<br/>lrn_assignment_submission<br/>lrn_outbox_event"]
+    LRN["<b>Learning</b> lrn_<br/>AR: lrn_quiz_attempt<br/>lrn_comment (Q&A)<br/>lrn_assignment_submission<br/>lrn_outbox_event"]
     AST["<b>Assessment</b> ast_<br/>AR: ast_assessment_config<br/>ast_grade_record<br/>ast_course_review<br/>ast_outbox_event"]
     DSC["<b>Discovery</b> dsc_<br/>AR: dsc_course_entry<br/>read model"]
-    AI["<b>AI</b> ai_<br/>AR: ai_generation_job<br/>ai_moderation_scan_log"]
+    AI["<b>AI</b> ai_<br/>AR: ai_generation_job"]
 
     %% Contract dong bo
     MOD -- "IsAdmin, LockAccount, UnlockAccount" --> IDN
-    MOD -- "ResolveReportTarget, HideCourse, RestoreCourse, PermanentlyDeleteCourse" --> CRS
+    MOD -- "ResolveReportTarget, ApprovePublish, RejectPublish, HideCourse, RestoreCourse, PermanentlyDeleteCourse" --> CRS
     MOD -- "ResolveReportTarget, SoftDeleteComment, RestoreComment" --> LRN
     PRF -- "GetUserSummary" --> IDN
     NTF -- "GetUserSummary, ListActiveUserIds, IsAdmin" --> IDN
@@ -140,30 +141,29 @@ flowchart LR
     AST -- "GetQuizAttemptForGrading, GetQuizAttemptSummary, GetAssignmentSubmission" --> LRN
     LRN -- "GradeQuizAttempt" --> AST
     DSC -- "ListCourseSnapshots" --> CRS
-    AI -- "SubmitAiFlag" --> MOD
     AI -- "GetChapterTextForAi, ImportAiGenerated*" --> CNT
+    MSG -- "GetCourseAccess (kiểm tra ghi danh/chủ khóa)" --> CRS
+    MSG -- "GetDisplayInfo" --> PRF
 
     %% Event bat dong bo
     IDN -. "UserRegistered" .-> PRF
     IDN -. "EmailVerificationRequested, PasswordResetRequested, AccountLocked" .-> NTF
     IDN -. "AccountUnlocked" .-> MOD
     PRF -. "ProfileUpdated" .-> DSC
-    MOD -. "ReportResolved, SanctionApplied" .-> NTF
+    MOD -. "ReportResolved, SanctionApplied, CourseApprovalDecided" .-> NTF
     CRS -. "CourseUpserted, EnrollmentChanged, NominationChanged via Outbox" .-> DSC
-    CRS -. "EnrollmentChanged" .-> NTF
-    CRS -. "CourseUpserted name/description" .-> AI
+    CRS -. "EnrollmentChanged, CourseSubmittedForReview" .-> NTF
     CRS -. "CoursePermanentlyDeleted" .-> CNT
     CNT -. "ChapterDeleted" .-> CRS
     CNT -. "ChapterPublished, ChapterDeleted" .-> NTF
     CNT -. "ChapterPublished" .-> DSC
     LRN -. "QuizAttemptSubmitted, AssignmentSubmitted via Outbox" .-> AST
-    LRN -. "CommentCreated" .-> AI
-    LRN -. "CommentCreated" .-> NTF
+    LRN -. "CommentCreated (Q&A)" .-> NTF
     LRN -. "CourseCompleted" .-> CRS
     AST -. "CourseReviewCreated, CourseReviewUpdated via Outbox" .-> DSC
     AST -. "GradeRecorded, CourseReviewReplied via Outbox" .-> NTF
     AST -. "GradeRecorded via Outbox" .-> LRN
-    AI -. "AIGenerationCompleted" .-> NTF
+    MSG -. "NewMessageReceived" .-> NTF
 ```
 
 ## 2.2. Aggregate Root chính theo module
@@ -174,22 +174,25 @@ flowchart LR
 | Profile | `prf_user_profile` | – | 1–1 logic với `idn_user` |
 | Moderation | `mod_report` | `mod_report_evidence` | `mod_sanction`, `mod_audit_log` có vòng đời riêng |
 | Notification | `ntf_notification` | – | `ntf_announcement` là nguồn broadcast; `ntf_email_delivery` là hàng đợi email |
+| Messaging | `msg_conversation` | `msg_message` | Hội thoại 1-1 học viên – giảng viên theo khóa học |
 | Course | `crs_course` | `crs_course_tag`, `crs_chapter_access`→`crs_chapter_unlock` | `crs_enrollment`, `crs_enrollment_request`, `crs_nomination` theo (khóa, người) |
 | Content | `cnt_chapter` | `cnt_block`, `cnt_chapter_version`, `cnt_published_block` | `cnt_question_bank`→`cnt_question`→option/tag; `cnt_resource` |
-| Learning | `lrn_quiz_attempt` | `lrn_quiz_attempt_answer` | `lrn_comment` (tự tham chiếu); các bảng tiến độ độc lập; `lrn_outbox_event` |
+| Learning | `lrn_quiz_attempt` | `lrn_quiz_attempt_answer` | `lrn_comment` (Hỏi đáp bài học, tự tham chiếu); các bảng tiến độ độc lập; `lrn_outbox_event` |
 | Assessment | `ast_assessment_config` | `ast_assessment_component`→`ast_component_outcome_weight`↔`ast_clo` | `ast_grade_record`, `ast_course_review`, `ast_outbox_event` |
 | Discovery | `dsc_course_entry` | – | Read model, dựng lại được; `dsc_course_activity_fact` |
-| AI | `ai_generation_job` | – | `ai_moderation_scan_log`, `ai_user_daily_quota` độc lập |
+| AI | `ai_generation_job` | – | `ai_user_daily_quota` độc lập (đã bỏ `ai_moderation_scan_log`) |
 
 ## 2.3. Tóm tắt luồng nghiệp vụ liên module chính
 
 | Luồng | Mô tả ngắn |
 |:--|:--|
-| Báo cáo → chế tài | Người dùng/AI tạo `mod_report`; Admin xử lý; Moderation gọi Contract Identity/Course/Learning trong một transaction; phát `ReportResolved` |
+| Kiểm duyệt xuất bản khóa | Chủ khóa gửi duyệt (`PENDING_APPROVAL`) → Admin xem hàng đợi và Phê duyệt (`PUBLISHED`) / Từ chối (`REJECTED` + lý do); Moderation ghi `mod_audit_log`, gọi Course cập nhật trạng thái và phát `CourseUpserted` sang Discovery + thông báo Notification |
+| Báo cáo → chế tài | Người dùng tạo `mod_report`; Admin xử lý; Moderation gọi Contract Identity/Course/Learning trong một transaction; phát `ReportResolved` |
 | Ẩn khóa → Discovery | Moderation gọi `HideCourse`; Course phát `CourseUpserted(eligible=false)` qua Outbox; Discovery gỡ khóa khỏi read model (D18) |
 | Ghi danh | Course đổi `crs_enrollment` + chèn Outbox cùng transaction; phát `EnrollmentChanged` cho Notification/Discovery |
 | Đăng tải chương | Content đặt con trỏ `published_version_no`, dựng lại `cnt_published_block`; phát `ChapterPublished` |
 | Làm quiz | Learning gọi `DrawQuizQuestions`, lưu snapshot đề (kèm `passScorePercent`) vào `lrn_quiz_attempt`. Khi nộp: Learning ghi `SUBMITTED` + `lrn_outbox_event`, rồi gọi **đồng bộ** Assessment `GradeQuizAttempt`; Assessment chấm, ghi `ast_grade_record` + `ast_outbox_event(GradeRecorded)`; Learning ghi điểm và trả kết quả ngay cho học viên `[ADR-04]` |
+| Nhắn tin giảng viên | Học viên mở `msg_conversation` qua `Messaging`; gửi `msg_message` → phát `NewMessageReceived` sang Notification |
 | Sinh nội dung AI | AI gọi LLM; kết quả nhập vào Content ở trạng thái Nháp qua Contract; chủ khóa duyệt trước khi đăng tải |
 
 ---
@@ -1042,6 +1045,12 @@ erDiagram
         VARCHAR(500) cover_storage_key "NULL"
         ENUM access_mode "PUBLIC, PRIVATE, ONLY_ME"
         ENUM status "UPDATING, COMPLETED, PAUSED"
+        ENUM publish_status "DRAFT, PENDING_APPROVAL, PUBLISHED, REJECTED"
+        DATETIME(3) submitted_for_review_at "NULL"
+        DATETIME(3) published_at "NULL"
+        VARCHAR(1000) rejection_reason "NULL"
+        BINARY(16) reviewed_by_admin_id "NULL, logical ref idn_user"
+        DATETIME(3) reviewed_at "NULL"
         DATETIME(3) hidden_at "NULL = not hidden"
         BINARY(16) hidden_sanction_id "logical ref mod_sanction"
         DATETIME(3) deleted_at "NULL = not deleted"
@@ -2212,16 +2221,22 @@ FK vật lý chỉ có hai: `lrn_quiz_attempt_answer.attempt_id` và `lrn_commen
 - UK(`user_id`,`course_id`): mỗi user tối đa một bookmark mỗi khóa (FR-LRN-02).
 - IX(`user_id`,`updated_at`): danh sách bookmark cá nhân.
 
-#### 3.7.4.4. `lrn_comment`
+#### 3.7.4.4. `lrn_comment` (Hỏi đáp theo từng bài học – Lesson Q&A)
 
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả chi tiết |
 |:--|:--|:--|:--|
 | `id` | BINARY(16) | PK, NN | UUIDv7 |
-| `course_id` | BINARY(16) | NN | ID logic Course chứa bình luận |
-| `chapter_id` | BINARY(16) | NULL | NULL = bình luận cấp khóa; có giá trị = bình luận ở chương |
+| `course_id` | BINARY(16) | NN | ID logic Course chứa câu hỏi/trả lời |
+| `chapter_id` | BINARY(16) | NN | ID logic Chapter (bài học); mọi luồng Q&A đều gắn với một bài học cụ thể (FR-LRN-10) |
+| `block_id` | BINARY(16) | NULL | Tùy chọn: ID logic Block cụ thể trong bài học mà học viên đang thắc mắc |
 | `user_id` | BINARY(16) | NN | Tác giả (ID logic Identity) |
-| `parent_comment_id` | BINARY(16) | FK → `lrn_comment.id` (RESTRICT), NULL | NULL = bình luận gốc; có giá trị = trả lời. Cha phải cùng `course_id`, `chapter_id` và không có `parent_comment_id` (chặn lồng quá một cấp, kiểm ở ứng dụng) |
-| `content` | TEXT | NN | Nội dung đã làm sạch HTML (NFR-07) |
+| `parent_comment_id` | BINARY(16) | FK → `lrn_comment.id` (RESTRICT), NULL | NULL = câu hỏi gốc; có giá trị = câu trả lời. Cha phải cùng `course_id`, `chapter_id` và không có `parent_comment_id` (chặn lồng quá một cấp, kiểm ở ứng dụng) |
+| `title` | VARCHAR(255) | NULL | Tiêu đề câu hỏi (bắt buộc khi `parent_comment_id` IS NULL; NULL khi là câu trả lời) |
+| `content` | TEXT | NN | Nội dung chi tiết đã làm sạch HTML (NFR-07) |
+| `is_resolved` | BOOLEAN | NN, mặc định FALSE | Trạng thái câu hỏi đã giải đáp hay chưa (chỉ áp dụng cho câu hỏi gốc, FR-LRN-12) |
+| `resolved_at` | DATETIME(3) | NULL | Thời điểm đánh dấu đã giải đáp |
+| `resolved_by_user_id` | BINARY(16) | NULL | Người đánh dấu đã giải đáp (tác giả câu hỏi hoặc Chủ khóa) |
+| `resolved_comment_id` | BINARY(16) | NULL | Tùy chọn: ID câu trả lời được chọn là đáp án thỏa đáng |
 | `is_pinned` | BOOLEAN | NN, mặc định FALSE | Ghim bởi Chủ khóa (FR-LRN-13) |
 | `pinned_at` | DATETIME(3) | NULL | NULL nếu chưa ghim |
 | `pinned_by_user_id` | BINARY(16) | NULL | ID logic Identity của Chủ khóa ghim |
@@ -2231,9 +2246,9 @@ FK vật lý chỉ có hai: `lrn_quiz_attempt_answer.attempt_id` và `lrn_commen
 | `updated_at` | DATETIME(3) | NN, tự cập nhật `ON UPDATE CURRENT_TIMESTAMP(3)` | – |
 
 **Index/Constraint:**
-- IX(`course_id`,`chapter_id`,`deleted_at`,`created_at`): danh sách bình luận theo khóa/chương.
-- IX(`parent_comment_id`,`created_at`): hiển thị trả lời.
-- IX(`course_id`,`is_pinned`,`deleted_at`).
+- IX(`course_id`,`chapter_id`,`deleted_at`,`is_resolved`,`created_at`): danh sách và lọc Q&A theo bài học.
+- IX(`parent_comment_id`,`created_at`): hiển thị danh sách câu trả lời.
+- IX(`course_id`,`chapter_id`,`is_pinned`,`deleted_at`).
 - CHECK: `is_pinned`=FALSE ⇔ `pinned_at` NULL và `pinned_by_user_id` NULL.
 - "Tối đa một cấp trả lời" kiểm ở ứng dụng (CHECK không đọc được dòng cha).
 
@@ -2998,15 +3013,15 @@ Một số event Discovery được liệt kê là người nhận (`BlockComple
 
 ---
 
-## 3.10. MODULE AI (`ai_`) – 3 bảng
+## 3.10. MODULE AI (`ai_`) – 2 bảng
 
 ### 3.10.1. Mục đích
 
-AI sở hữu ba loại dữ liệu vận hành: job sinh câu hỏi/flashcard (FR-AI-01, FR-AI-02), log quét vi phạm bằng PhoBERT chạy cục bộ (FR-AI-03) và hạn mức gọi LLM mỗi ngày mỗi người dùng. AI **không lưu nội dung sinh ra** (Content nhận và giữ ở trạng thái Nháp/PENDING) và **không tự xử phạt** (chỉ gắn cờ cho Admin, NFR-13). Khóa Only Me không bị quét dưới bất kỳ hình thức nào.
+AI sở hữu hai loại dữ liệu vận hành: job sinh câu hỏi/flashcard (FR-AI-01, FR-AI-02) và hạn mức gọi LLM mỗi ngày mỗi người dùng. AI **không lưu nội dung sinh ra** (Content nhận và giữ ở trạng thái Nháp/PENDING). *(Đã bỏ chức năng quét vi phạm PhoBERT và bảng `ai_moderation_scan_log` theo DEC-30).*
 
 ### 3.10.2. ERD
 
-Ba bảng đứng độc lập, không có quan hệ giữa chúng; liên kết với module khác chỉ bằng ID logic.
+Hai bảng đứng độc lập, không có quan hệ giữa chúng; liên kết với module khác chỉ bằng ID logic.
 
 ```mermaid
 erDiagram
@@ -3026,21 +3041,6 @@ erDiagram
         DATETIME(3) completed_at "NULL"
         DATETIME(3) created_at
     }
-    ai_moderation_scan_log {
-        BINARY(16) id PK
-        ENUM scan_type "COMMENT, COURSE_NAME, COURSE_DESCRIPTION"
-        BINARY(16) target_id "logical ref lrn_comment or crs_course"
-        BINARY(16) target_course_id "logical ref crs_course, NULL"
-        TEXT content_snapshot
-        VARCHAR(50) model_name "default PhoBERT"
-        VARCHAR(50) model_version "NULL"
-        DECIMAL(5,4) score "NULL"
-        DECIMAL(5,4) threshold_used "NULL"
-        BOOLEAN flagged "default FALSE"
-        BINARY(16) moderation_report_id "logical ref mod_report, NULL"
-        DATETIME(3) scanned_at
-        VARCHAR(500) error_message "NULL"
-    }
     ai_user_daily_quota {
         BINARY(16) id PK
         BINARY(16) user_id "logical ref idn_user"
@@ -3057,8 +3057,7 @@ erDiagram
 | STT | Tên bảng | Mục đích |
 |:-:|:--|:--|
 | 1 | `ai_generation_job` | Job sinh Quiz/Flashcard của Chủ khóa (kết quả nhập sang Content ở trạng thái Nháp) |
-| 2 | `ai_moderation_scan_log` | Log quét vi phạm PhoBERT và liên kết tới báo cáo trong Moderation |
-| 3 | `ai_user_daily_quota` | Hạn mức lượt gọi LLM mỗi ngày mỗi người dùng |
+| 2 | `ai_user_daily_quota` | Hạn mức lượt gọi LLM mỗi ngày mỗi người dùng |
 
 ### 3.10.4. Data Dictionary
 
@@ -3089,32 +3088,7 @@ erDiagram
 - CHECK: `status`='COMPLETED' ⇒ `result_count` NOT NULL và `completed_at` NOT NULL.
 - **Không** lưu token/mật khẩu; **không** lưu kết quả sinh ra: nội dung đó do Content nhập qua `ImportAiGeneratedQuestions`/`ImportAiGeneratedFlashcards`, giữ nhãn `DRAFT`/`PENDING` (NFR-13).
 
-#### 3.10.4.2. `ai_moderation_scan_log`
-
-| Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả chi tiết |
-|:--|:--|:--|:--|
-| `id` | BINARY(16) | PK, NN | UUIDv7 |
-| `scan_type` | ENUM('COMMENT','COURSE_NAME','COURSE_DESCRIPTION') | NN | Chỉ 3 loại FR-AI-03 quét; không quét khóa Only Me (ứng dụng kiểm trước khi gọi) |
-| `target_id` | BINARY(16) | NN | ID logic đối tượng: `lrn_comment.id` hoặc `crs_course.id` |
-| `target_course_id` | BINARY(16) | NULL | ID logic Course chứa đối tượng; NULL khi `scan_type` là 'COURSE_NAME'/'COURSE_DESCRIPTION' (khi đó `target_id` đã là khóa) |
-| `content_snapshot` | TEXT | NN | Nội dung đã quét, chụp tại thời điểm quét; không đổi dù đối tượng bị sửa |
-| `model_name` | VARCHAR(50) | NN, mặc định 'PhoBERT' | Tên mô hình |
-| `model_version` | VARCHAR(50) | NULL | Phiên bản mô hình |
-| `score` | DECIMAL(5,4) | NULL | Điểm vi phạm 0.0000–1.0000 do mô hình trả về; NULL nếu quét lỗi |
-| `threshold_used` | DECIMAL(5,4) | NULL | Ngưỡng cấu hình lúc quét (Admin cấu hình) |
-| `flagged` | BOOLEAN | NN, mặc định FALSE | TRUE = vượt ngưỡng, đủ điều kiện chuyển sang Moderation |
-| `moderation_report_id` | BINARY(16) | NULL | ID logic `mod_report.id` sau khi `SubmitAiFlag` thành công; NULL nếu không bị gắn cờ hoặc chưa đẩy |
-| `scanned_at` | DATETIME(3) | NN, mặc định `CURRENT_TIMESTAMP(3)` | – |
-| `error_message` | VARCHAR(500) | NULL | Lỗi dịch vụ PhoBERT; khi đó `score` NULL, `flagged`=FALSE, bỏ qua (FR-AI-03) |
-
-**Index/Constraint:**
-- IX(`scan_type`,`target_id`,`scanned_at`).
-- IX(`flagged`,`moderation_report_id`,`scanned_at`): dashboard kiểm duyệt (FR-MOD-15).
-- IX(`target_course_id`).
-- CHECK: `flagged`=FALSE hoặc `score` NOT NULL.
-- CHECK: `moderation_report_id` NOT NULL ⇒ `flagged`=TRUE.
-
-#### 3.10.4.3. `ai_user_daily_quota`
+#### 3.10.4.2. `ai_user_daily_quota`
 
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả chi tiết |
 |:--|:--|:--|:--|
@@ -3135,8 +3109,6 @@ erDiagram
 
 #### 3.10.5.1. Quy tắc chuyển trạng thái
 
-Nguồn chỉ nêu ENUM `status` và CHECK; bảng chuyển dưới đây được suy ra `[ĐỀ XUẤT]`.
-
 **`ai_generation_job.status`**
 
 | Từ → Đến | Điều kiện | Căn cứ |
@@ -3147,8 +3119,6 @@ Nguồn chỉ nêu ENUM `status` và CHECK; bảng chuyển dưới đây đư�
 | PENDING/RUNNING → FAILED | Lỗi dịch vụ LLM; ghi `error_message` (không chứa dữ liệu nhạy cảm) | – |
 | Mọi chuyển khác | Từ chối | `[ĐỀ XUẤT]` |
 
-**Quét vi phạm (`ai_moderation_scan_log`):** mỗi lần quét là một dòng bất biến, không có trạng thái. Kết quả: (a) quét lỗi → `score` NULL, `flagged`=FALSE, bỏ qua; (b) dưới ngưỡng → `flagged`=FALSE; (c) vượt ngưỡng → `flagged`=TRUE, gọi `SubmitAiFlag` đồng bộ, thành công thì ghi `moderation_report_id`.
-
 #### 3.10.5.2. Bảng quy tắc
 
 | Quy tắc | DB bảo đảm | Application layer |
@@ -3157,12 +3127,6 @@ Nguồn chỉ nêu ENUM `status` và CHECK; bảng chuyển dưới đây đư�
 | Mỗi người dùng có hạn mức lượt gọi LLM mỗi ngày (UTC) | UK(`user_id`,`quota_date`), CHECK `used_count` ≤ `quota_limit` | Cập nhật có điều kiện; `GetDailyQuota` |
 | `quota_limit` chụp lúc tạo dòng, không đổi giữa ngày | – | Đọc cấu hình Admin khi tạo dòng |
 | Nội dung AI sinh luôn Nháp, chỉ xuất bản sau khi Chủ khóa duyệt (NFR-13) | – | AI không lưu kết quả; Content nhập `DRAFT`/`PENDING`, idempotent theo (`aiJobId`,`itemNo`) |
-| Chỉ quét 3 loại: bình luận, tên khóa, giới thiệu khóa, khi tạo hoặc sửa (FR-AI-03) | ENUM `scan_type` | Nhận `CommentCreated`, `CourseUpserted` (có `name`/`description` trong `changedFields`) |
-| Khóa Only Me không bị quét (NFR-13) | – | Chỉ quét khi `eligible=true`; event `eligible=false` không mang nội dung |
-| Lỗi PhoBERT: bỏ qua, không chặn nghiệp vụ | CHECK `flagged` | Ghi `error_message`, `score` NULL |
-| AI chỉ gắn cờ, **không tự xử phạt** (NFR-13) | CHECK `moderation_report_id` ⇒ `flagged` | Chỉ gọi `SubmitAiFlag`; quyết định thuộc Admin ở Moderation |
-| `content_snapshot` bất biến để truy vết | – | Chụp tại lúc quét |
-| `SubmitAiFlag` lỗi: thử lại trong bộ nhớ hoặc job quét lại, không Outbox | – | Xem 3.10.7 |
 | Phân trang ≤ 50 (NFR-03) | Index | API danh sách |
 
 ### 3.10.6. Contract và Domain Event
@@ -3178,28 +3142,95 @@ Nguồn chỉ nêu ENUM `status` và CHECK; bảng chuyển dưới đây đư�
 | Contract | Chủ sở hữu | Mục đích |
 |:--|:--|:--|
 | `GetChapterTextForAi` | Content | Lấy văn bản nội dung chương học khi `source_kind` = 'CHAPTER' |
-| `SubmitAiFlag` | Moderation | Đẩy cờ cảnh báo nội dung vi phạm vào hàng đợi kiểm duyệt (tạo `mod_report` nguồn AI) |
 | `ImportAiGeneratedQuestions` | Content | Nhập danh sách câu hỏi do AI sinh vào ngân hàng câu hỏi ở trạng thái Nháp (DRAFT) |
 | `ImportAiGeneratedFlashcards` | Content | Nhập bộ flashcard do AI sinh vào bản nháp của chương học ở trạng thái chờ duyệt (PENDING) |
 
-#### 3.10.6.3. Domain Event do AI phát (không Outbox)
-
-| Event | Payload chính | Người nhận | Ghi chú |
-|:--|:--|:--|:--|
-| `AIGenerationCompleted` | `{eventId, jobId, userId, courseId, jobType, resultCount, completedAt}` | Content (để thông báo cho Chủ khóa), Notification (Chủ khóa) | – |
-| `AIFlagRaised` | `{eventId, scanLogId, targetType, targetId, targetCourseId, score, thresholdUsed, scannedAt}` | Moderation (đã gọi `SubmitAiFlag` đồng bộ; event chỉ để audit) | **AI không tự xử phạt**, NFR-13 |
-
-#### 3.10.6.4. Domain Event AI tiêu thụ
+#### 3.10.6.3. Domain Event AI tiêu thụ
 
 | Event | Từ | Xử lý |
 |:--|:--|:--|
-| `CourseUpserted` (có `name`/`description` trong `changedFields`) | Course | Quét tên/giới thiệu và ghi `ai_moderation_scan_log`, chỉ khi `eligible=true` |
-| `CommentCreated` | Learning | Quét bình luận bằng PhoBERT; AI không quét khóa Only Me |
-| `CoursePermanentlyDeleted` | Course | AI Module tiếp nhận sự kiện để dọn dẹp các bản ghi quét vi phạm và lịch sử sinh nội dung liên quan đến khóa học bị xóa. |
+| `CoursePermanentlyDeleted` | Course | AI Module tiếp nhận sự kiện để dọn dẹp lịch sử job sinh nội dung liên quan đến khóa học bị xóa. |
 
 ### 3.10.7. Quyết định Outbox
 
-**AI: KHÔNG Outbox** `[ADR-02]`: `ai_moderation_scan_log` ghi trực tiếp khi quét; nếu chuyển `SubmitAiFlag` lỗi thì thử lại trong bộ nhớ hoặc job quét lại.
+**AI: KHÔNG Outbox** `[ADR-02]`.
+
+---
+
+## 3.11. MODULE MESSAGING (`msg_`) – 2 bảng
+
+### 3.11.1. Mục đích
+
+Messaging quản lý luồng nhắn tin trực tiếp 1-1 giữa Học viên đang ghi danh và Chủ khóa (Giảng viên) gắn với khóa học cụ thể (FR-MSG-01..05).
+
+### 3.11.2. ERD
+
+```mermaid
+erDiagram
+    msg_conversation ||--o{ msg_message : "contains (0..N)"
+
+    msg_conversation {
+        BINARY(16) id PK
+        BINARY(16) course_id "logical ref crs_course"
+        BINARY(16) student_user_id "logical ref idn_user"
+        BINARY(16) instructor_user_id "logical ref idn_user"
+        DATETIME(3) last_message_at
+        VARCHAR(255) last_message_preview "NULL"
+        DATETIME(3) created_at
+        DATETIME(3) updated_at
+    }
+    msg_message {
+        BINARY(16) id PK
+        BINARY(16) conversation_id FK
+        BINARY(16) sender_user_id "logical ref idn_user"
+        TEXT content
+        VARCHAR(500) attachment_storage_key "NULL"
+        DATETIME(3) read_at "NULL = unread"
+        DATETIME(3) created_at
+    }
+```
+
+### 3.11.3. Data Dictionary
+
+#### 3.11.3.1. `msg_conversation`
+
+| Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả chi tiết |
+|:--|:--|:--|:--|
+| `id` | BINARY(16) | PK, NN | UUIDv7 |
+| `course_id` | BINARY(16) | NN | ID logic Course |
+| `student_user_id` | BINARY(16) | NN | Học viên (ID logic Identity) |
+| `instructor_user_id` | BINARY(16) | NN | Chủ khóa / Giảng viên (ID logic Identity) |
+| `last_message_at` | DATETIME(3) | NN | Thời điểm tin nhắn cuối để sắp xếp |
+| `last_message_preview` | VARCHAR(255) | NULL | Xem trước nội dung tin nhắn cuối |
+| `created_at` | DATETIME(3) | NN, mặc định `CURRENT_TIMESTAMP(3)` | – |
+| `updated_at` | DATETIME(3) | NN, tự cập nhật `ON UPDATE CURRENT_TIMESTAMP(3)` | – |
+
+**Index/Constraint:**
+- UK(`course_id`, `student_user_id`, `instructor_user_id`): mỗi cặp học viên – giảng viên trên một khóa có tối đa một hội thoại.
+- IX(`student_user_id`, `last_message_at`): hộp thư phía học viên.
+- IX(`instructor_user_id`, `last_message_at`): hộp thư phía giảng viên.
+
+#### 3.11.3.2. `msg_message`
+
+| Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả chi tiết |
+|:--|:--|:--|:--|
+| `id` | BINARY(16) | PK, NN | UUIDv7 |
+| `conversation_id` | BINARY(16) | FK → `msg_conversation.id` (CASCADE), NN | Hội thoại chứa tin nhắn |
+| `sender_user_id` | BINARY(16) | NN | Người gửi (`student_user_id` hoặc `instructor_user_id`) |
+| `content` | TEXT | NN | Nội dung tin nhắn đã làm sạch HTML (NFR-07) |
+| `attachment_storage_key` | VARCHAR(500) | NULL | Tùy chọn: khóa S3 tệp đính kèm |
+| `read_at` | DATETIME(3) | NULL | NULL = chưa đọc; đặt khi người nhận mở hội thoại |
+| `created_at` | DATETIME(3) | NN, mặc định `CURRENT_TIMESTAMP(3)` | – |
+
+**Index/Constraint:**
+- IX(`conversation_id`, `created_at`): phân trang lịch sử tin nhắn.
+- IX(`conversation_id`, `sender_user_id`, `read_at`): đếm tin nhắn chưa đọc.
+
+### 3.11.4. Contract và Domain Event
+
+- **Contract gọi ra:** `ICourseContract.GetCourseAccess` (kiểm tra học viên đang `ACTIVE` và khóa học đã `PUBLISHED`), `IProfileContract.GetDisplayInfo` (tên và avatar đối phương).
+- **Domain Event phát ra (In-process / Post-commit):** `NewMessageReceived` (`{eventId, conversationId, messageId, courseId, senderUserId, recipientUserId, preview, sentAt}`) → Notification tạo thông báo in-app cho người nhận.
+- **Quyết định Outbox:** Không dùng Outbox; thông báo gửi bất đồng bộ sau commit qua Event Bus in-process (`FR-NTF-01`).
 
 ---
 

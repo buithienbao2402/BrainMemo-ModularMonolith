@@ -3,7 +3,7 @@
     "name": "BrainMemo",
     "subtitle": "NỀN TẢNG HỌC TẬP TRỰC TUYẾN",
     "slogan": "Khám phá tri thức, mở mang tầm mắt",
-    "copyright": "© 2026 BrainMemo LMS. Tất cả các quyền được bảo lưu."
+    "copyright": "© 2026 | Toàn bộ bản quyền thuộc BrainMemo"
   },
   "nav": {
     "home": "Trang chủ",
@@ -119,7 +119,9 @@
       "overview": "Tổng quan",
       "moderation": "Kiểm duyệt nội dung",
       "reports": "Báo cáo vi phạm",
+      "sanctions": "Chế tài kỷ luật",
       "users": "Quản lý tài khoản",
+      "announcements": "Phát thông báo",
       "courses": "Quản lý khóa học",
       "aiSettings": "Cấu hình AI kiểm duyệt",
       "auditLogs": "Nhật ký hệ thống",

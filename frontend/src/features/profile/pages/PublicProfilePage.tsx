@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Calendar,
   BookOpen,
@@ -7,6 +7,7 @@ import {
   Lock,
   GraduationCap,
   CheckCircle2,
+  MessageSquare,
 } from 'lucide-react';
 import { useAuth } from '@/shared/hooks';
 import {
@@ -21,10 +22,13 @@ import {
   useProfileCoursesQuery,
   type ProfileCourseRelation,
 } from '../api/profileApi';
+import defaultCourseCover from '@/assets/courses';
+import { getOrCreateUserConversation } from '@/features/messaging';
 
 export function PublicProfilePage() {
   const { userId } = useParams<{ userId: string }>();
   const { user: currentUser } = useAuth();
+  const navigate = useNavigate();
 
   const [relation, setRelation] = useState<ProfileCourseRelation>('ENROLLED');
   const [page, setPage] = useState(1);
@@ -169,12 +173,32 @@ export function PublicProfilePage() {
             </div>
           </div>
 
-          {isOwnProfile && (
+          {isOwnProfile ? (
             <Button asChild variant="outline" size="sm" className="shrink-0">
               <Link to="/settings/profile">
                 <Edit className="h-4 w-4 mr-1.5" />
                 Chỉnh sửa hồ sơ
               </Link>
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              className="shrink-0 bg-brand-orange hover:bg-brand-orange/90 text-white font-medium"
+              onClick={() => {
+                const convId = getOrCreateUserConversation({
+                  userId: profile.userId || userId || 'unknown-user',
+                  displayName: profile.displayName || 'Người dùng BrainMemo',
+                  avatarUrl: profile.avatarUrl || undefined,
+                  roleBadge: 'Thành viên',
+                  courseName: profile.bio ? profile.bio.slice(0, 40) : 'Trao đổi cá nhân',
+                });
+                navigate(`/me/messages?c=${convId}`);
+              }}
+            >
+              <MessageSquare className="h-4 w-4 mr-1.5" />
+              Nhắn tin
             </Button>
           )}
         </div>
@@ -299,17 +323,14 @@ export function PublicProfilePage() {
                     to={`/courses/${course.id}`}
                     className="relative aspect-video w-full overflow-hidden bg-muted"
                   >
-                    {course.coverUrl ? (
-                      <img
-                        src={course.coverUrl}
-                        alt={course.name || 'Cover'}
-                        className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-brand-orange/20 to-primary/20 text-brand-orange font-bold text-lg">
-                        BrainMemo
-                      </div>
-                    )}
+                    <img
+                      src={course.coverUrl || defaultCourseCover}
+                      alt={course.name || 'Cover'}
+                      onError={(e) => {
+                        e.currentTarget.src = defaultCourseCover;
+                      }}
+                      className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
                     {course.accessMode && (
                       <span className="absolute top-2 left-2 px-2 py-0.5 text-[10px] font-semibold uppercase rounded-md bg-black/60 text-white backdrop-blur-sm">
                         {course.accessMode}

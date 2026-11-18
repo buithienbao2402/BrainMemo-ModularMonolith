@@ -5,6 +5,10 @@
     <ProjectReference Include="..\BrainMemo.Notification.Contracts\BrainMemo.Notification.Contracts.csproj" />
     <ProjectReference Include="..\BrainMemo.Notification.Domain\BrainMemo.Notification.Domain.csproj" />
     <ProjectReference Include="..\..\Identity\BrainMemo.Identity.Contracts\BrainMemo.Identity.Contracts.csproj" />
+    <ProjectReference Include="..\..\Course\BrainMemo.Course.Contracts\BrainMemo.Course.Contracts.csproj" />
+    <ProjectReference Include="..\..\Learning\BrainMemo.Learning.Contracts\BrainMemo.Learning.Contracts.csproj" />
+    <ProjectReference Include="..\..\Content\BrainMemo.Content.Contracts\BrainMemo.Content.Contracts.csproj" />
+    <ProjectReference Include="..\..\Messaging\BrainMemo.Messaging.Contracts\BrainMemo.Messaging.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

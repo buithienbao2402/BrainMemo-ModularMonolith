@@ -260,4 +260,91 @@ public sealed class CourseContractService(
         Page<NominationFactDto> page = courseRepository.ListNominationFactsAsync(after, limit).GetAwaiter().GetResult();
         return Result.Success(page);
     }
+
+    public Result ApproveCoursePublish(Guid courseId, Guid actorAdminId)
+    {
+        CourseEntity? course = courseRepository.GetByIdWithTagsAsync(courseId).GetAwaiter().GetResult();
+        if (course is null)
+        {
+            return Result.Failure(Error.NotFound("Không tìm thấy khóa học."));
+        }
+
+        DateTimeOffset now = clock.UtcNow;
+        Result result = course.ApprovePublish(actorAdminId, now);
+        if (result.IsFailure)
+        {
+            return result;
+        }
+
+        outboxWriter.WriteAsync(course.Id, CourseEventFactory.CreateUpsertedEvent(course, now)).GetAwaiter().GetResult();
+        outboxWriter.WriteAsync(course.Id, new CourseApprovalDecided(
+            EventId: Guid.NewGuid(),
+            OccurredAt: now,
+            CourseId: course.Id,
+            CourseName: course.Name,
+            OwnerUserId: course.OwnerUserId,
+            ActorAdminId: actorAdminId,
+            Approved: true,
+            RejectionReason: null)).GetAwaiter().GetResult();
+        courseRepository.SaveChangesAsync().GetAwaiter().GetResult();
+        return Result.Success();
+    }
+
+    public Result RejectCoursePublish(Guid courseId, Guid actorAdminId, string reason)
+    {
+        CourseEntity? course = courseRepository.GetByIdWithTagsAsync(courseId).GetAwaiter().GetResult();
+        if (course is null)
+        {
+            return Result.Failure(Error.NotFound("Không tìm thấy khóa học."));
+        }
+
+        DateTimeOffset now = clock.UtcNow;
+        Result result = course.RejectPublish(actorAdminId, reason, now);
+        if (result.IsFailure)
+        {
+            return result;
+        }
+
+        outboxWriter.WriteAsync(course.Id, new CourseApprovalDecided(
+            EventId: Guid.NewGuid(),
+            OccurredAt: now,
+            CourseId: course.Id,
+            CourseName: course.Name,
+            OwnerUserId: course.OwnerUserId,
+            ActorAdminId: actorAdminId,
+            Approved: false,
+            RejectionReason: course.RejectionReason)).GetAwaiter().GetResult();
+        courseRepository.SaveChangesAsync().GetAwaiter().GetResult();
+        return Result.Success();
+    }
+
+    public Result<PagedResult<CourseReviewQueueItemDto>> ListCourseReviewQueue(string? status, int page, int pageSize)
+    {
+        Domain.Enums.CoursePublishStatus? parsedStatus = status?.ToUpperInvariant() switch
+        {
+            "PENDING_APPROVAL" => Domain.Enums.CoursePublishStatus.PendingApproval,
+            "PUBLISHED" => Domain.Enums.CoursePublishStatus.Published,
+            "REJECTED" => Domain.Enums.CoursePublishStatus.Rejected,
+            _ => null,
+        };
+
+        PagedResult<CourseEntity> paged = courseRepository.ListByPublishStatusAsync(parsedStatus, page, pageSize).GetAwaiter().GetResult();
+        List<CourseReviewQueueItemDto> items = paged.Items.Select(c => new CourseReviewQueueItemDto(
+            CourseId: c.Id,
+            Name: c.Name,
+            Description: c.Description,
+            AccessMode: c.AccessMode.ToString().ToUpperInvariant(),
+            PublishStatus: c.PublishStatus.ToApiString(),
+            Owner: new UserRefDto(c.OwnerUserId, "Giảng viên", null),
+            SubmittedForReviewAt: c.SubmittedForReviewAt,
+            RejectionReason: c.RejectionReason)).ToList();
+
+        return Result.Success(new PagedResult<CourseReviewQueueItemDto>(items, page, pageSize, paged.TotalItems));
+    }
+
+    public Result<int> CountPendingCourseReviews()
+    {
+        int count = courseRepository.CountPendingReviewsAsync().GetAwaiter().GetResult();
+        return Result.Success(count);
+    }
 }

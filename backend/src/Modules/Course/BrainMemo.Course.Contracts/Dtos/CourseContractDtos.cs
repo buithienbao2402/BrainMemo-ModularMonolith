@@ -89,7 +89,21 @@ public sealed record CourseDto(
     DateTimeOffset UpdatedAt,
     CourseViewerDto Viewer,
     double? RatingAvg,
-    int RatingCount);
+    int RatingCount,
+    string PublishStatus = "DRAFT",
+    DateTimeOffset? SubmittedForReviewAt = null,
+    DateTimeOffset? PublishedAt = null,
+    string? RejectionReason = null);
+
+public sealed record CourseReviewQueueItemDto(
+    Guid CourseId,
+    string Name,
+    string? Description,
+    string AccessMode,
+    string PublishStatus,
+    UserRefDto Owner,
+    DateTimeOffset? SubmittedForReviewAt,
+    string? RejectionReason);
 
 public sealed record CourseCardDto(
     Guid Id,
@@ -103,7 +117,8 @@ public sealed record CourseCardDto(
     double? RatingAvg,
     int RatingCount,
     int NominationCount,
-    double? ProgressPercent);
+    double? ProgressPercent,
+    string PublishStatus = "DRAFT");
 
 public sealed record CourseStatsDto(
     int ActiveLearners,

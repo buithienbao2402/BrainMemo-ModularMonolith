@@ -1,10 +1,20 @@
 import { http, HttpResponse } from 'msw';
 import type { AuthTokens, CurrentUser, ProblemDetails, ProfileDto } from '@/shared/api';
 import type { SessionDto } from '@/features/identity/api';
+import {
+  getStoredConversations,
+  getStoredMessages,
+  appendStoredMessage,
+  markStoredConversationAsRead,
+  type StoredMessage,
+} from '@/features/messaging';
 
 export type MockPersona = 'guest' | 'user' | 'unverified' | 'admin' | 'locked';
 
+export let currentMockPersona: MockPersona = 'guest';
+
 export function setMockPersonaCookie(persona: MockPersona): void {
+  currentMockPersona = persona;
   if (typeof document !== 'undefined') {
     document.cookie = `bm_mock_persona=${persona}; path=/`;
   }
@@ -402,10 +412,50 @@ export const initialMockChapters: Record<string, MockChapterItem[]> = {
           position: 3,
           title: 'Bộ thẻ nhớ ôn tập',
           flashcards: [
-            { front: 'Modular Monolith là gì?', back: 'Hệ thống đơn khối chia ranh giới module rõ ràng qua contracts.' },
-            { front: 'DEC-05 quy định gì?', back: 'Client upload trực tiếp qua presigned URL; ảnh <= 5MB, tệp <= 20MB.' },
+            { id: 'fc-1', frontText: 'Modular Monolith là gì?', backText: 'Hệ thống đơn khối chia ranh giới module rõ ràng qua contracts.' },
+            { id: 'fc-2', frontText: 'DEC-05 quy định gì?', backText: 'Client upload trực tiếp qua presigned URL; ảnh <= 5MB, tệp <= 20MB.' },
           ],
           aiReviewStatus: 'APPROVED',
+        },
+        {
+          id: 'block-5555',
+          blockType: 'QUESTION',
+          position: 4,
+          title: 'Câu hỏi kiểm tra nhanh',
+          question: {
+            questionType: 'SINGLE_CHOICE',
+            stem: 'Trong kiến trúc Modular Monolith, các module giao tiếp với nhau bằng cách nào?',
+            options: [
+              { id: 'opt-1', content: 'Gọi API HTTP qua mạng Internet' },
+              { id: 'opt-2', content: 'Thông qua IModuleContract và Contracts project in-process' },
+              { id: 'opt-3', content: 'Truy vấn trực tiếp DbContext của module khác' },
+              { id: 'opt-4', content: 'Chia sẻ các entity Domain nội bộ' },
+            ],
+            matchingPairs: [],
+          },
+          correctOptionId: 'opt-2',
+          explanation: 'Các module trong Modular Monolith giao tiếp in-process thông qua interface công khai định nghĩa trong *.Contracts.',
+        },
+      ],
+    },
+    {
+      id: 'chapter-3333-protected',
+      position: 3,
+      title: 'Chương 3: Bảo mật & Phân quyền nâng cao (Protected)',
+      description: 'Chương học nâng cao yêu cầu passcode.',
+      status: 'PUBLISHED',
+      accessMode: 'PROTECTED',
+      passcode: '1234',
+      hasUnpublishedChanges: false,
+      lastVersionNo: 1,
+      publishedVersionNo: 1,
+      blocks: [
+        {
+          id: 'block-sec-1',
+          blockType: 'RICH_TEXT',
+          position: 1,
+          title: 'Nội dung bảo mật đặc biệt',
+          body: '<p>Bạn đã mở khóa thành công chương bảo vệ bằng Passcode!</p>',
         },
       ],
     },
@@ -508,6 +558,226 @@ export let mockChapters: Record<string, MockChapterItem[]> = JSON.parse(
 export let mockVersions: Record<string, MockVersionItem[]> = JSON.parse(
   JSON.stringify(initialMockVersions)
 );
+export interface MockEnrollmentItem {
+  id: string;
+  courseId: string;
+  user: {
+    id: string;
+    displayName: string;
+    email: string;
+    avatarUrl?: string | null;
+  };
+  status: 'PENDING_APPROVAL' | 'INVITED' | 'ACTIVE' | 'LEFT' | 'REMOVED';
+  requestId?: string | null;
+  statusChangedAt: string;
+}
+
+export const initialMockEnrollments: Record<string, MockEnrollmentItem[]> = {
+  'my-course-1': [
+    {
+      id: 'enr-1',
+      courseId: 'my-course-1',
+      user: {
+        id: 'u-std-1',
+        displayName: 'Nguyễn Văn An',
+        email: 'an.nguyen@example.com',
+        avatarUrl: null,
+      },
+      status: 'ACTIVE',
+      requestId: null,
+      statusChangedAt: '2026-11-10T10:00:00Z',
+    },
+    {
+      id: 'enr-2',
+      courseId: 'my-course-1',
+      user: {
+        id: 'u-std-2',
+        displayName: 'Trần Thị Bình',
+        email: 'binh.tran@example.com',
+        avatarUrl: null,
+      },
+      status: 'ACTIVE',
+      requestId: null,
+      statusChangedAt: '2026-11-11T14:30:00Z',
+    },
+    {
+      id: 'enr-3',
+      courseId: 'my-course-1',
+      user: {
+        id: 'u-std-3',
+        displayName: 'Lê Hoàng Cường',
+        email: 'cuong.le@example.com',
+        avatarUrl: null,
+      },
+      status: 'PENDING_APPROVAL',
+      requestId: 'req-s4-1',
+      statusChangedAt: '2026-11-14T09:15:00Z',
+    },
+    {
+      id: 'enr-4',
+      courseId: 'my-course-1',
+      user: {
+        id: 'u-std-4',
+        displayName: 'Phạm Thu Dung',
+        email: 'dung.pham@example.com',
+        avatarUrl: null,
+      },
+      status: 'INVITED',
+      requestId: null,
+      statusChangedAt: '2026-11-15T08:00:00Z',
+    },
+    {
+      id: 'enr-5',
+      courseId: 'my-course-1',
+      user: {
+        id: 'u-std-5',
+        displayName: 'Vũ Đức Em',
+        email: 'em.vu@example.com',
+        avatarUrl: null,
+      },
+      status: 'REMOVED',
+      requestId: null,
+      statusChangedAt: '2026-11-12T16:00:00Z',
+    },
+  ],
+};
+
+export let mockEnrollments: Record<string, MockEnrollmentItem[]> = JSON.parse(
+  JSON.stringify(initialMockEnrollments)
+);
+
+export let mockUnlockedChapters = new Set<string>();
+export let mockCompletedBlocks: Record<string, string[]> = {
+  'my-course-1': ['block-1111'],
+};
+export let mockBookmarks: Array<{
+  courseId: string;
+  courseName: string;
+  chapterId: string;
+  chapterTitle: string;
+  updatedAt: string;
+  tag?: string;
+  totalLessons?: number;
+  completedLessons?: number;
+  progressPercent?: number;
+  statusText?: string;
+  coverImage?: string;
+}> = [
+  {
+    courseId: 'crs-py-01',
+    courseName: 'Nhập môn Python - Từ Zero tới Hero',
+    chapterId: 'chap-py-04',
+    chapterTitle: 'Chương 4: Hàm & Phạm vi biến (Scope)',
+    updatedAt: new Date(Date.now() - 3600000 * 5).toISOString(),
+    tag: 'Lập trình',
+    totalLessons: 20,
+    completedLessons: 9,
+    progressPercent: 45,
+    statusText: 'Đã hoàn thành',
+  },
+  {
+    courseId: 'crs-ds-02',
+    courseName: 'Cấu trúc dữ liệu và giải thuật thực chiến',
+    chapterId: 'chap-ds-06',
+    chapterTitle: 'Chương 6: Cây nhị phân và Đồ thị (Binary Tree & Graph)',
+    updatedAt: new Date(Date.now() - 3600000 * 24).toISOString(),
+    tag: 'Khoa học máy tính',
+    totalLessons: 25,
+    completedLessons: 17,
+    progressPercent: 68,
+    statusText: 'Đã hoàn thành',
+  },
+  {
+    courseId: 'crs-web-03',
+    courseName: 'Lập trình Web Fullstack với React & Node.js',
+    chapterId: 'chap-web-03',
+    chapterTitle: 'Chương 3: State Management & Redux Toolkit',
+    updatedAt: new Date(Date.now() - 3600000 * 48).toISOString(),
+    tag: 'Web Fullstack',
+    totalLessons: 30,
+    completedLessons: 6,
+    progressPercent: 20,
+    statusText: 'Đã hoàn thành',
+  },
+  {
+    courseId: 'crs-ml-04',
+    courseName: 'Machine Learning căn bản cho người mới bắt đầu',
+    chapterId: 'chap-ml-08',
+    chapterTitle: 'Chương 8: Đánh giá mô hình & Confusion Matrix',
+    updatedAt: new Date(Date.now() - 3600000 * 72).toISOString(),
+    tag: 'AI & ML',
+    totalLessons: 18,
+    completedLessons: 15,
+    progressPercent: 85,
+    statusText: 'Gần hoàn thành',
+  },
+  {
+    courseId: 'crs-ms-05',
+    courseName: 'Thiết kế hệ thống vi dịch vụ (Microservices Architecture)',
+    chapterId: 'chap-ms-05',
+    chapterTitle: 'Chương 5: Event-Driven & Kafka Message Bus',
+    updatedAt: new Date(Date.now() - 3600000 * 96).toISOString(),
+    tag: 'Kiến trúc',
+    totalLessons: 22,
+    completedLessons: 8,
+    progressPercent: 35,
+    statusText: 'Đã hoàn thành',
+  },
+  {
+    courseId: 'crs-sql-06',
+    courseName: 'SQL & Phân tích dữ liệu kinh doanh',
+    chapterId: 'chap-sql-07',
+    chapterTitle: 'Chương 7: Window Functions & Phân tích xu hướng',
+    updatedAt: new Date(Date.now() - 3600000 * 120).toISOString(),
+    tag: 'Dữ liệu',
+    totalLessons: 16,
+    completedLessons: 8,
+    progressPercent: 50,
+    statusText: 'Đã hoàn thành',
+  },
+  {
+    courseId: 'my-course-1',
+    courseName: 'Khóa học Thiết kế hệ thống',
+    chapterId: 'chapter-1111-1111',
+    chapterTitle: 'Chương 1: Giới thiệu kiến trúc Modular Monolith',
+    updatedAt: new Date().toISOString(),
+    tag: 'Kiến trúc',
+    totalLessons: 22,
+    completedLessons: 8,
+    progressPercent: 35,
+    statusText: 'Đã hoàn thành',
+  },
+];
+export let mockSearchHistory: Array<{
+  queryText: string;
+  createdAt: string;
+}> = [
+  { queryText: 'React', createdAt: new Date(Date.now() - 3600000).toISOString() },
+  { queryText: 'Dotnet', createdAt: new Date(Date.now() - 7200000).toISOString() },
+];
+export let passcodeAttempts: Record<string, number> = {};
+
+export function getStoredEnrollments(): Record<string, MockEnrollmentItem[]> {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const stored = window.localStorage.getItem('bm_mock_enrollments');
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch {}
+  }
+  return mockEnrollments;
+}
+
+export function saveStoredEnrollments(enrollments: Record<string, MockEnrollmentItem[]>): void {
+  mockEnrollments = enrollments;
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      window.localStorage.setItem('bm_mock_enrollments', JSON.stringify(enrollments));
+    } catch {}
+  }
+}
+
 export let mockResources: Record<string, MockResourceItem[]> = JSON.parse(
   JSON.stringify(initialMockResources)
 );
@@ -575,11 +845,252 @@ export function saveStoredResources(resources: Record<string, MockResourceItem[]
   }
 }
 
+export interface MockNotificationItem {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  readAt: string | null;
+  createdAt: string;
+  payload?: any;
+}
+
+export const initialMockNotifications: MockNotificationItem[] = [
+  {
+    id: 'ntf-1',
+    type: 'COMMENT',
+    title: 'Bình luận mới về khóa học',
+    body: 'Học viên Nguyễn Văn A đã bình luận về khóa học "Lập trình Web hiện đại".',
+    readAt: null,
+    createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
+    payload: { courseId: 'c1' },
+  },
+  {
+    id: 'ntf-2',
+    type: 'ENROLLMENT',
+    title: 'Học viên mới tham gia',
+    body: 'Trần Thị B đã ghi danh vào khóa học của bạn.',
+    readAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
+    createdAt: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
+    payload: { courseId: 'c1' },
+  },
+  {
+    id: 'ntf-3',
+    type: 'NEW_CHAPTER',
+    title: 'Chương mới đã xuất bản',
+    body: 'Khóa học bạn đang theo dõi vừa ra mắt chương mới.',
+    readAt: null,
+    createdAt: new Date(Date.now() - 1000 * 60 * 300).toISOString(),
+    payload: { courseId: 'c1', chapterId: 'ch1' },
+  },
+];
+
+export interface MockCommentItem {
+  id: string;
+  courseId: string;
+  chapterId: string | null;
+  parentCommentId?: string | null;
+  author: { id: string; displayName: string; avatarUrl?: string };
+  content: string;
+  isPinned: boolean;
+  isDeleted?: boolean;
+  editedAt: string | null;
+  createdAt: string;
+  replies?: MockCommentItem[];
+}
+
+export const initialMockComments: Record<string, MockCommentItem[]> = {
+  'my-course-1': [
+    {
+      id: 'cmt-1',
+      courseId: 'my-course-1',
+      chapterId: null,
+      author: { id: 'user-1', displayName: 'Lê Minh Tuấn' },
+      content: 'Khóa học này giải thích rất dễ hiểu và chi tiết!',
+      isPinned: true,
+      editedAt: null,
+      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
+      replies: [
+        {
+          id: 'cmt-reply-1',
+          courseId: 'my-course-1',
+          chapterId: null,
+          author: { id: 'owner-1', displayName: 'Giảng viên Quang Trần' },
+          parentCommentId: 'cmt-1',
+          content: 'Cảm ơn Tuấn nhé! Chúc bạn học tốt!',
+          isPinned: false,
+          editedAt: null,
+          createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
+        },
+      ],
+    },
+  ],
+};
+
+export const initialMockNominations: Record<string, { count: number; hasNominated: boolean }> = {
+  'course-intro-1': { count: 15, hasNominated: false },
+  'my-course-1': { count: 10, hasNominated: false },
+};
+
+export function getStoredNotifications(): MockNotificationItem[] {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const stored = window.localStorage.getItem('bm_mock_notifications');
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch {}
+  }
+  return JSON.parse(JSON.stringify(initialMockNotifications));
+}
+
+export function saveStoredNotifications(items: MockNotificationItem[]): void {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      window.localStorage.setItem('bm_mock_notifications', JSON.stringify(items));
+    } catch {}
+  }
+}
+
+export function getStoredComments(): Record<string, MockCommentItem[]> {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const stored = window.localStorage.getItem('bm_mock_comments');
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch {}
+  }
+  return JSON.parse(JSON.stringify(initialMockComments));
+}
+
+export function saveStoredComments(items: Record<string, MockCommentItem[]>): void {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      window.localStorage.setItem('bm_mock_comments', JSON.stringify(items));
+    } catch {}
+  }
+}
+
+export function getStoredNominations(): Record<string, { count: number; hasNominated: boolean }> {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const stored = window.localStorage.getItem('bm_mock_nominations');
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch {}
+  }
+  return JSON.parse(JSON.stringify(initialMockNominations));
+}
+
+export function saveStoredNominations(items: Record<string, { count: number; hasNominated: boolean }>): void {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      window.localStorage.setItem('bm_mock_nominations', JSON.stringify(items));
+    } catch {}
+  }
+}
+
 export function resetMockCourses(): void {
   mockCourses = [...initialMockCourses];
   mockChapters = JSON.parse(JSON.stringify(initialMockChapters));
   mockVersions = JSON.parse(JSON.stringify(initialMockVersions));
   mockResources = JSON.parse(JSON.stringify(initialMockResources));
+  mockEnrollments = JSON.parse(JSON.stringify(initialMockEnrollments));
+  mockUnlockedChapters.clear();
+  mockCompletedBlocks = { 'my-course-1': ['block-1111'] };
+  mockBookmarks = [
+    {
+      courseId: 'crs-py-01',
+      courseName: 'Nhập môn Python - Từ Zero tới Hero',
+      chapterId: 'chap-py-04',
+      chapterTitle: 'Chương 4: Hàm & Phạm vi biến (Scope)',
+      updatedAt: new Date(Date.now() - 3600000 * 5).toISOString(),
+      tag: 'Lập trình',
+      totalLessons: 20,
+      completedLessons: 9,
+      progressPercent: 45,
+      statusText: 'Đã hoàn thành',
+    },
+    {
+      courseId: 'crs-ds-02',
+      courseName: 'Cấu trúc dữ liệu và giải thuật thực chiến',
+      chapterId: 'chap-ds-06',
+      chapterTitle: 'Chương 6: Cây nhị phân và Đồ thị (Binary Tree & Graph)',
+      updatedAt: new Date(Date.now() - 3600000 * 24).toISOString(),
+      tag: 'Khoa học máy tính',
+      totalLessons: 25,
+      completedLessons: 17,
+      progressPercent: 68,
+      statusText: 'Đã hoàn thành',
+    },
+    {
+      courseId: 'crs-web-03',
+      courseName: 'Lập trình Web Fullstack với React & Node.js',
+      chapterId: 'chap-web-03',
+      chapterTitle: 'Chương 3: State Management & Redux Toolkit',
+      updatedAt: new Date(Date.now() - 3600000 * 48).toISOString(),
+      tag: 'Web Fullstack',
+      totalLessons: 30,
+      completedLessons: 6,
+      progressPercent: 20,
+      statusText: 'Đã hoàn thành',
+    },
+    {
+      courseId: 'crs-ml-04',
+      courseName: 'Machine Learning căn bản cho người mới bắt đầu',
+      chapterId: 'chap-ml-08',
+      chapterTitle: 'Chương 8: Đánh giá mô hình & Confusion Matrix',
+      updatedAt: new Date(Date.now() - 3600000 * 72).toISOString(),
+      tag: 'AI & ML',
+      totalLessons: 18,
+      completedLessons: 15,
+      progressPercent: 85,
+      statusText: 'Gần hoàn thành',
+    },
+    {
+      courseId: 'crs-ms-05',
+      courseName: 'Thiết kế hệ thống vi dịch vụ (Microservices Architecture)',
+      chapterId: 'chap-ms-05',
+      chapterTitle: 'Chương 5: Event-Driven & Kafka Message Bus',
+      updatedAt: new Date(Date.now() - 3600000 * 96).toISOString(),
+      tag: 'Kiến trúc',
+      totalLessons: 22,
+      completedLessons: 8,
+      progressPercent: 35,
+      statusText: 'Đã hoàn thành',
+    },
+    {
+      courseId: 'crs-sql-06',
+      courseName: 'SQL & Phân tích dữ liệu kinh doanh',
+      chapterId: 'chap-sql-07',
+      chapterTitle: 'Chương 7: Window Functions & Phân tích xu hướng',
+      updatedAt: new Date(Date.now() - 3600000 * 120).toISOString(),
+      tag: 'Dữ liệu',
+      totalLessons: 16,
+      completedLessons: 8,
+      progressPercent: 50,
+      statusText: 'Đã hoàn thành',
+    },
+    {
+      courseId: 'my-course-1',
+      courseName: 'Khóa học Thiết kế hệ thống',
+      chapterId: 'chapter-1111-1111',
+      chapterTitle: 'Chương 1: Giới thiệu kiến trúc Modular Monolith',
+      updatedAt: new Date().toISOString(),
+      tag: 'Kiến trúc',
+      totalLessons: 22,
+      completedLessons: 8,
+      progressPercent: 35,
+      statusText: 'Đã hoàn thành',
+    },
+  ];
+  mockSearchHistory = [
+    { queryText: 'React', createdAt: new Date(Date.now() - 3600000).toISOString() },
+    { queryText: 'Dotnet', createdAt: new Date(Date.now() - 7200000).toISOString() },
+  ];
+  passcodeAttempts = {};
   if (typeof window !== 'undefined' && window.localStorage) {
     try {
       window.localStorage.removeItem('bm_mock_courses');
@@ -587,6 +1098,10 @@ export function resetMockCourses(): void {
       window.localStorage.removeItem('bm_mock_chapters');
       window.localStorage.removeItem('bm_mock_versions');
       window.localStorage.removeItem('bm_mock_resources');
+      window.localStorage.removeItem('bm_mock_enrollments');
+      window.localStorage.removeItem('bm_mock_notifications');
+      window.localStorage.removeItem('bm_mock_comments');
+      window.localStorage.removeItem('bm_mock_nominations');
     } catch {
       // ignore
     }
@@ -599,8 +1114,23 @@ function readPersonaFromCookie(request: Request): MockPersona {
   if (authHeader.includes('mock-access-token-unverified')) return 'unverified';
   if (authHeader.includes('mock-access-token-user') || authHeader.includes('mock-access-token-google')) return 'user';
 
-  const cookieHeader =
-    request.headers.get('cookie') ?? (typeof document !== 'undefined' ? document.cookie : '');
+  if (typeof document !== 'undefined') {
+    const match = document.cookie.match(/(?:^|;\s*)bm_mock_persona=([^;]+)/);
+    const value = match?.[1]?.trim();
+    if (
+      value === 'user' ||
+      value === 'unverified' ||
+      value === 'admin' ||
+      value === 'locked' ||
+      value === 'guest'
+    ) {
+      currentMockPersona = value;
+      return value;
+    }
+    return 'guest';
+  }
+
+  const cookieHeader = request.headers.get('cookie') ?? '';
   const match = cookieHeader.match(/(?:^|;\s*)bm_mock_persona=([^;]+)/);
   const value = match?.[1]?.trim();
   if (
@@ -612,7 +1142,7 @@ function readPersonaFromCookie(request: Request): MockPersona {
   ) {
     return value;
   }
-  return 'guest';
+  return currentMockPersona;
 }
 
 function problemResponse(status: number, body: ProblemDetails) {
@@ -623,6 +1153,8 @@ function problemResponse(status: number, body: ProblemDetails) {
     },
   });
 }
+
+export const submittedQuizAttemptIds = new Set<string>();
 
 export const handlers = [
   http.post('*/api/v1/auth/refresh', ({ request }) => {
@@ -906,6 +1438,8 @@ export const handlers = [
   }),
 
   http.post('*/api/v1/auth/logout', () => {
+    currentMockPersona = 'guest';
+    setMockPersonaCookie('guest');
     return new HttpResponse(null, { status: 204 });
   }),
 
@@ -977,8 +1511,103 @@ export const handlers = [
         code: 'UNAUTHORIZED',
       });
     }
-    const count = persona === 'admin' ? 5 : persona === 'user' ? 3 : 1;
+    const notifications = getStoredNotifications();
+    const count = notifications.filter((n) => !n.readAt).length;
     return HttpResponse.json({ count }, { status: 200 });
+  }),
+
+  // Messaging Mock Handlers
+  http.get('*/api/v1/messages/conversations', ({ request }) => {
+    const url = new URL(request.url);
+    const courseId = url.searchParams.get('courseId');
+    const page = parseInt(url.searchParams.get('page') || '1', 10);
+    const pageSize = parseInt(url.searchParams.get('pageSize') || '20', 10);
+
+    const convs = getStoredConversations();
+    const filtered = courseId ? convs.filter((c) => c.courseId === courseId) : convs;
+    const items = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+    return HttpResponse.json(
+      {
+        items,
+        meta: {
+          page,
+          pageSize,
+          totalItems: filtered.length,
+          totalPages: Math.max(1, Math.ceil(filtered.length / pageSize)),
+        },
+      },
+      { status: 200 }
+    );
+  }),
+
+  http.get('*/api/v1/messages/unread-count', () => {
+    const convs = getStoredConversations();
+    const unreadCount = convs.reduce((acc, c) => acc + (c.unreadCount ?? 0), 0);
+    return HttpResponse.json({ unreadCount }, { status: 200 });
+  }),
+
+  http.get('*/api/v1/messages/conversations/:id/messages', ({ params }) => {
+    const { id } = params;
+    const msgs = getStoredMessages(String(id));
+    return HttpResponse.json(
+      {
+        items: msgs,
+        meta: {
+          page: 1,
+          pageSize: 50,
+          totalItems: msgs.length,
+          totalPages: 1,
+        },
+      },
+      { status: 200 }
+    );
+  }),
+
+  http.post('*/api/v1/messages/conversations/:id/messages', async ({ params, request }) => {
+    const { id } = params;
+    const body = (await request.json().catch(() => ({}))) as { content?: string };
+    const content = body.content?.trim() || '';
+
+    const newMsg: StoredMessage = {
+      id: `msg-${Date.now()}`,
+      conversationId: String(id),
+      senderUserId: 'current-user',
+      content,
+      createdAt: new Date().toISOString(),
+    };
+    appendStoredMessage(String(id), newMsg);
+
+    return HttpResponse.json(newMsg, { status: 201 });
+  }),
+
+  http.put('*/api/v1/messages/conversations/:id/read', ({ params }) => {
+    markStoredConversationAsRead(String(params.id));
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.post('*/api/v1/courses/:courseId/messages/conversations', ({ params }) => {
+    const { courseId } = params;
+    const convs = getStoredConversations();
+    let target = convs.find((c) => c.courseId === courseId);
+    if (!target && convs.length > 0) {
+      target = convs[0];
+    }
+    return HttpResponse.json(target ?? null, { status: 200 });
+  }),
+
+  http.get('*/api/v1/messages/conversations/:id', ({ params }) => {
+    const { id } = params;
+    const convs = getStoredConversations();
+    const target = convs.find((c) => c.id === id);
+    if (!target) {
+      return problemResponse(404, {
+        title: 'Không tìm thấy cuộc trò chuyện',
+        status: 404,
+        code: 'CONVERSATION_NOT_FOUND',
+      });
+    }
+    return HttpResponse.json(target, { status: 200 });
   }),
 
   // Presigned S3/R2 File Upload Mock Handlers (DEC-05)
@@ -1647,11 +2276,269 @@ export const handlers = [
     );
   }),
 
-  http.put('*/api/v1/courses/:courseId/nomination', () => {
+  http.put('*/api/v1/courses/:courseId/nomination', ({ params }) => {
+    const courseId = String(params.courseId);
+    const nominations = getStoredNominations();
+    const current = nominations[courseId] || { count: 10, hasNominated: false };
+    if (!current.hasNominated) {
+      current.count += 1;
+      current.hasNominated = true;
+    }
+    nominations[courseId] = current;
+    saveStoredNominations(nominations);
     return new HttpResponse(null, { status: 204 });
   }),
 
-  http.delete('*/api/v1/courses/:courseId/nomination', () => {
+  http.delete('*/api/v1/courses/:courseId/nomination', ({ params }) => {
+    const courseId = String(params.courseId);
+    const nominations = getStoredNominations();
+    const current = nominations[courseId] || { count: 10, hasNominated: false };
+    if (current.hasNominated) {
+      current.count = Math.max(0, current.count - 1);
+      current.hasNominated = false;
+    }
+    nominations[courseId] = current;
+    saveStoredNominations(nominations);
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.get('*/api/v1/courses/:courseId/nominations/summary', ({ params }) => {
+    const courseId = String(params.courseId);
+    const nominations = getStoredNominations();
+    const current = nominations[courseId] || { count: 15, hasNominated: false };
+    return HttpResponse.json(
+      {
+        nominationCount: current.count,
+        hasNominated: current.hasNominated,
+      },
+      { status: 200 }
+    );
+  }),
+
+  // ==========================================
+  // S6 Social & Notifications (T-S6-FE-01)
+  // ==========================================
+  http.get('*/api/v1/notifications', ({ request }) => {
+    const url = new URL(request.url);
+    const unreadOnly = url.searchParams.get('unreadOnly') === 'true';
+    const page = parseInt(url.searchParams.get('page') || '1', 10);
+    const pageSize = parseInt(url.searchParams.get('pageSize') || '10', 10);
+
+    let list = getStoredNotifications();
+    if (unreadOnly) {
+      list = list.filter((n) => !n.readAt);
+    }
+
+    const total = list.length;
+    const paginated = list.slice((page - 1) * pageSize, page * pageSize);
+
+    return HttpResponse.json(
+      {
+        items: paginated,
+        meta: {
+          page,
+          pageSize,
+          totalItems: total,
+          totalPages: Math.ceil(total / pageSize) || 1,
+        },
+      },
+      { status: 200 }
+    );
+  }),
+
+  http.post('*/api/v1/notifications/:id/read', ({ params }) => {
+    const list = getStoredNotifications();
+    const target = list.find((n) => n.id === params.id);
+    if (target) {
+      target.readAt = new Date().toISOString();
+      saveStoredNotifications(list);
+    }
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.post('*/api/v1/notifications/read-all', () => {
+    const list = getStoredNotifications();
+    const now = new Date().toISOString();
+    list.forEach((n) => {
+      if (!n.readAt) n.readAt = now;
+    });
+    saveStoredNotifications(list);
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.delete('*/api/v1/notifications/:id', ({ params }) => {
+    let list = getStoredNotifications();
+    list = list.filter((n) => n.id !== params.id);
+    saveStoredNotifications(list);
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.get('*/api/v1/courses/:courseId/comments', ({ params }) => {
+    const courseId = String(params.courseId);
+    const all = getStoredComments();
+    const items = all[courseId] || all['my-course-1'] || [];
+    return HttpResponse.json(
+      {
+        items,
+        meta: {
+          page: 1,
+          pageSize: 20,
+          totalItems: items.length,
+          totalPages: 1,
+        },
+      },
+      { status: 200 }
+    );
+  }),
+
+  http.get('*/api/v1/courses/:courseId/comments/summary', ({ params }) => {
+    const courseId = String(params.courseId);
+    const all = getStoredComments();
+    const items = all[courseId] || all['my-course-1'] || [];
+    const rootComments = items.length;
+    const replyCount = items.reduce((sum, c) => sum + (c.replies ? c.replies.length : 0), 0);
+    const pinnedComments = items.filter((c) => c.isPinned).length;
+    return HttpResponse.json(
+      {
+        totalComments: rootComments + replyCount,
+        rootComments,
+        pinnedComments,
+      },
+      { status: 200 }
+    );
+  }),
+
+  http.post('*/api/v1/courses/:courseId/comments', async ({ request, params }) => {
+    const courseId = String(params.courseId);
+    const body = (await request.json().catch(() => ({}))) as any;
+    const all = getStoredComments();
+    if (!all[courseId]) {
+      all[courseId] = [...(all['my-course-1'] || [])];
+    }
+    const newCommentId = `cmt-${Date.now()}`;
+    const newComment: MockCommentItem = {
+      id: newCommentId,
+      courseId,
+      chapterId: body.chapterId || null,
+      parentCommentId: body.parentCommentId || null,
+      author: { id: 'my-user-id', displayName: 'Học viên Nguyễn Văn A' },
+      content: body.content || '',
+      isPinned: false,
+      editedAt: null,
+      createdAt: new Date().toISOString(),
+      replies: [],
+    };
+
+    if (body.parentCommentId) {
+      const parent = all[courseId].find((c) => c.id === body.parentCommentId);
+      if (parent) {
+        if (!parent.replies) parent.replies = [];
+        parent.replies.push(newComment);
+      } else {
+        all[courseId].push(newComment);
+      }
+    } else {
+      all[courseId].unshift(newComment);
+    }
+    saveStoredComments(all);
+
+    // Trigger notification for course owner
+    const notifications = getStoredNotifications();
+    notifications.unshift({
+      id: `ntf-${Date.now()}`,
+      type: 'COMMENT',
+      title: 'Bình luận mới về khóa học',
+      body: `Học viên vừa bình luận: "${(body.content || '').slice(0, 50)}"`,
+      readAt: null,
+      createdAt: new Date().toISOString(),
+      payload: { courseId, commentId: newCommentId },
+    });
+    saveStoredNotifications(notifications);
+
+    return HttpResponse.json(newComment, { status: 201 });
+  }),
+
+  http.patch('*/api/v1/comments/:id', async ({ request, params }) => {
+    const commentId = String(params.id);
+    const body = (await request.json().catch(() => ({}))) as any;
+    const all = getStoredComments();
+    for (const key of Object.keys(all)) {
+      const list = all[key];
+      if (!list) continue;
+      const found = list.find((c) => c.id === commentId);
+      if (found) {
+        found.content = body.content || found.content;
+        found.editedAt = new Date().toISOString();
+        break;
+      }
+    }
+    saveStoredComments(all);
+    return HttpResponse.json(
+      {
+        id: commentId,
+        content: body.content || '',
+        editedAt: new Date().toISOString(),
+      },
+      { status: 200 }
+    );
+  }),
+
+  http.delete('*/api/v1/comments/:id', ({ params }) => {
+    const commentId = String(params.id);
+    const all = getStoredComments();
+    for (const key of Object.keys(all)) {
+      const list = all[key];
+      if (!list) continue;
+      const idx = list.findIndex((c) => c.id === commentId);
+      if (idx !== -1 && list[idx]) {
+        list[idx]!.isDeleted = true;
+        list[idx]!.content = 'Bình luận này đã bị xóa';
+        break;
+      }
+      for (const root of list) {
+        if (root.replies) {
+          const rIdx = root.replies.findIndex((r) => r.id === commentId);
+          if (rIdx !== -1 && root.replies[rIdx]) {
+            root.replies[rIdx]!.isDeleted = true;
+            root.replies[rIdx]!.content = 'Bình luận này đã bị xóa';
+            break;
+          }
+        }
+      }
+    }
+    saveStoredComments(all);
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.put('*/api/v1/comments/:id/pin', ({ params }) => {
+    const commentId = String(params.id);
+    const all = getStoredComments();
+    for (const key of Object.keys(all)) {
+      const list = all[key];
+      if (!list) continue;
+      const found = list.find((c) => c.id === commentId);
+      if (found) {
+        found.isPinned = true;
+        break;
+      }
+    }
+    saveStoredComments(all);
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.delete('*/api/v1/comments/:id/pin', ({ params }) => {
+    const commentId = String(params.id);
+    const all = getStoredComments();
+    for (const key of Object.keys(all)) {
+      const list = all[key];
+      if (!list) continue;
+      const found = list.find((c) => c.id === commentId);
+      if (found) {
+        found.isPinned = false;
+        break;
+      }
+    }
+    saveStoredComments(all);
     return new HttpResponse(null, { status: 204 });
   }),
 
@@ -2100,5 +2987,1966 @@ export const handlers = [
       },
       { status: 200 }
     );
+  }),
+
+  // ==========================================
+  // S4 Enrollment & Learning Player Handlers
+  // ==========================================
+  http.get('*/api/v1/courses/:courseId/enrollments', ({ params, request }) => {
+    mockEnrollments = getStoredEnrollments();
+    const courseId = String(params.courseId);
+    const url = new URL(request.url);
+    const status = url.searchParams.get('status');
+    const page = parseInt(url.searchParams.get('page') || '1', 10);
+    const pageSize = parseInt(url.searchParams.get('pageSize') || '20', 10);
+
+    const list = mockEnrollments[courseId] || mockEnrollments['my-course-1'] || [];
+    const filtered = status ? list.filter((e) => e.status === status) : list;
+    const start = (page - 1) * pageSize;
+    const items = filtered.slice(start, start + pageSize);
+
+    return HttpResponse.json(
+      {
+        items,
+        meta: {
+          page,
+          pageSize,
+          total: filtered.length,
+          totalPages: Math.ceil(filtered.length / pageSize) || 1,
+        },
+      },
+      { status: 200 }
+    );
+  }),
+
+  http.post('*/api/v1/courses/:courseId/invitations', async ({ params, request }) => {
+    mockEnrollments = getStoredEnrollments();
+    const courseId = String(params.courseId);
+    const body = (await request.json().catch(() => ({}))) as { email?: string };
+
+    if (!body.email?.trim()) {
+      return problemResponse(422, {
+        title: 'Email không hợp lệ',
+        status: 422,
+        code: 'VALIDATION_ERROR',
+        errors: [{ field: 'email', message: 'Vui lòng nhập địa chỉ email người học' }],
+      });
+    }
+
+    if (!mockEnrollments[courseId]) {
+      mockEnrollments[courseId] = [];
+    }
+
+    const email = body.email.trim();
+    const newEnrollment: MockEnrollmentItem = {
+      id: `enr-inv-${Date.now()}`,
+      courseId,
+      user: {
+        id: `u-inv-${Date.now()}`,
+        displayName: email.split('@')[0] || 'User',
+        email,
+        avatarUrl: null,
+      },
+      status: 'INVITED',
+      requestId: null,
+      statusChangedAt: new Date().toISOString(),
+    };
+
+    mockEnrollments[courseId].push(newEnrollment);
+    saveStoredEnrollments(mockEnrollments);
+
+    return HttpResponse.json(newEnrollment, { status: 200 });
+  }),
+
+  http.post(
+    '*/api/v1/courses/:courseId/enrollment-requests/:requestId/decision',
+    async ({ params, request }) => {
+      mockEnrollments = getStoredEnrollments();
+      const courseId = String(params.courseId);
+      const requestId = String(params.requestId);
+      const body = (await request.json().catch(() => ({}))) as {
+        decision?: 'ACCEPTED' | 'REJECTED';
+      };
+
+      const list = mockEnrollments[courseId] || mockEnrollments['my-course-1'] || [];
+      const item = list.find((e) => e.requestId === requestId || e.id === requestId);
+      if (item) {
+        if (body.decision === 'ACCEPTED') {
+          item.status = 'ACTIVE';
+        } else {
+          item.status = 'REMOVED';
+        }
+        item.statusChangedAt = new Date().toISOString();
+        saveStoredEnrollments(mockEnrollments);
+      }
+
+      return new HttpResponse(null, { status: 204 });
+    }
+  ),
+
+  http.delete('*/api/v1/courses/:courseId/enrollments/:userId', ({ params }) => {
+    mockEnrollments = getStoredEnrollments();
+    const courseId = String(params.courseId);
+    const userId = String(params.userId);
+
+    const list = mockEnrollments[courseId] || mockEnrollments['my-course-1'] || [];
+    const item = list.find((e) => e.user.id === userId || e.id === userId);
+    if (item) {
+      item.status = 'REMOVED';
+      item.statusChangedAt = new Date().toISOString();
+      saveStoredEnrollments(mockEnrollments);
+    }
+
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.post(
+    '*/api/v1/courses/:courseId/chapters/:chapterId/unlock',
+    async ({ params, request }) => {
+      mockChapters = getStoredChapters();
+      const courseId = String(params.courseId);
+      const chapterId = String(params.chapterId);
+      const body = (await request.json().catch(() => ({}))) as { passcode?: string };
+
+      const attempts = passcodeAttempts[chapterId] || 0;
+      if (attempts >= 5) {
+        return problemResponse(429, {
+          title: 'Quá số lần thử',
+          status: 429,
+          code: 'TOO_MANY_REQUESTS',
+          detail: 'Bạn đã nhập sai passcode quá 5 lần. Vui lòng thử lại sau 15 phút.',
+        });
+      }
+
+      const list = mockChapters[courseId] || mockChapters['my-course-1'] || [];
+      const chapter = list.find((c) => c.id === chapterId);
+
+      const expectedPasscode = chapter?.passcode || '1234';
+      if (body.passcode !== expectedPasscode) {
+        passcodeAttempts[chapterId] = attempts + 1;
+        return problemResponse(400, {
+          title: 'Mật khẩu sai',
+          status: 400,
+          code: 'INVALID_PASSCODE',
+          detail: 'Mật khẩu mở khóa không chính xác. Vui lòng thử lại.',
+        });
+      }
+
+      passcodeAttempts[chapterId] = 0;
+      mockUnlockedChapters.add(chapterId);
+      return new HttpResponse(null, { status: 204 });
+    }
+  ),
+
+  http.get('*/api/v1/courses/:courseId/learn/chapters/:chapterId', ({ params, request }) => {
+    mockChapters = getStoredChapters();
+    const courseId = String(params.courseId);
+    const chapterId = String(params.chapterId);
+
+    const list = mockChapters[courseId] || mockChapters['my-course-1'] || [];
+    const chapter = list.find((c) => c.id === chapterId);
+    if (!chapter) {
+      return problemResponse(404, {
+        title: 'Chương không tồn tại',
+        status: 404,
+        code: 'CHAPTER_NOT_FOUND',
+        detail: 'Không tìm thấy nội dung bài học cho chương này.',
+      });
+    }
+
+    if (chapter.accessMode === 'PROTECTED' && !mockUnlockedChapters.has(chapterId)) {
+      return problemResponse(403, {
+        title: 'Yêu cầu Passcode',
+        status: 403,
+        code: 'PASSCODE_REQUIRED',
+        detail: 'Chương này được bảo vệ bằng mật khẩu passcode.',
+      });
+    }
+
+    const authHeader = request.headers.get('authorization') || '';
+    const canSaveProgress = Boolean(authHeader && !authHeader.includes('guest'));
+
+    const completedIds = mockCompletedBlocks[courseId] || [];
+
+    const blocks = (chapter.blocks || []).map((blk: any) => {
+      const isCompleted = completedIds.includes(blk.id);
+      if (blk.blockType === 'QUESTION') {
+        const { correctOptionId, ...sanitized } = blk;
+        return {
+          ...sanitized,
+          completed: isCompleted,
+        };
+      }
+      return {
+        ...blk,
+        completed: isCompleted,
+      };
+    });
+
+    return HttpResponse.json(
+      {
+        id: chapter.id,
+        title: chapter.title,
+        description: chapter.description,
+        versionNo: chapter.publishedVersionNo || chapter.lastVersionNo || 1,
+        canSaveProgress,
+        blocks,
+      },
+      { status: 200 }
+    );
+  }),
+
+  http.post('*/api/v1/courses/:courseId/blocks/:blockId/complete', ({ params }) => {
+    const courseId = String(params.courseId);
+    const blockId = String(params.blockId);
+
+    if (!mockCompletedBlocks[courseId]) {
+      mockCompletedBlocks[courseId] = [];
+    }
+    if (!mockCompletedBlocks[courseId].includes(blockId)) {
+      mockCompletedBlocks[courseId].push(blockId);
+    }
+
+    mockChapters = getStoredChapters();
+    const courseChapters = mockChapters[courseId] || mockChapters['my-course-1'] || [];
+    const totalBlocks = courseChapters.reduce(
+      (sum, c) => sum + (c.blocks ? c.blocks.length : 0),
+      0
+    );
+    const completedCount = mockCompletedBlocks[courseId].length;
+    const percent = totalBlocks > 0 ? Math.min(100, Math.round((completedCount / totalBlocks) * 100)) : 0;
+
+    const completedIds = mockCompletedBlocks[courseId] || [];
+    return HttpResponse.json(
+      {
+        courseId,
+        percent,
+        completedChapterIds: percent >= 100 ? courseChapters.map((c) => c.id) : [],
+        chapters: courseChapters.map((c) => ({
+          chapterId: c.id,
+          percent: c.blocks?.length
+            ? Math.round(
+                (c.blocks.filter((b: any) => completedIds.includes(b.id)).length /
+                  c.blocks.length) *
+                  100
+              )
+            : 0,
+        })),
+        completedBlockIds: completedIds,
+        lastActivityAt: new Date().toISOString(),
+        courseCompletedAt: percent >= 100 ? new Date().toISOString() : null,
+      },
+      { status: 200 }
+    );
+  }),
+
+  http.post('*/api/v1/courses/:courseId/blocks/:blockId/practice-answer', async ({ request }) => {
+    const body = (await request.json().catch(() => ({}))) as {
+      selectedOptionIds?: string[];
+      bool?: boolean;
+      text?: string;
+    };
+
+    const isCorrect = body.selectedOptionIds?.includes('opt-2') ?? true;
+
+    return HttpResponse.json(
+      {
+        isCorrect,
+        explanation: isCorrect
+          ? 'Chính xác! Các module giao tiếp in-process thông qua interface công khai định nghĩa trong *.Contracts.'
+          : 'Chưa chính xác. Các module không nên phụ thuộc trực tiếp vào DbContext hay Domain nội bộ của nhau.',
+      },
+      { status: 200 }
+    );
+  }),
+
+  http.get('*/api/v1/courses/:courseId/progress', ({ params }) => {
+    const courseId = String(params.courseId);
+    mockChapters = getStoredChapters();
+    const courseChapters = mockChapters[courseId] || mockChapters['my-course-1'] || [];
+    const completedList = mockCompletedBlocks[courseId] || [];
+
+    const totalBlocks = courseChapters.reduce(
+      (sum, c) => sum + (c.blocks ? c.blocks.length : 0),
+      0
+    );
+    const completedCount = completedList.length;
+    const percent = totalBlocks > 0 ? Math.min(100, Math.round((completedCount / totalBlocks) * 100)) : 0;
+
+    return HttpResponse.json(
+      {
+        courseId,
+        percent,
+        completedChapterIds: percent >= 100 ? courseChapters.map((c) => c.id) : [],
+        chapters: courseChapters.map((c) => ({
+          chapterId: c.id,
+          percent: c.blocks?.length
+            ? Math.round(
+                (c.blocks.filter((b: any) => completedList.includes(b.id)).length /
+                  c.blocks.length) *
+                  100
+              )
+            : 0,
+        })),
+        completedBlockIds: completedList,
+        lastActivityAt: completedList.length ? new Date().toISOString() : null,
+        courseCompletedAt: percent >= 100 ? new Date().toISOString() : null,
+      },
+      { status: 200 }
+    );
+  }),
+
+  http.put('*/api/v1/courses/:courseId/bookmark', async ({ params, request }) => {
+    const courseId = String(params.courseId);
+    const body = (await request.json().catch(() => ({}))) as { chapterId?: string };
+
+    mockChapters = getStoredChapters();
+    const courseChapters = mockChapters[courseId] || mockChapters['my-course-1'] || [];
+    const chapter = courseChapters.find((c) => c.id === body.chapterId);
+
+    const existingIdx = mockBookmarks.findIndex((b) => b.courseId === courseId);
+    const bookmarkEntry = {
+      courseId,
+      courseName: 'Khóa học Modular Monolith',
+      chapterId: body.chapterId || courseChapters[0]?.id || 'chapter-1',
+      chapterTitle: chapter?.title || 'Chương 1',
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (existingIdx !== -1) {
+      mockBookmarks[existingIdx] = bookmarkEntry;
+    } else {
+      mockBookmarks.push(bookmarkEntry);
+    }
+
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.delete('*/api/v1/courses/:courseId/bookmark', ({ params }) => {
+    const courseId = String(params.courseId);
+    mockBookmarks = mockBookmarks.filter((b) => b.courseId !== courseId);
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.get('*/api/v1/me/bookmarks', () => {
+    return HttpResponse.json(mockBookmarks, { status: 200 });
+  }),
+
+  // ==========================================
+  // DISCOVERY HANDLERS (SCR-DSC-01, SCR-DSC-02)
+  // ==========================================
+  http.get('*/discovery/home', () => {
+    mockCourses = getStoredCourses();
+    const eligible = mockCourses.filter((c) => !c.isDeleted && !c.isHidden && c.accessMode !== 'ONLY_ME');
+    const recentlyUpdated = [...eligible].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, 10);
+    const recommended = [...eligible].sort(() => 0.5 - Math.random()).slice(0, 8);
+    const inProgress = eligible.slice(0, 3).map((c) => ({
+      ...c,
+      progressPercent: 45,
+    }));
+
+    return HttpResponse.json({
+      recentlyUpdated,
+      recommended,
+      inProgress,
+    });
+  }),
+  http.get('*/api/v1/discovery/home', () => {
+    mockCourses = getStoredCourses();
+    const eligible = mockCourses.filter((c) => !c.isDeleted && !c.isHidden && c.accessMode !== 'ONLY_ME');
+    const recentlyUpdated = [...eligible].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, 10);
+    const recommended = [...eligible].sort(() => 0.5 - Math.random()).slice(0, 8);
+    const inProgress = eligible.slice(0, 3).map((c) => ({
+      ...c,
+      progressPercent: 45,
+    }));
+
+    return HttpResponse.json({
+      recentlyUpdated,
+      recommended,
+      inProgress,
+    });
+  }),
+
+  http.get('*/discovery/courses', ({ request }) => {
+    const url = new URL(request.url);
+    const q = (url.searchParams.get('q') || '').trim().toLowerCase();
+    const tag = (url.searchParams.get('tag') || '').trim().toLowerCase();
+    const accessMode = url.searchParams.get('accessMode');
+    const status = url.searchParams.get('status');
+    const sort = url.searchParams.get('sort') || 'RECENTLY_UPDATED';
+    const page = parseInt(url.searchParams.get('page') || '1', 10);
+    const pageSize = parseInt(url.searchParams.get('pageSize') || '12', 10);
+
+    if (q && !mockSearchHistory.some((h) => h.queryText.toLowerCase() === q)) {
+      mockSearchHistory.unshift({ queryText: q, createdAt: new Date().toISOString() });
+    }
+
+    mockCourses = getStoredCourses();
+    let items = mockCourses.filter((c) => !c.isDeleted && !c.isHidden && c.accessMode !== 'ONLY_ME');
+
+    if (q) {
+      items = items.filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) ||
+          (c.description && c.description.toLowerCase().includes(q)) ||
+          (c.owner?.displayName && c.owner.displayName.toLowerCase().includes(q))
+      );
+    }
+
+    if (tag) {
+      items = items.filter((c) => c.tags?.some((t) => t.toLowerCase() === tag));
+    }
+
+    if (accessMode) {
+      items = items.filter((c) => c.accessMode === accessMode);
+    }
+
+    if (status) {
+      items = items.filter((c) => c.status === status);
+    }
+
+    if (sort === 'MOST_LEARNERS') {
+      items.sort((a, b) => (b.learnerCount ?? 0) - (a.learnerCount ?? 0));
+    } else if (sort === 'MOST_NOMINATED') {
+      items.sort((a, b) => ((b as any).nominationCount ?? 0) - ((a as any).nominationCount ?? 0));
+    } else if (sort === 'MOST_REVIEWED') {
+      items.sort((a, b) => (b.ratingCount ?? 0) - (a.ratingCount ?? 0));
+    } else {
+      items.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    }
+
+    const totalItems = items.length;
+    const totalPages = Math.ceil(totalItems / pageSize) || 1;
+    const paginatedItems = items.slice((page - 1) * pageSize, page * pageSize);
+
+    return HttpResponse.json({
+      items: paginatedItems,
+      meta: {
+        page,
+        pageSize,
+        totalItems,
+        totalPages,
+      },
+    });
+  }),
+  http.get('*/api/v1/discovery/courses', ({ request }) => {
+    const url = new URL(request.url);
+    const q = (url.searchParams.get('q') || '').trim().toLowerCase();
+    const tag = (url.searchParams.get('tag') || '').trim().toLowerCase();
+    const accessMode = url.searchParams.get('accessMode');
+    const status = url.searchParams.get('status');
+    const sort = url.searchParams.get('sort') || 'RECENTLY_UPDATED';
+    const page = parseInt(url.searchParams.get('page') || '1', 10);
+    const pageSize = parseInt(url.searchParams.get('pageSize') || '12', 10);
+
+    if (q && !mockSearchHistory.some((h) => h.queryText.toLowerCase() === q)) {
+      mockSearchHistory.unshift({ queryText: q, createdAt: new Date().toISOString() });
+    }
+
+    mockCourses = getStoredCourses();
+    let items = mockCourses.filter((c) => !c.isDeleted && !c.isHidden && c.accessMode !== 'ONLY_ME');
+
+    if (q) {
+      items = items.filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) ||
+          (c.description && c.description.toLowerCase().includes(q)) ||
+          (c.owner?.displayName && c.owner.displayName.toLowerCase().includes(q))
+      );
+    }
+
+    if (tag) {
+      items = items.filter((c) => c.tags?.some((t) => t.toLowerCase() === tag));
+    }
+
+    if (accessMode) {
+      items = items.filter((c) => c.accessMode === accessMode);
+    }
+
+    if (status) {
+      items = items.filter((c) => c.status === status);
+    }
+
+    if (sort === 'MOST_LEARNERS') {
+      items.sort((a, b) => (b.learnerCount ?? 0) - (a.learnerCount ?? 0));
+    } else if (sort === 'MOST_NOMINATED') {
+      items.sort((a, b) => ((b as any).nominationCount ?? 0) - ((a as any).nominationCount ?? 0));
+    } else if (sort === 'MOST_REVIEWED') {
+      items.sort((a, b) => (b.ratingCount ?? 0) - (a.ratingCount ?? 0));
+    } else {
+      items.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    }
+
+    const totalItems = items.length;
+    const totalPages = Math.ceil(totalItems / pageSize) || 1;
+    const paginatedItems = items.slice((page - 1) * pageSize, page * pageSize);
+
+    return HttpResponse.json({
+      items: paginatedItems,
+      meta: {
+        page,
+        pageSize,
+        totalItems,
+        totalPages,
+      },
+    });
+  }),
+
+  http.get('*/discovery/search-history', () => {
+    return HttpResponse.json(mockSearchHistory);
+  }),
+  http.get('*/api/v1/discovery/search-history', () => {
+    return HttpResponse.json(mockSearchHistory);
+  }),
+
+  http.get('*/discovery/top10', () => {
+    mockCourses = getStoredCourses();
+    const eligible = mockCourses.filter((c) => !c.isDeleted && !c.isHidden && c.accessMode !== 'ONLY_ME');
+    const top10 = eligible.slice(0, 10).map((course, idx) => ({
+      rank: idx + 1,
+      count: (course.learnerCount ?? 100) + (10 - idx) * 15,
+      course,
+    }));
+    return HttpResponse.json(top10);
+  }),
+  http.get('*/api/v1/discovery/top10', () => {
+    mockCourses = getStoredCourses();
+    const eligible = mockCourses.filter((c) => !c.isDeleted && !c.isHidden && c.accessMode !== 'ONLY_ME');
+    const top10 = eligible.slice(0, 10).map((course, idx) => ({
+      rank: idx + 1,
+      count: (course.learnerCount ?? 100) + (10 - idx) * 15,
+      course,
+    }));
+    return HttpResponse.json(top10);
+  }),
+
+  http.get('*/courses/:courseId/ranking', ({ params }) => {
+    const courseId = String(params.courseId);
+    return HttpResponse.json({
+      courseId,
+      learnerRank: 1,
+      nominationRank: 2,
+      reviewRank: 1,
+      learnerCount: 250,
+      nominationCount: 42,
+      reviewCount: 30,
+      totalEligibleCourses: 15,
+    });
+  }),
+  http.get('*/api/v1/courses/:courseId/ranking', ({ params }) => {
+    const courseId = String(params.courseId);
+    return HttpResponse.json({
+      courseId,
+      learnerRank: 1,
+      nominationRank: 2,
+      reviewRank: 1,
+      learnerCount: 250,
+      nominationCount: 42,
+      reviewCount: 30,
+      totalEligibleCourses: 15,
+    });
+  }),
+
+  // Questions and Quiz Authoring (T-S7-FE-01)
+  http.get('*/courses/:courseId/questions', () => {
+    return HttpResponse.json({
+      items: [
+        {
+          id: 'q-sample-1',
+          courseId: 'test-course-id',
+          questionType: 'MULTIPLE_CHOICE',
+          stem: 'Thủ đô của Việt Nam là gì?',
+          difficultyCode: 1,
+          defaultPoints: 10,
+          status: 'READY',
+          origin: 'MANUAL',
+          options: [
+            { id: 'opt-1', position: 1, content: 'Hà Nội', isCorrect: true },
+            { id: 'opt-2', position: 2, content: 'Huế', isCorrect: false },
+          ],
+          usageCount: 1,
+        },
+      ],
+      totalCount: 1,
+      page: 1,
+      pageSize: 20,
+    });
+  }),
+  http.get('*/api/v1/courses/:courseId/questions', () => {
+    return HttpResponse.json({
+      items: [
+        {
+          id: 'q-sample-1',
+          courseId: 'test-course-id',
+          questionType: 'MULTIPLE_CHOICE',
+          stem: 'Thủ đô của Việt Nam là gì?',
+          difficultyCode: 1,
+          defaultPoints: 10,
+          status: 'READY',
+          origin: 'MANUAL',
+          options: [
+            { id: 'opt-1', position: 1, content: 'Hà Nội', isCorrect: true },
+            { id: 'opt-2', position: 2, content: 'Huế', isCorrect: false },
+          ],
+          usageCount: 1,
+        },
+      ],
+      totalCount: 1,
+      page: 1,
+      pageSize: 20,
+    });
+  }),
+
+  http.get('*/courses/:courseId/questions/:questionId/usage', ({ params }) => {
+    return HttpResponse.json({
+      questionId: String(params.questionId),
+      quizCount: 2,
+      attemptCount: 15,
+      correctRate: 75,
+      usedInQuizzes: [
+        { quizBlockId: 'b-1', title: 'Quiz giữa kỳ', chapterTitle: 'Chương 1' },
+      ],
+    });
+  }),
+  http.get('*/api/v1/courses/:courseId/questions/:questionId/usage', ({ params }) => {
+    return HttpResponse.json({
+      questionId: String(params.questionId),
+      quizCount: 2,
+      attemptCount: 15,
+      correctRate: 75,
+      usedInQuizzes: [
+        { quizBlockId: 'b-1', title: 'Quiz giữa kỳ', chapterTitle: 'Chương 1' },
+      ],
+    });
+  }),
+
+  http.get('*/courses/:courseId/quizzes/:blockId/exceptions', () => {
+    return HttpResponse.json([]);
+  }),
+  http.get('*/api/v1/courses/:courseId/quizzes/:blockId/exceptions', () => {
+    return HttpResponse.json([]);
+  }),
+
+  http.put('*/courses/:courseId/quizzes/:blockId/exceptions/:userId', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+  http.put('*/api/v1/courses/:courseId/quizzes/:blockId/exceptions/:userId', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.delete('*/courses/:courseId/quizzes/:blockId/exceptions/:userId', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+  http.delete('*/api/v1/courses/:courseId/quizzes/:blockId/exceptions/:userId', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  // Quiz Attempts (SCR-LRN-02, SCR-LRN-03, SCR-LRN-04)
+  http.get('*/courses/:courseId/quizzes/:blockId/attempts', () => {
+    return HttpResponse.json([
+      {
+        attemptId: 'att-sample-1',
+        quizBlockId: 'block-quiz-1',
+        userId: '11111111-1111-4111-8111-111111111111',
+        status: 'GRADED',
+        totalScore: 8.5,
+        maxScore: 10,
+        startedAt: '2026-11-15T08:00:00Z',
+        submittedAt: '2026-11-15T08:35:00Z',
+      },
+    ]);
+  }),
+  http.get('*/api/v1/courses/:courseId/quizzes/:blockId/attempts', () => {
+    return HttpResponse.json([
+      {
+        attemptId: 'att-sample-1',
+        quizBlockId: 'block-quiz-1',
+        userId: '11111111-1111-4111-8111-111111111111',
+        status: 'GRADED',
+        totalScore: 8.5,
+        maxScore: 10,
+        startedAt: '2026-11-15T08:00:00Z',
+        submittedAt: '2026-11-15T08:35:00Z',
+      },
+    ]);
+  }),
+
+  http.post('*/courses/:courseId/quizzes/:blockId/attempts', () => {
+    return HttpResponse.json({
+      id: 'att-in-progress-1',
+      quizBlockId: 'block-quiz-1',
+      courseId: 'sample-course-1',
+      attemptNo: 2,
+      status: 'IN_PROGRESS',
+      startedAt: new Date().toISOString(),
+      deadlineAt: new Date(Date.now() + 45 * 60 * 1000).toISOString(),
+      totalScore: null,
+      maxScore: 10,
+      questions: [
+        {
+          id: 'q-mc-1',
+          position: 1,
+          questionType: 'MULTIPLE_CHOICE',
+          stem: 'Thủ đô của Việt Nam là gì?',
+          maxPoints: 5,
+          allowMultiple: false,
+          options: [
+            { id: 'opt-1', position: 1, content: 'Hà Nội' },
+            { id: 'opt-2', position: 2, content: 'Hồ Chí Minh' },
+          ],
+        },
+        {
+          id: 'q-tf-1',
+          position: 2,
+          questionType: 'TRUE_FALSE',
+          stem: 'HTML là một ngôn ngữ lập trình.',
+          maxPoints: 5,
+          allowMultiple: false,
+          options: [
+            { id: 'opt-tf-1', position: 1, content: 'Đúng' },
+            { id: 'opt-tf-2', position: 2, content: 'Sai' },
+          ],
+        },
+      ],
+    });
+  }),
+  http.post('*/api/v1/courses/:courseId/quizzes/:blockId/attempts', () => {
+    return HttpResponse.json({
+      id: 'att-in-progress-1',
+      quizBlockId: 'block-quiz-1',
+      courseId: 'sample-course-1',
+      attemptNo: 2,
+      status: 'IN_PROGRESS',
+      startedAt: new Date().toISOString(),
+      deadlineAt: new Date(Date.now() + 45 * 60 * 1000).toISOString(),
+      totalScore: null,
+      maxScore: 10,
+      questions: [
+        {
+          id: 'q-mc-1',
+          position: 1,
+          questionType: 'MULTIPLE_CHOICE',
+          stem: 'Thủ đô của Việt Nam là gì?',
+          maxPoints: 5,
+          allowMultiple: false,
+          options: [
+            { id: 'opt-1', position: 1, content: 'Hà Nội' },
+            { id: 'opt-2', position: 2, content: 'Hồ Chí Minh' },
+          ],
+        },
+        {
+          id: 'q-tf-1',
+          position: 2,
+          questionType: 'TRUE_FALSE',
+          stem: 'HTML là một ngôn ngữ lập trình.',
+          maxPoints: 5,
+          allowMultiple: false,
+          options: [
+            { id: 'opt-tf-1', position: 1, content: 'Đúng' },
+            { id: 'opt-tf-2', position: 2, content: 'Sai' },
+          ],
+        },
+      ],
+    });
+  }),
+
+  http.get('*/quiz-attempts/:attemptId', ({ params, request }) => {
+    if (request.headers.get('accept')?.includes('text/html')) {
+      return;
+    }
+    const isResult = params.attemptId === 'att-result-1' || submittedQuizAttemptIds.has(String(params.attemptId));
+    return HttpResponse.json({
+      id: String(params.attemptId),
+      quizBlockId: 'block-quiz-1',
+      courseId: 'sample-course-1',
+      attemptNo: 1,
+      status: isResult ? 'GRADED' : 'IN_PROGRESS',
+      startedAt: '2026-11-15T08:00:00Z',
+      deadlineAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+      submittedAt: isResult ? '2026-11-15T08:25:00Z' : null,
+      totalScore: isResult ? 10 : null,
+      maxScore: 10,
+      questions: [
+        {
+          id: 'q-mc-1',
+          position: 1,
+          questionType: 'MULTIPLE_CHOICE',
+          stem: 'Thủ đô của Việt Nam là gì?',
+          maxPoints: 5,
+          allowMultiple: false,
+          options: [
+            { id: 'opt-1', position: 1, content: 'Hà Nội', isCorrect: isResult ? true : undefined },
+            { id: 'opt-2', position: 2, content: 'Hồ Chí Minh', isCorrect: isResult ? false : undefined },
+          ],
+          explanation: isResult ? 'Hà Nội là thủ đô của nước CHXHCN Việt Nam.' : undefined,
+          studentAnswer: isResult ? { selectedOptionIds: ['opt-1'], isCorrect: true, pointsEarned: 5 } : undefined,
+        },
+        {
+          id: 'q-tf-1',
+          position: 2,
+          questionType: 'TRUE_FALSE',
+          stem: 'HTML là một ngôn ngữ lập trình.',
+          maxPoints: 5,
+          allowMultiple: false,
+          options: [
+            { id: 'opt-tf-1', position: 1, content: 'Đúng', isCorrect: isResult ? false : undefined },
+            { id: 'opt-tf-2', position: 2, content: 'Sai', isCorrect: isResult ? true : undefined },
+          ],
+          explanation: isResult ? 'HTML là ngôn ngữ đánh dấu siêu văn bản, không phải ngôn ngữ lập trình.' : undefined,
+          studentAnswer: isResult ? { selectedOptionIds: ['opt-tf-2'], isCorrect: true, pointsEarned: 5 } : undefined,
+        },
+      ],
+    });
+  }),
+  http.get('*/api/v1/quiz-attempts/:attemptId', ({ params }) => {
+    const isResult = params.attemptId === 'att-result-1' || submittedQuizAttemptIds.has(String(params.attemptId));
+    return HttpResponse.json({
+      id: String(params.attemptId),
+      quizBlockId: 'block-quiz-1',
+      courseId: 'sample-course-1',
+      attemptNo: 1,
+      status: isResult ? 'GRADED' : 'IN_PROGRESS',
+      startedAt: '2026-11-15T08:00:00Z',
+      deadlineAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+      submittedAt: isResult ? '2026-11-15T08:25:00Z' : null,
+      totalScore: isResult ? 10 : null,
+      maxScore: 10,
+      questions: [
+        {
+          id: 'q-mc-1',
+          position: 1,
+          questionType: 'MULTIPLE_CHOICE',
+          stem: 'Thủ đô của Việt Nam là gì?',
+          maxPoints: 5,
+          allowMultiple: false,
+          options: [
+            { id: 'opt-1', position: 1, content: 'Hà Nội', isCorrect: isResult ? true : undefined },
+            { id: 'opt-2', position: 2, content: 'Hồ Chí Minh', isCorrect: isResult ? false : undefined },
+          ],
+          explanation: isResult ? 'Hà Nội là thủ đô của nước CHXHCN Việt Nam.' : undefined,
+          studentAnswer: isResult ? { selectedOptionIds: ['opt-1'], isCorrect: true, pointsEarned: 5 } : undefined,
+        },
+        {
+          id: 'q-tf-1',
+          position: 2,
+          questionType: 'TRUE_FALSE',
+          stem: 'HTML là một ngôn ngữ lập trình.',
+          maxPoints: 5,
+          allowMultiple: false,
+          options: [
+            { id: 'opt-tf-1', position: 1, content: 'Đúng', isCorrect: isResult ? false : undefined },
+            { id: 'opt-tf-2', position: 2, content: 'Sai', isCorrect: isResult ? true : undefined },
+          ],
+          explanation: isResult ? 'HTML là ngôn ngữ đánh dấu siêu văn bản, không phải ngôn ngữ lập trình.' : undefined,
+          studentAnswer: isResult ? { selectedOptionIds: ['opt-tf-2'], isCorrect: true, pointsEarned: 5 } : undefined,
+        },
+      ],
+    });
+  }),
+
+  http.put('*/quiz-attempts/:attemptId/answers/:questionId', () => {
+    return HttpResponse.json({
+      savedAt: new Date().toISOString(),
+      isCorrect: null,
+      pointsEarned: null,
+    });
+  }),
+  http.put('*/api/v1/quiz-attempts/:attemptId/answers/:questionId', () => {
+    return HttpResponse.json({
+      savedAt: new Date().toISOString(),
+      isCorrect: null,
+      pointsEarned: null,
+    });
+  }),
+
+  http.post('*/quiz-attempts/:attemptId/submit', ({ params }) => {
+    submittedQuizAttemptIds.add(String(params.attemptId));
+    return HttpResponse.json({
+      attemptId: String(params.attemptId),
+      status: 'GRADED',
+      totalScore: 10,
+      maxScore: 10,
+      isPassed: true,
+    });
+  }),
+  http.post('*/api/v1/quiz-attempts/:attemptId/submit', ({ params }) => {
+    submittedQuizAttemptIds.add(String(params.attemptId));
+    return HttpResponse.json({
+      attemptId: String(params.attemptId),
+      status: 'GRADED',
+      totalScore: 10,
+      maxScore: 10,
+      isPassed: true,
+    });
+  }),
+
+  // ==================== ASSIGNMENTS & ASSESSMENT MOCKS ====================
+  // Get my assignment submission
+  http.get('*/api/v1/courses/:courseId/assignments/:blockId/submission', ({ params }) => {
+    return HttpResponse.json({
+      id: 'sub-assignment-demo-1',
+      courseId: String(params.courseId),
+      blockId: String(params.blockId),
+      userId: mockUsers.user.id,
+      status: 'DRAFT',
+      textContent: 'Bài làm nháp của em...',
+      files: [],
+      isLate: false,
+      submittedAt: null,
+      score: null,
+      feedback: null,
+    });
+  }),
+
+  // Save assignment draft
+  http.put('*/api/v1/courses/:courseId/assignments/:blockId/submission/draft', async ({ request, params }) => {
+    const body = (await request.json()) as any;
+    return HttpResponse.json({
+      id: 'sub-assignment-demo-1',
+      courseId: String(params.courseId),
+      blockId: String(params.blockId),
+      userId: mockUsers.user.id,
+      status: 'DRAFT',
+      textContent: body?.textContent || '',
+      files: (body?.fileUploadKeys || []).map((k: string) => ({
+        storageKey: k,
+        originalFilename: k.replace(/^upload_\d+_\d+_/, ''),
+        sizeBytes: 1024,
+        contentType: 'application/pdf',
+      })),
+      isLate: false,
+      submittedAt: null,
+      score: null,
+      feedback: null,
+    });
+  }),
+
+  // Submit assignment
+  http.post('*/api/v1/courses/:courseId/assignments/:blockId/submission/submit', ({ params }) => {
+    return HttpResponse.json({
+      id: 'sub-assignment-demo-1',
+      courseId: String(params.courseId),
+      blockId: String(params.blockId),
+      userId: mockUsers.user.id,
+      status: 'SUBMITTED',
+      textContent: 'Bài làm hoàn thiện đã nộp.',
+      files: [],
+      isLate: false,
+      submittedAt: new Date().toISOString(),
+      score: null,
+      feedback: null,
+    });
+  }),
+
+  // Assessment config
+  http.get('*/api/v1/courses/:courseId/assessment/config', () => {
+    return HttpResponse.json({
+      passThreshold: 5.0,
+      scoreSelectionRule: 'HIGHEST',
+      ploEnabled: false,
+      gradeScale: null,
+      achievementLevels: null,
+    });
+  }),
+
+  http.put('*/api/v1/courses/:courseId/assessment/config', async ({ request }) => {
+    const body = await request.json();
+    return HttpResponse.json(body);
+  }),
+
+  // Assessable blocks
+  http.get('*/api/v1/courses/:courseId/assessment/assessable-blocks', () => {
+    return HttpResponse.json([
+      {
+        blockId: 'block-quiz-1',
+        sourceKind: 'QUIZ',
+        title: 'Kiểm tra trắc nghiệm & tự luận Chương 1',
+        maxScore: 10,
+        courseWeight: 30,
+        isComponent: true,
+        cloWeights: null,
+      },
+      {
+        blockId: 'assignment-block-1',
+        sourceKind: 'ASSIGNMENT',
+        title: 'Bài tập lớn: Thiết kế CSDL',
+        maxScore: 100,
+        courseWeight: 70,
+        isComponent: true,
+        cloWeights: null,
+      },
+    ]);
+  }),
+
+  // Upsert component
+  http.put('*/api/v1/courses/:courseId/assessment/components/:blockId', async ({ params, request }) => {
+    const body = (await request.json()) as any;
+    return HttpResponse.json({
+      blockId: String(params.blockId),
+      sourceKind: 'QUIZ',
+      title: 'Hợp phần điểm',
+      maxScore: 10,
+      courseWeight: body?.courseWeight ?? 50,
+      isComponent: true,
+      cloWeights: body?.cloWeights || null,
+    });
+  }),
+
+  // Delete component
+  http.delete('*/api/v1/courses/:courseId/assessment/components/:blockId', () => {
+    return HttpResponse.json({ success: true });
+  }),
+
+  // Grading queue
+  http.get('*/api/v1/courses/:courseId/assessment/grading-queue', ({ request }) => {
+    const url = new URL(request.url);
+    const kind = url.searchParams.get('kind');
+    const items = [
+      {
+        kind: 'QUIZ_ATTEMPT',
+        sourceId: 'attempt-quiz-essay-1',
+        blockId: 'block-quiz-1',
+        blockTitle: 'Kiểm tra trắc nghiệm & tự luận Chương 1',
+        learner: {
+          id: mockUsers.user.id,
+          displayName: 'Quang Trần',
+          email: 'quang.tran@brainmemo.vn',
+        },
+        submittedAt: new Date(Date.now() - 7200000).toISOString(),
+      },
+      {
+        kind: 'ASSIGNMENT',
+        sourceId: 'sub-assignment-demo-1',
+        blockId: 'assignment-block-1',
+        blockTitle: 'Bài tập lớn: Thiết kế CSDL',
+        learner: {
+          id: mockUsers.user.id,
+          displayName: 'Quang Trần',
+          email: 'quang.tran@brainmemo.vn',
+        },
+        submittedAt: new Date(Date.now() - 3600000).toISOString(),
+      },
+    ];
+
+    const filtered = kind ? items.filter((item) => item.kind === kind) : items;
+    return HttpResponse.json(filtered);
+  }),
+
+  // Review quiz attempt
+  http.get('*/api/v1/assessment/quiz-attempts/:attemptId/review', ({ params }) => {
+    return HttpResponse.json({
+      attemptId: String(params.attemptId),
+      courseId: 'course-1',
+      quizBlockId: 'block-quiz-1',
+      userId: mockUsers.user.id,
+      totalScore: 5,
+      maxScore: 10,
+      isFullyGraded: false,
+      questions: [
+        {
+          questionId: 'q-essay-1',
+          position: 1,
+          questionType: 'ESSAY',
+          stem: '<p>Trình bày kiến trúc Modular Monolith và ưu điểm so với Microservices?</p>',
+          maxPoints: 5,
+          pointsEarned: 0,
+          referenceAnswer: 'Modular Monolith tổ chức mã nguồn theo các ranh giới nghiệp vụ độc lập bên trong cùng 1 process deploy duy nhất.',
+          studentAnswerText: 'Modular Monolith giúp quản lý cấu trúc tốt mà không chịu chi phí mạng của microservices.',
+          feedback: null,
+        },
+      ],
+    });
+  }),
+
+  // Submit manual quiz grades
+  http.put('*/api/v1/assessment/quiz-attempts/:attemptId/manual-grades', () => {
+    return HttpResponse.json({ success: true, isFullyGraded: true });
+  }),
+
+  // Review assignment submission
+  http.get('*/api/v1/assessment/submissions/:submissionId/grading', ({ params }) => {
+    return HttpResponse.json({
+      id: String(params.submissionId),
+      status: 'SUBMITTED',
+      textContent: 'Bài làm phân tích quan hệ thực thể của học viên.',
+      files: [
+        {
+          storageKey: 'storage_erd_file_1',
+          originalFilename: 'ERD_Database_Diagram.pdf',
+          sizeBytes: 154850,
+          contentType: 'application/pdf',
+        },
+      ],
+      isLate: false,
+      submittedAt: new Date(Date.now() - 3600000).toISOString(),
+      score: null,
+      feedback: null,
+    });
+  }),
+
+  // Grade assignment submission
+  http.put('*/api/v1/assessment/submissions/:submissionId/grade', async ({ request, params }) => {
+    const body = (await request.json()) as any;
+    return HttpResponse.json({
+      id: String(params.submissionId),
+      status: 'GRADED',
+      score: body?.score ?? 95,
+      feedback: body?.feedback ?? 'Làm rất tốt!',
+    });
+  }),
+
+  // Learner gradebook (me)
+  http.get('*/api/v1/courses/:courseId/assessment/gradebook/me', () => {
+    return HttpResponse.json({
+      learner: {
+        id: mockUsers.user.id,
+        displayName: 'Quang Trần',
+        email: mockUsers.user.email,
+      },
+      components: [
+        {
+          blockId: 'block-quiz-1',
+          title: 'Kiểm tra trắc nghiệm & tự luận Chương 1',
+          maxScore: 10,
+          courseWeight: 30,
+          final: 8.5,
+          highest: 8.5,
+          latest: 8.5,
+          average: 8.5,
+          isPassed: true,
+          feedback: 'Làm tốt phần tự luận.',
+          status: 'GRADED',
+        },
+        {
+          blockId: 'assignment-block-1',
+          title: 'Bài tập lớn: Thiết kế CSDL',
+          maxScore: 100,
+          courseWeight: 70,
+          final: 90,
+          highest: 90,
+          latest: 90,
+          average: 90,
+          isPassed: true,
+          feedback: 'Thiết kế chuẩn hóa tốt.',
+          status: 'GRADED',
+        },
+      ],
+      totalGrade: 8.85,
+      classification: 'GIOI',
+      cloAchievements: [
+        {
+          cloId: 'clo-1',
+          code: 'CLO1',
+          pct: 88.0,
+          level: 'XUẤT SẮC',
+          achieved: true,
+          contributions: [],
+        },
+        {
+          cloId: 'clo-2',
+          code: 'CLO2',
+          pct: 76.0,
+          level: 'GIỎI',
+          achieved: true,
+          contributions: [],
+        },
+      ],
+      ploAchievements: [],
+      allCloAchieved: true,
+    });
+  }),
+
+  // Course gradebook
+  http.get('*/api/v1/courses/:courseId/assessment/gradebook', () => {
+    return HttpResponse.json([
+      {
+        learner: {
+          id: mockUsers.user.id,
+          displayName: 'Quang Trần',
+          email: mockUsers.user.email,
+        },
+        components: [
+          {
+            blockId: 'block-quiz-1',
+            title: 'Kiểm tra trắc nghiệm & tự luận Chương 1',
+            maxScore: 10,
+            courseWeight: 30,
+            final: 8.5,
+            highest: 8.5,
+            latest: 8.5,
+            average: 8.5,
+            isPassed: true,
+            feedback: 'Làm tốt phần tự luận.',
+            status: 'GRADED',
+          },
+          {
+            blockId: 'assignment-block-1',
+            title: 'Bài tập lớn: Thiết kế CSDL',
+            maxScore: 100,
+            courseWeight: 70,
+            final: 90,
+            highest: 90,
+            latest: 90,
+            average: 90,
+            isPassed: true,
+            feedback: 'Thiết kế chuẩn hóa tốt.',
+            status: 'GRADED',
+          },
+        ],
+        totalGrade: 8.85,
+        classification: 'GIOI',
+        allCloAchieved: true,
+      },
+    ]);
+  }),
+
+  // ==================== CLO & PLO MOCKS ====================
+  http.get('*/api/v1/courses/:courseId/assessment/clos', () => {
+    return HttpResponse.json([
+      {
+        id: 'clo-1',
+        courseId: 'course-1',
+        code: 'CLO1',
+        description: 'Phân tích và mô hình hóa dữ liệu quan hệ theo các chuẩn 1NF, 2NF, 3NF.',
+        bloomLevelCode: 'ANALYZE',
+        linkedPloIds: ['plo-1'],
+      },
+      {
+        id: 'clo-2',
+        courseId: 'course-1',
+        code: 'CLO2',
+        description: 'Vận dụng ngôn ngữ SQL viết các truy vấn phức tạp và tối ưu chỉ mục index.',
+        bloomLevelCode: 'APPLY',
+        linkedPloIds: ['plo-2'],
+      },
+    ]);
+  }),
+
+  http.post('*/api/v1/courses/:courseId/assessment/clos', async ({ request, params }) => {
+    const body = (await request.json()) as any;
+    return HttpResponse.json(
+      {
+        id: `clo-${Date.now()}`,
+        courseId: params.courseId,
+        code: body.code,
+        description: body.description,
+        bloomLevelCode: body.bloomLevelCode || 'APPLY',
+        linkedPloIds: body.linkedPloIds || [],
+      },
+      { status: 201 }
+    );
+  }),
+
+  http.put('*/api/v1/courses/:courseId/assessment/clos/:id', async ({ request, params }) => {
+    const body = (await request.json()) as any;
+    return HttpResponse.json({
+      id: params.id,
+      courseId: params.courseId,
+      code: body.code,
+      description: body.description,
+      bloomLevelCode: body.bloomLevelCode,
+      linkedPloIds: body.linkedPloIds || [],
+    });
+  }),
+
+  http.delete('*/api/v1/courses/:courseId/assessment/clos/:id', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.get('*/api/v1/courses/:courseId/assessment/plos', () => {
+    return HttpResponse.json([
+      {
+        id: 'plo-1',
+        courseId: 'course-1',
+        code: 'PLO1',
+        description: 'Khả năng áp dụng kiến thức nền tảng kỹ thuật phần mềm vào phân tích hệ thống.',
+      },
+      {
+        id: 'plo-2',
+        courseId: 'course-1',
+        code: 'PLO2',
+        description: 'Khả năng thiết kế, hiện thực và đánh giá giải pháp công nghệ thông tin.',
+      },
+    ]);
+  }),
+
+  http.post('*/api/v1/courses/:courseId/assessment/plos', async ({ request, params }) => {
+    const body = (await request.json()) as any;
+    return HttpResponse.json(
+      {
+        id: `plo-${Date.now()}`,
+        courseId: params.courseId,
+        code: body.code,
+        description: body.description,
+      },
+      { status: 201 }
+    );
+  }),
+
+  http.put('*/api/v1/courses/:courseId/assessment/plos/:id', async ({ request, params }) => {
+    const body = (await request.json()) as any;
+    return HttpResponse.json({
+      id: params.id,
+      courseId: params.courseId,
+      code: body.code,
+      description: body.description,
+    });
+  }),
+
+  http.delete('*/api/v1/courses/:courseId/assessment/plos/:id', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  // ==================== ASSESSMENT STATS & EXPORT MOCKS ====================
+  http.get('*/api/v1/courses/:courseId/assessment/stats', () => {
+    return HttpResponse.json({
+      scoreDistribution: [
+        { rangeLabel: '0 - 2', minScore: 0, maxScore: 2, count: 1, percentage: 4.0 },
+        { rangeLabel: '2 - 4', minScore: 2, maxScore: 4, count: 2, percentage: 8.0 },
+        { rangeLabel: '4 - 6', minScore: 4, maxScore: 6, count: 5, percentage: 20.0 },
+        { rangeLabel: '6 - 8', minScore: 6, maxScore: 8, count: 11, percentage: 44.0 },
+        { rangeLabel: '8 - 10', minScore: 8, maxScore: 10, count: 6, percentage: 24.0 },
+      ],
+      hardestQuestions: [
+        {
+          questionId: 'q-101',
+          stem: 'Trong mô hình quan hệ, tính bảo toàn phụ thuộc hàm thuộc dạng chuẩn nào?',
+          questionType: 'SINGLE_CHOICE',
+          totalAttempts: 25,
+          correctAttempts: 9,
+          averageScore: 0.36,
+          maxPoints: 1.0,
+          errorRate: 64.0,
+        },
+      ],
+      cloPassRates: [
+        {
+          cloId: 'clo-1',
+          code: 'CLO1',
+          bloomLevelCode: 'ANALYZE',
+          totalStudents: 25,
+          passedStudents: 22,
+          passRate: 88.0,
+        },
+        {
+          cloId: 'clo-2',
+          code: 'CLO2',
+          bloomLevelCode: 'APPLY',
+          totalStudents: 25,
+          passedStudents: 19,
+          passRate: 76.0,
+        },
+      ],
+      levelDistribution: [
+        { classification: 'XUẤT SẮC', count: 6, percentage: 24.0 },
+        { classification: 'GIỎI', count: 11, percentage: 44.0 },
+        { classification: 'KHÁ', count: 5, percentage: 20.0 },
+        { classification: 'TRUNG BÌNH', count: 2, percentage: 8.0 },
+        { classification: 'YẾU', count: 1, percentage: 4.0 },
+      ],
+    });
+  }),
+
+  http.get('*/api/v1/courses/:courseId/assessment/export', () => {
+    const csvContent = '\uFEFFID Học viên,Tên học viên,Điểm tổng kết\nusr-1,Quang Trần,8.85\n';
+    return new HttpResponse(csvContent, {
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': 'attachment; filename="assessment_export.csv"',
+      },
+    });
+  }),
+
+  // ==================== COURSE REVIEWS MOCKS ====================
+  http.get('*/api/v1/courses/:courseId/reviews', () => {
+    return HttpResponse.json({
+      avg: 4.8,
+      count: 2,
+      items: [
+        {
+          id: 'rev-1',
+          user: {
+            id: 'usr-1',
+            displayName: 'Trần Văn An',
+            avatarUrl: null,
+          },
+          rating: 5,
+          commentText: 'Khóa học rất hay và bám sát thực tế!',
+          replyText: 'Cảm ơn em nhiều nhé, chúc em học tốt!',
+          repliedAt: '2026-11-15T10:00:00Z',
+          createdAt: '2026-11-14T09:00:00Z',
+          updatedAt: '2026-11-14T09:00:00Z',
+        },
+        {
+          id: 'rev-2',
+          user: {
+            id: 'usr-2',
+            displayName: 'Lê Thị Bình',
+            avatarUrl: null,
+          },
+          rating: 4,
+          commentText: 'Bài tập hơi dài nhưng giải thích dễ hiểu.',
+          replyText: null,
+          repliedAt: null,
+          createdAt: '2026-11-15T14:30:00Z',
+          updatedAt: '2026-11-15T14:30:00Z',
+        },
+      ],
+      meta: {
+        page: 1,
+        pageSize: 20,
+        total: 2,
+        totalPages: 1,
+      },
+    });
+  }),
+
+  http.get('*/api/v1/courses/:courseId/reviews/summary', () => {
+    return HttpResponse.json({
+      averageRating: 4.8,
+      totalReviews: 2,
+      ratingDistribution: {
+        5: 1,
+        4: 1,
+        3: 0,
+        2: 0,
+        1: 0,
+      },
+    });
+  }),
+
+  http.put('*/api/v1/courses/:courseId/reviews/me', async ({ request }) => {
+    const body = (await request.json()) as any;
+    return HttpResponse.json({
+      id: 'rev-me',
+      user: {
+        id: mockUsers.user.id,
+        displayName: 'Quang Trần',
+      },
+      rating: body.rating,
+      commentText: body.commentText,
+      replyText: null,
+      repliedAt: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+  }),
+
+  http.put('*/api/v1/courses/:courseId/reviews/:id/reply', async ({ request, params }) => {
+    const body = (await request.json()) as any;
+    return HttpResponse.json({
+      id: params.id,
+      user: {
+        id: 'usr-1',
+        displayName: 'Trần Văn An',
+      },
+      rating: 5,
+      commentText: 'Khóa học rất hay và bám sát thực tế!',
+      replyText: body.replyText,
+      repliedAt: new Date().toISOString(),
+      createdAt: '2026-11-14T09:00:00Z',
+      updatedAt: '2026-11-14T09:00:00Z',
+    });
+  }),
+
+  // --- Slice 10 Moderation & Admin Portal Handlers ---
+  http.post('*/api/v1/reports', async ({ request }) => {
+    const body = (await request.json().catch(() => ({}))) as any;
+    if (body.reason === 'DUPLICATE_TEST') {
+      return HttpResponse.json(
+        { code: 'DUPLICATE_REPORT', message: 'Bạn đã gửi báo cáo cho nội dung này trước đó.' },
+        { status: 409 }
+      );
+    }
+    const newReport = {
+      id: 'rep-' + Date.now(),
+      reportNumber: 'RPT-2026-999',
+      source: 'USER',
+      targetType: body.targetType || 'COURSE',
+      targetId: body.targetId || 'crs-1',
+      reason: body.reason || 'SPAM',
+      description: body.description || null,
+      status: 'PENDING',
+      reporterUserId: mockUsers.user.id,
+      reporterName: 'Quang Trần',
+      reporterEmail: 'quang@brainmemo.io',
+      createdAt: new Date().toISOString(),
+      evidences: (body.evidenceUrls || []).map((url: string, idx: number) => ({
+        id: `ev-${idx}`,
+        kind: 'LINK',
+        content: url,
+      })),
+    };
+    return HttpResponse.json(newReport, { status: 201 });
+  }),
+
+  http.get('*/api/v1/courses/:courseId/reports', ({ params }) => {
+    return HttpResponse.json([
+      {
+        id: 'rep-crs-1',
+        reportNumber: 'RPT-2026-001',
+        source: 'USER',
+        targetType: 'COURSE',
+        targetId: params.courseId,
+        reason: 'Nội dung chứa liên kết quảng cáo spam ngoài luồng',
+        description: 'Chương 2 có chèn link dẫn sang trang cá cược.',
+        status: 'PENDING',
+        reporterUserId: 'usr-reporter-1',
+        createdAt: '2026-11-15T08:30:00Z',
+        evidences: [
+          { id: 'ev-1', kind: 'LINK', content: 'https://example.com/screenshot.png' },
+        ],
+      },
+      {
+        id: 'rep-cmt-1',
+        reportNumber: 'RPT-2026-002',
+        source: 'USER',
+        targetType: 'COMMENT',
+        targetId: 'cmt-1',
+        reason: 'Bình luận ngôn từ xúc phạm người học khác',
+        description: 'Người dùng này dùng lời lẽ quấy rối.',
+        status: 'RESOLVED_ACCEPTED',
+        reporterUserId: 'usr-reporter-2',
+        resolutionNote: 'Đã xóa bình luận và khóa tài khoản 7 ngày.',
+        createdAt: '2026-11-14T10:00:00Z',
+        resolvedAt: '2026-11-14T11:00:00Z',
+        evidences: [],
+      },
+    ]);
+  }),
+
+  http.get('*/api/v1/admin/reports', ({ request }) => {
+    const url = new URL(request.url);
+    const status = url.searchParams.get('status');
+    const allReports = [
+      {
+        id: 'rep-adm-1',
+        reportNumber: 'RPT-2026-001',
+        source: 'USER',
+        targetType: 'COURSE',
+        targetId: 'crs-clean-arch',
+        reason: 'Nội dung đạo văn từ khóa học khác',
+        description: 'Nội dung sao chép nguyên văn slide của tác giả khác.',
+        status: 'PENDING',
+        reporterUserId: 'usr-1',
+        reporterName: 'Trần Văn An',
+        reporterEmail: 'an.tran@example.com',
+        createdAt: '2026-11-16T08:00:00Z',
+        evidences: [{ id: 'ev-1', kind: 'LINK', content: 'https://example.com/evidence-1.png' }],
+      },
+      {
+        id: 'rep-adm-2',
+        reportNumber: 'RPT-2026-002',
+        source: 'AI_FINDING',
+        targetType: 'COMMENT',
+        targetId: 'cmt-vulgar-1',
+        reason: 'Ngôn từ kích động thù ghét / Độc hại (PhoBERT confidence: 98.4%)',
+        description: 'Mô hình phát hiện từ ngữ xúc phạm nặng nề trong bình luận.',
+        status: 'PENDING',
+        reporterUserId: null,
+        reporterName: 'PhoBERT Safety Bot',
+        reporterEmail: null,
+        createdAt: '2026-11-16T09:15:00Z',
+        evidences: [{ id: 'ev-2', kind: 'TEXT_EXCERPT', content: 'Đoạn trích bình luận độc hại...' }],
+      },
+      {
+        id: 'rep-adm-3',
+        reportNumber: 'RPT-2026-003',
+        source: 'USER',
+        targetType: 'COURSE',
+        targetId: 'crs-copyright-2',
+        reason: 'Vi phạm bản quyền tài liệu',
+        description: 'Đã giải quyết bằng cách ẩn khóa học 30 ngày.',
+        status: 'RESOLVED_ACCEPTED',
+        reporterUserId: 'usr-2',
+        reporterName: 'Lê Thị Bình',
+        reporterEmail: 'binh.le@example.com',
+        resolutionNote: 'Đã ẩn khóa học 30 ngày để tác giả khắc phục bản quyền.',
+        resolvedAt: '2026-11-15T16:00:00Z',
+        createdAt: '2026-11-15T12:00:00Z',
+        evidences: [],
+      },
+    ];
+
+    const filtered = status ? allReports.filter((r) => r.status === status) : allReports;
+
+    return HttpResponse.json({
+      items: filtered,
+      totalCount: filtered.length,
+      page: 1,
+      pageSize: 15,
+      totalPages: 1,
+    });
+  }),
+
+  http.get('*/api/v1/admin/reports/:id', ({ params }) => {
+    return HttpResponse.json({
+      id: params.id,
+      reportNumber: 'RPT-2026-001',
+      source: 'USER',
+      targetType: 'COURSE',
+      targetId: 'crs-clean-arch',
+      reason: 'Nội dung đạo văn từ khóa học khác',
+      description: 'Nội dung sao chép nguyên văn slide của tác giả khác.',
+      status: 'PENDING',
+      reporterUserId: 'usr-1',
+      reporterName: 'Trần Văn An',
+      reporterEmail: 'an.tran@example.com',
+      createdAt: '2026-11-16T08:00:00Z',
+      evidences: [
+        { id: 'ev-1', kind: 'LINK', content: 'https://example.com/evidence-1.png' },
+      ],
+    });
+  }),
+
+  http.get('*/api/v1/admin/reports/:id/target-content', ({ params }) => {
+    if (params.id === 'rep-only-me') {
+      return HttpResponse.json(
+        { code: 'COURSE_NOT_FOUND', message: 'Không thể xem trước nội dung khóa học ở chế độ Only Me.' },
+        { status: 404 }
+      );
+    }
+    return HttpResponse.json({
+      targetType: 'COURSE',
+      targetId: 'crs-clean-arch',
+      contentSnapshot: 'Khóa học Clean Architecture với .NET & Modular Monolith. Giới thiệu các nguyên tắc DDD, CQRS, MediatR và Event-driven architecture...',
+      metadata: {
+        title: 'Khóa học Clean Architecture .NET',
+        totalChapters: 8,
+        author: 'Nguyen Instructor',
+        status: 'PUBLISHED',
+      },
+    });
+  }),
+
+  http.post('*/api/v1/admin/reports/:id/resolve', async ({ params, request }) => {
+    const body = (await request.json().catch(() => ({}))) as any;
+    return HttpResponse.json({
+      id: params.id,
+      reportNumber: 'RPT-2026-001',
+      source: 'USER',
+      targetType: 'COURSE',
+      targetId: 'crs-clean-arch',
+      reason: 'Nội dung đạo văn',
+      status: body.resolution === 'ACCEPTED' ? 'RESOLVED_ACCEPTED' : 'RESOLVED_REJECTED',
+      resolutionNote: body.note || null,
+      resolvedAt: new Date().toISOString(),
+      resolverUserId: mockUsers.admin.id,
+      createdAt: '2026-11-16T08:00:00Z',
+      evidences: [],
+    });
+  }),
+
+  http.get('*/api/v1/admin/sanctions', () => {
+    return HttpResponse.json({
+      items: [
+        {
+          id: 'snc-1',
+          reportId: 'rep-adm-3',
+          type: 'COURSE_HIDE',
+          targetType: 'COURSE',
+          targetId: 'crs-copyright-2',
+          reason: 'Vi phạm bản quyền tài liệu học phần',
+          durationHours: 720,
+          expiresAt: '2026-12-15T12:00:00Z',
+          status: 'ACTIVE',
+          appliedByUserId: mockUsers.admin.id,
+          appliedAt: '2026-11-15T12:00:00Z',
+        },
+        {
+          id: 'snc-2',
+          reportId: null,
+          type: 'ACCOUNT_LOCK_TEMPORARY',
+          targetType: 'ACCOUNT',
+          targetId: 'usr-spammer-9',
+          reason: 'Spam bình luận quấy rối hàng loạt',
+          durationHours: 168,
+          expiresAt: '2026-11-23T10:00:00Z',
+          status: 'ACTIVE',
+          appliedByUserId: mockUsers.admin.id,
+          appliedAt: '2026-11-16T10:00:00Z',
+        },
+        {
+          id: 'snc-3',
+          reportId: null,
+          type: 'COURSE_HIDE',
+          targetType: 'COURSE',
+          targetId: 'crs-old-hidden',
+          reason: 'Nội dung hết hạn kiểm định',
+          durationHours: 72,
+          expiresAt: '2026-11-10T00:00:00Z',
+          status: 'LIFTED',
+          liftKind: 'MANUAL',
+          liftReason: 'Tác giả đã cập nhật lại nội dung kiểm định đầy đủ.',
+          liftedAt: '2026-11-09T15:00:00Z',
+          appliedByUserId: mockUsers.admin.id,
+          appliedAt: '2026-11-07T00:00:00Z',
+        },
+      ],
+      totalCount: 3,
+      page: 1,
+      pageSize: 15,
+      totalPages: 1,
+    });
+  }),
+
+  http.post('*/api/v1/admin/sanctions', async ({ request }) => {
+    const body = (await request.json().catch(() => ({}))) as any;
+    return HttpResponse.json(
+      {
+        id: 'snc-' + Date.now(),
+        reportId: null,
+        type: body.type,
+        targetType: body.targetType,
+        targetId: body.targetId,
+        reason: body.reason,
+        durationHours: body.durationDays ? body.durationDays * 24 : null,
+        expiresAt: body.durationDays
+          ? new Date(Date.now() + body.durationDays * 86400000).toISOString()
+          : null,
+        status: 'ACTIVE',
+        appliedByUserId: mockUsers.admin.id,
+        appliedAt: new Date().toISOString(),
+      },
+      { status: 201 }
+    );
+  }),
+
+  http.post('*/api/v1/admin/sanctions/:id/lift', async ({ params, request }) => {
+    const body = (await request.json().catch(() => ({}))) as any;
+    return HttpResponse.json({
+      id: params.id,
+      status: 'LIFTED',
+      liftKind: 'MANUAL',
+      liftReason: body.reason,
+      liftedAt: new Date().toISOString(),
+      liftedByUserId: mockUsers.admin.id,
+    });
+  }),
+
+  http.get('*/api/v1/admin/audit-logs', () => {
+    return HttpResponse.json({
+      items: [
+        {
+          id: 'log-1',
+          occurredAt: new Date().toISOString(),
+          actorType: 'ADMIN',
+          actorUserId: mockUsers.admin.id,
+          actorName: 'Admin BrainMemo',
+          action: 'REPORT_RESOLVE',
+          objectType: 'REPORT',
+          objectId: 'rep-adm-1',
+          ipAddress: '127.0.0.1',
+          note: 'Xác nhận vi phạm đạo văn và áp dụng ẩn khóa học 7 ngày.',
+          metadata: { decision: 'ACCEPTED', sanctionsApplied: 1 },
+        },
+        {
+          id: 'log-2',
+          occurredAt: '2026-11-16T10:00:00Z',
+          actorType: 'ADMIN',
+          actorUserId: mockUsers.admin.id,
+          actorName: 'Admin BrainMemo',
+          action: 'SANCTION_APPLY',
+          objectType: 'USER_ACCOUNT',
+          objectId: 'usr-spammer-9',
+          ipAddress: '127.0.0.1',
+          note: 'Khóa tài khoản 7 ngày do spam bình luận.',
+          metadata: { lockType: 'TEMPORARY', days: 7 },
+        },
+        {
+          id: 'log-3',
+          occurredAt: '2026-11-15T08:00:00Z',
+          actorType: 'SYSTEM',
+          actorUserId: null,
+          actorName: 'System Background Worker',
+          action: 'COURSE_HIDE',
+          objectType: 'COURSE',
+          objectId: 'crs-auto-hidden',
+          ipAddress: null,
+          note: 'Tự động phục hồi hiển thị khóa học sau khi hết hạn 30 ngày.',
+          metadata: { restoreEvent: 'AutoExpired' },
+        },
+      ],
+      totalCount: 3,
+      page: 1,
+      pageSize: 20,
+      totalPages: 1,
+    });
+  }),
+
+  http.get('*/api/v1/admin/dashboard', () => {
+    return HttpResponse.json({
+      pendingReportsCount: 2,
+      pendingAiFlagsCount: 1,
+      activeSanctionsCount: 2,
+      lockedUsersCount: 1,
+      hiddenCoursesCount: 1,
+      recentAuditLogs: [
+        {
+          id: 'log-recent-1',
+          occurredAt: new Date().toISOString(),
+          actorType: 'ADMIN',
+          actorName: 'Admin BrainMemo',
+          action: 'REPORT_RESOLVE',
+          objectType: 'REPORT',
+          objectId: 'rep-adm-1',
+          note: 'Xác nhận vi phạm đạo văn.',
+        },
+        {
+          id: 'log-recent-2',
+          occurredAt: '2026-11-16T09:00:00Z',
+          actorType: 'ADMIN',
+          actorName: 'Admin BrainMemo',
+          action: 'SANCTION_APPLY',
+          objectType: 'USER_ACCOUNT',
+          objectId: 'usr-spammer-9',
+          note: 'Khóa tài khoản người dùng vi phạm.',
+        },
+      ],
+    });
+  }),
+
+  http.get('*/api/v1/admin/users', () => {
+    return HttpResponse.json({
+      items: [
+        {
+          id: mockUsers.admin.id,
+          email: 'admin@brainmemo.io',
+          displayName: 'BrainMemo Admin',
+          avatarUrl: null,
+          roles: ['USER', 'ADMIN'],
+          isLocked: false,
+          lockType: null,
+          lockedUntil: null,
+          lockReason: null,
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+        {
+          id: 'usr-instructor-1',
+          email: 'instructor@brainmemo.io',
+          displayName: 'Nguyen Giang Vien',
+          avatarUrl: null,
+          roles: ['USER'],
+          isLocked: false,
+          lockType: null,
+          lockedUntil: null,
+          lockReason: null,
+          createdAt: '2026-02-15T00:00:00Z',
+        },
+        {
+          id: mockUsers.user.id,
+          email: 'user@brainmemo.io',
+          displayName: 'Quang Tran Hoc Vien',
+          avatarUrl: null,
+          roles: ['USER'],
+          isLocked: false,
+          lockType: null,
+          lockedUntil: null,
+          lockReason: null,
+          createdAt: '2026-03-01T00:00:00Z',
+        },
+        {
+          id: 'usr-locked-1',
+          email: 'spammer@example.com',
+          displayName: 'Spammer Test',
+          avatarUrl: null,
+          roles: ['USER'],
+          isLocked: true,
+          lockType: 'TEMPORARY',
+          lockedUntil: '2026-11-23T10:00:00Z',
+          lockReason: 'Spam liên kết độc hại trên diễn đàn',
+          createdAt: '2026-10-10T00:00:00Z',
+        },
+      ],
+      totalCount: 4,
+      page: 1,
+      pageSize: 15,
+      totalPages: 1,
+    });
+  }),
+
+  http.post('*/api/v1/admin/users/:id/grant-admin', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.post('*/api/v1/admin/users/:id/revoke-admin', ({ params }) => {
+    if (params.id === 'usr-last-admin') {
+      return HttpResponse.json(
+        { code: 'LAST_ADMIN', message: 'Không thể thu hồi quyền Admin duy nhất trong hệ thống.' },
+        { status: 400 }
+      );
+    }
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.post('*/api/v1/admin/users/:id/lock', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.post('*/api/v1/admin/users/:id/unlock', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.post('*/api/v1/admin/announcements', () => {
+    return HttpResponse.json({ id: 'ann-' + Date.now() }, { status: 202 });
+  }),
+
+  // S11 AI endpoints
+  http.get('*/api/v1/ai/quota', () => {
+    return HttpResponse.json({
+      usedCount: 2,
+      quotaLimit: 20,
+      remaining: 18,
+      usedToday: 2,
+      dailyLimit: 20,
+      remainingToday: 18,
+      resetsAtUtc: new Date(Date.now() + 86400000).toISOString(),
+    });
+  }),
+
+  http.post('*/api/v1/courses/:courseId/ai/quiz-jobs', () => {
+    return HttpResponse.json(
+      { id: 'job-mock-quiz-1', jobId: 'job-mock-quiz-1', status: 'QUEUED', message: 'Yêu cầu sinh câu hỏi Quiz đã được tiếp nhận.' },
+      { status: 202 }
+    );
+  }),
+
+  http.post('*/api/v1/courses/:courseId/ai/flashcard-jobs', () => {
+    return HttpResponse.json(
+      { id: 'job-mock-fc-1', jobId: 'job-mock-fc-1', status: 'QUEUED', message: 'Yêu cầu sinh Flashcard đã được tiếp nhận.' },
+      { status: 202 }
+    );
+  }),
+
+  http.get('*/api/v1/ai/jobs/:id', ({ params }) => {
+    return HttpResponse.json({
+      id: params.id,
+      jobId: params.id,
+      jobType: 'QUIZ',
+      status: 'COMPLETED',
+      resultCount: 5,
+      totalCostUsd: 0.002,
+      generatedItemsCount: 5,
+      failureReason: null,
+      createdAtUtc: new Date().toISOString(),
+      completedAtUtc: new Date().toISOString(),
+    });
+  }),
+
+  http.get('*/api/v1/admin/settings', () => {
+    return HttpResponse.json({
+      aiDailyQuota: 20,
+      aiLlmProvider: 'GEMINI',
+    });
+  }),
+
+  http.put('*/api/v1/admin/settings', async ({ request }) => {
+    const body = (await request.json()) as any;
+    return HttpResponse.json({
+      success: true,
+      aiDailyQuota: body.aiDailyQuota ?? 20,
+      aiLlmProvider: body.aiLlmProvider ?? 'GEMINI',
+    });
   }),
 ];

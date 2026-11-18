@@ -13,7 +13,7 @@
   - Mở khóa chương passcode (`POST /api/v1/courses/{id}/chapters/{chapterId}/unlock` & alias `/verify-passcode`, `GET /api/v1/courses/{id}/chapters/{chapterId}/access`).
 - **Nhánh Git:** `feat/T-S4-BE-01-enrollment-chapter-access`
 - **Vai trò:** Backend Developer (BE)
-- **Tình trạng:** REVIEW (Toàn bộ 81/81 Course tests và 13/13 Architecture tests pass 100%, build 0 warning 0 error)
+- **Tình trạng:** DONE (Toàn bộ 81/81 Course tests và 13/13 Architecture tests pass 100%, build 0 warning 0 error)
 
 ---
 

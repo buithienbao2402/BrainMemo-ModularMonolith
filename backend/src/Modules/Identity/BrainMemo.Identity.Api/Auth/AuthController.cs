@@ -2,6 +2,7 @@ using System.Security.Claims;
 using BrainMemo.Identity.Application.Auth.Commands.ChangePassword;
 using BrainMemo.Identity.Application.Auth.Commands.ForgotPassword;
 using BrainMemo.Identity.Application.Auth.Commands.Login;
+using BrainMemo.Identity.Application.Auth.Commands.LoginWithGoogle;
 using BrainMemo.Identity.Application.Auth.Commands.Logout;
 using BrainMemo.Identity.Application.Auth.Commands.LogoutAll;
 using BrainMemo.Identity.Application.Auth.Commands.Refresh;
@@ -94,6 +95,43 @@ public sealed class AuthController(
 
         Result<AuthTokensResult> result = await sender
             .Send(new LoginCommand(request.Email, request.Password, userAgent, ipAddress), ct)
+            .ConfigureAwait(false);
+
+        if (result.IsFailure)
+        {
+            return new ObjectResult(result.Error);
+        }
+
+        SetRefreshTokenCookie(result.Value.RawRefreshToken, result.Value.ExpiresAt);
+
+        return Ok(new AuthTokensResponse(
+            result.Value.AccessToken,
+            result.Value.ExpiresIn,
+            new CurrentUserResponse(
+                result.Value.User.Id,
+                result.Value.User.Email,
+                result.Value.User.EmailVerified,
+                result.Value.User.IsAdmin,
+                result.Value.User.AccountStatus)));
+    }
+
+    /// <summary>
+    /// Authenticates with Google OAuth ID token (FR-IDN-06).
+    /// </summary>
+    [AllowAnonymous]
+    [HttpPost("google")]
+    [ProducesResponseType<AuthTokensResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> LoginWithGoogle(
+        [FromBody] GoogleAuthRequest request,
+        CancellationToken ct)
+    {
+        string? userAgent = Request.Headers.UserAgent.ToString();
+        string? ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+
+        Result<AuthTokensResult> result = await sender
+            .Send(new LoginWithGoogleCommand(request.IdToken ?? string.Empty, userAgent, ipAddress), ct)
             .ConfigureAwait(false);
 
         if (result.IsFailure)

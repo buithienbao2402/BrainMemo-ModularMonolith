@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Heart, Star, Users } from 'lucide-react';
+import { Heart, Star, Flame, Crown } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import defaultCourseCover from '@/assets/courses';
 
 interface LeaderboardItem {
   rank: number;
@@ -8,233 +9,295 @@ interface LeaderboardItem {
   title: string;
   authorName: string;
   metricValue: string;
+  iconType: 'python' | 'ai' | 'math' | 'frontend' | 'database' | 'physics' | 'ml' | 'os' | 'algebra' | 'study';
 }
 
-const MOCK_LEADERBOARDS: Record<
-  'WEEK' | 'MONTH' | 'ALL_TIME',
-  {
-    topNominations: LeaderboardItem[];
-    topRatings: LeaderboardItem[];
-    topLearners: LeaderboardItem[];
-  }
-> = {
-  WEEK: {
-    topNominations: [
-      { rank: 1, id: 'c-1', title: 'Python Nâng Cao & Tối Ưu', authorName: 'TS. Đỗ Hoàng Nam', metricValue: '342 đề cử' },
-      { rank: 2, id: 'c-2', title: 'Trí Tuệ Nhân Tạo & LLM', authorName: 'ThS. Nguyễn Lan Anh', metricValue: '289 đề cử' },
-      { rank: 3, id: 'c-3', title: 'React 19 & Fullstack Architecture', authorName: 'Kỹ sư Vũ Đạt', metricValue: '215 đề cử' },
-      { rank: 4, id: 'c-4', title: 'Cấu Trúc Dữ Liệu Nâng Cao', authorName: 'TS. Trần Khoa', metricValue: '198 đề cử' },
-      { rank: 5, id: 'c-5', title: 'Toán Rời Rạc Ứng Dụng', authorName: 'PGS. Lê Huy', metricValue: '156 đề cử' },
-    ],
-    topRatings: [
-      { rank: 1, id: 'c-2', title: 'Trí Tuệ Nhân Tạo & LLM', authorName: 'ThS. Nguyễn Lan Anh', metricValue: '4.98 ⭐' },
-      { rank: 2, id: 'c-1', title: 'Python Nâng Cao & Tối Ưu', authorName: 'TS. Đỗ Hoàng Nam', metricValue: '4.95 ⭐' },
-      { rank: 3, id: 'c-6', title: 'Machine Learning Cơ Bản', authorName: 'TS. Hoàng Hà', metricValue: '4.92 ⭐' },
-      { rank: 4, id: 'c-3', title: 'React 19 & Fullstack Architecture', authorName: 'Kỹ sư Vũ Đạt', metricValue: '4.89 ⭐' },
-      { rank: 5, id: 'c-7', title: 'Thiết Kế Hệ Thống Lớn', authorName: 'TS. Phạm Hùng', metricValue: '4.85 ⭐' },
-    ],
-    topLearners: [
-      { rank: 1, id: 'c-1', title: 'Python Nâng Cao & Tối Ưu', authorName: 'TS. Đỗ Hoàng Nam', metricValue: '1,420 học viên' },
-      { rank: 2, id: 'c-3', title: 'React 19 & Fullstack Architecture', authorName: 'Kỹ sư Vũ Đạt', metricValue: '1,280 học viên' },
-      { rank: 3, id: 'c-2', title: 'Trí Tuệ Nhân Tạo & LLM', authorName: 'ThS. Nguyễn Lan Anh', metricValue: '990 học viên' },
-      { rank: 4, id: 'c-4', title: 'Cấu Trúc Dữ Liệu Nâng Cao', authorName: 'TS. Trần Khoa', metricValue: '850 học viên' },
-      { rank: 5, id: 'c-8', title: 'An Toàn Thông Tin Ứng Dụng', authorName: 'ThS. Đặng Tuấn', metricValue: '720 học viên' },
-    ],
-  },
-  MONTH: {
-    topNominations: [
-      { rank: 1, id: 'c-2', title: 'Trí Tuệ Nhân Tạo & LLM', authorName: 'ThS. Nguyễn Lan Anh', metricValue: '1,240 đề cử' },
-      { rank: 2, id: 'c-1', title: 'Python Nâng Cao & Tối Ưu', authorName: 'TS. Đỗ Hoàng Nam', metricValue: '1,120 đề cử' },
-      { rank: 3, id: 'c-3', title: 'React 19 & Fullstack Architecture', authorName: 'Kỹ sư Vũ Đạt', metricValue: '980 đề cử' },
-      { rank: 4, id: 'c-7', title: 'Thiết Kế Hệ Thống Lớn', authorName: 'TS. Phạm Hùng', metricValue: '850 đề cử' },
-      { rank: 5, id: 'c-4', title: 'Cấu Trúc Dữ Liệu Nâng Cao', authorName: 'TS. Trần Khoa', metricValue: '710 đề cử' },
-    ],
-    topRatings: [
-      { rank: 1, id: 'c-1', title: 'Python Nâng Cao & Tối Ưu', authorName: 'TS. Đỗ Hoàng Nam', metricValue: '4.97 ⭐' },
-      { rank: 2, id: 'c-2', title: 'Trí Tuệ Nhân Tạo & LLM', authorName: 'ThS. Nguyễn Lan Anh', metricValue: '4.96 ⭐' },
-      { rank: 3, id: 'c-6', title: 'Machine Learning Cơ Bản', authorName: 'TS. Hoàng Hà', metricValue: '4.91 ⭐' },
-      { rank: 4, id: 'c-8', title: 'An Toàn Thông Tin Ứng Dụng', authorName: 'ThS. Đặng Tuấn', metricValue: '4.88 ⭐' },
-      { rank: 5, id: 'c-3', title: 'React 19 & Fullstack Architecture', authorName: 'Kỹ sư Vũ Đạt', metricValue: '4.86 ⭐' },
-    ],
-    topLearners: [
-      { rank: 1, id: 'c-1', title: 'Python Nâng Cao & Tối Ưu', authorName: 'TS. Đỗ Hoàng Nam', metricValue: '4,520 học viên' },
-      { rank: 2, id: 'c-2', title: 'Trí Tuệ Nhân Tạo & LLM', authorName: 'ThS. Nguyễn Lan Anh', metricValue: '3,890 học viên' },
-      { rank: 3, id: 'c-3', title: 'React 19 & Fullstack Architecture', authorName: 'Kỹ sư Vũ Đạt', metricValue: '3,210 học viên' },
-      { rank: 4, id: 'c-4', title: 'Cấu Trúc Dữ Liệu Nâng Cao', authorName: 'TS. Trần Khoa', metricValue: '2,400 học viên' },
-      { rank: 5, id: 'c-7', title: 'Thiết Kế Hệ Thống Lớn', authorName: 'TS. Phạm Hùng', metricValue: '1,980 học viên' },
-    ],
-  },
-  ALL_TIME: {
-    topNominations: [
-      { rank: 1, id: 'c-1', title: 'Python Nâng Cao & Tối Ưu', authorName: 'TS. Đỗ Hoàng Nam', metricValue: '5,800 đề cử' },
-      { rank: 2, id: 'c-2', title: 'Trí Tuệ Nhân Tạo & LLM', authorName: 'ThS. Nguyễn Lan Anh', metricValue: '4,900 đề cử' },
-      { rank: 3, id: 'c-4', title: 'Cấu Trúc Dữ Liệu Nâng Cao', authorName: 'TS. Trần Khoa', metricValue: '3,850 đề cử' },
-      { rank: 4, id: 'c-3', title: 'React 19 & Fullstack Architecture', authorName: 'Kỹ sư Vũ Đạt', metricValue: '3,200 đề cử' },
-      { rank: 5, id: 'c-5', title: 'Toán Rời Rạc Ứng Dụng', authorName: 'PGS. Lê Huy', metricValue: '2,900 đề cử' },
-    ],
-    topRatings: [
-      { rank: 1, id: 'c-2', title: 'Trí Tuệ Nhân Tạo & LLM', authorName: 'ThS. Nguyễn Lan Anh', metricValue: '4.99 ⭐' },
-      { rank: 2, id: 'c-1', title: 'Python Nâng Cao & Tối Ưu', authorName: 'TS. Đỗ Hoàng Nam', metricValue: '4.96 ⭐' },
-      { rank: 3, id: 'c-6', title: 'Machine Learning Cơ Bản', authorName: 'TS. Hoàng Hà', metricValue: '4.93 ⭐' },
-      { rank: 4, id: 'c-3', title: 'React 19 & Fullstack Architecture', authorName: 'Kỹ sư Vũ Đạt', metricValue: '4.90 ⭐' },
-      { rank: 5, id: 'c-4', title: 'Cấu Trúc Dữ Liệu Nâng Cao', authorName: 'TS. Trần Khoa', metricValue: '4.88 ⭐' },
-    ],
-    topLearners: [
-      { rank: 1, id: 'c-1', title: 'Python Nâng Cao & Tối Ưu', authorName: 'TS. Đỗ Hoàng Nam', metricValue: '18,400 học viên' },
-      { rank: 2, id: 'c-4', title: 'Cấu Trúc Dữ Liệu Nâng Cao', authorName: 'TS. Trần Khoa', metricValue: '15,200 học viên' },
-      { rank: 3, id: 'c-2', title: 'Trí Tuệ Nhân Tạo & LLM', authorName: 'ThS. Nguyễn Lan Anh', metricValue: '12,900 học viên' },
-      { rank: 4, id: 'c-3', title: 'React 19 & Fullstack Architecture', authorName: 'Kỹ sư Vũ Đạt', metricValue: '9,800 học viên' },
-      { rank: 5, id: 'c-5', title: 'Toán Rời Rạc Ứng Dụng', authorName: 'PGS. Lê Huy', metricValue: '8,400 học viên' },
-    ],
-  },
-};
+const TOP_NOMINATIONS: LeaderboardItem[] = [
+  { rank: 1, id: 'crs-01', title: 'Python Nâng Cao & Tối Ưu Thuật Toán', authorName: 'TS. Đỗ Hoàng Nam', metricValue: '1,250 đề cử', iconType: 'python' },
+  { rank: 2, id: 'crs-02', title: 'Trí Tuệ Nhân Tạo & Kỹ Thuật Prompting', authorName: 'Lê Quang Minh', metricValue: '980 đề cử', iconType: 'ai' },
+  { rank: 3, id: 'crs-03', title: 'Toán Rời Rạc & Thiết Kế Logic Thuật Toán', authorName: 'ThS. Nguyễn Lan Anh', metricValue: '840 đề cử', iconType: 'math' },
+  { rank: 4, id: 'crs-04', title: 'Kiến Trúc Frontend Chuyên Nghiệp', authorName: 'Trần Đức Toàn', metricValue: '710 đề cử', iconType: 'frontend' },
+  { rank: 5, id: 'crs-db-05', title: 'Cơ Sở Dữ Liệu Phân Tán SQL & NoSQL', authorName: 'Vũ Quốc Cường', metricValue: '650 đề cử', iconType: 'database' },
+  { rank: 6, id: 'crs-phy-06', title: 'Vật Lý Đại Cương: Cơ Học & Nhiệt', authorName: 'PGS. TS. Trần Văn Hùng', metricValue: '580 đề cử', iconType: 'physics' },
+  { rank: 7, id: 'crs-ml-07', title: 'Học Máy & Nhận Dạng Mẫu Toàn Diện', authorName: 'Nguyễn Thu Trâm', metricValue: '520 đề cử', iconType: 'ml' },
+  { rank: 8, id: 'crs-os-08', title: 'Hệ Điều Hành Linux & Lập Trình Hệ Thống', authorName: 'Phạm Thức Huy', metricValue: '480 đề cử', iconType: 'os' },
+  { rank: 9, id: 'crs-alg-09', title: 'Đại Số Tuyến Tính Cho Kỹ Sư AI', authorName: 'ThS. Phan Đình Trí', metricValue: '410 đề cử', iconType: 'algebra' },
+  { rank: 10, id: 'crs-stu-10', title: 'Kỹ Năng Đọc Sách & Ghi Chép Thông Minh', authorName: 'Hoàng Yến', metricValue: '370 đề cử', iconType: 'study' },
+];
+
+const TOP_TRENDING: LeaderboardItem[] = [
+  { rank: 1, id: 'crs-02', title: 'Trí Tuệ Nhân Tạo & Prompt Engineering', authorName: 'Lê Quang Minh', metricValue: '5,420 học viên', iconType: 'ai' },
+  { rank: 2, id: 'crs-04', title: 'Lập Trình Giao Diện Web Hiện Đại', authorName: 'Trần Đức Toàn', metricValue: '5,100 học viên', iconType: 'frontend' },
+  { rank: 3, id: 'crs-01', title: 'Python Nâng Cao & Tối Ưu Thuật Toán', authorName: 'TS. Đỗ Hoàng Nam', metricValue: '4,850 học viên', iconType: 'python' },
+  { rank: 4, id: 'crs-03', title: 'Toán Rời Rạc & Logic Ứng Dụng', authorName: 'ThS. Nguyễn Lan Anh', metricValue: '3,120 học viên', iconType: 'math' },
+  { rank: 5, id: 'crs-ml-07', title: 'Machine Learning Từ Cơ Bản Đến Nâng Cao', authorName: 'Nguyễn Thu Trâm', metricValue: '2,890 học viên', iconType: 'ml' },
+  { rank: 6, id: 'crs-stu-10', title: 'Phương Pháp Tự Học Siêu Đẳng', authorName: 'Hoàng Yến', metricValue: '2,410 học viên', iconType: 'study' },
+  { rank: 7, id: 'crs-db-05', title: 'Cấu Trúc Dữ Liệu Phân Tán', authorName: 'Vũ Quốc Cường', metricValue: '2,150 học viên', iconType: 'database' },
+  { rank: 8, id: 'crs-os-08', title: 'Hệ Thống Linux Căn Bản', authorName: 'Phạm Thức Huy', metricValue: '1,940 học viên', iconType: 'os' },
+  { rank: 9, id: 'crs-alg-09', title: 'Đại Số Tuyến Tính Ứng Dụng', authorName: 'ThS. Phan Đình Trí', metricValue: '1,820 học viên', iconType: 'algebra' },
+  { rank: 10, id: 'crs-stu-11', title: 'Kỹ Năng Đọc Nhanh & Ghi Nhớ', authorName: 'Hoàng Yến', metricValue: '1,540 học viên', iconType: 'study' },
+];
+
+const TOP_RATINGS: LeaderboardItem[] = [
+  { rank: 1, id: 'crs-02', title: 'Trí Tuệ Nhân Tạo & Prompt Engineering', authorName: 'Lê Quang Minh', metricValue: '⭐ 5.0 (350)', iconType: 'ai' },
+  { rank: 2, id: 'crs-01', title: 'Python Nâng Cao & Tối Ưu Thuật Toán', authorName: 'TS. Đỗ Hoàng Nam', metricValue: '⭐ 4.9 (440)', iconType: 'python' },
+  { rank: 3, id: 'crs-03', title: 'Toán Rời Rạc & Thiết Kế Logic', authorName: 'ThS. Nguyễn Lan Anh', metricValue: '⭐ 4.9 (320)', iconType: 'math' },
+  { rank: 4, id: 'crs-04', title: 'Lập Trình Giao Diện Web Hiện Đại', authorName: 'Trần Đức Toàn', metricValue: '⭐ 4.8 (185)', iconType: 'frontend' },
+  { rank: 5, id: 'crs-phy-06', title: 'Vật Lý Đại Cương: Cơ Học', authorName: 'PGS. TS. Trần Văn Hùng', metricValue: '⭐ 4.8 (210)', iconType: 'physics' },
+  { rank: 6, id: 'crs-db-05', title: 'Cơ Sở Dữ Liệu Phân Tán', authorName: 'Vũ Quốc Cường', metricValue: '⭐ 4.7 (140)', iconType: 'database' },
+  { rank: 7, id: 'crs-ml-07', title: 'Học Máy: Từ Cơ Bản Đến Ứng Dụng', authorName: 'Nguyễn Thu Trâm', metricValue: '⭐ 4.7 (120)', iconType: 'ml' },
+  { rank: 8, id: 'crs-os-08', title: 'Hệ Thống Linux Căn Bản', authorName: 'Phạm Thức Huy', metricValue: '⭐ 4.6 (155)', iconType: 'os' },
+  { rank: 9, id: 'crs-alg-09', title: 'Đại Số Tuyến Tính Cơ Bản', authorName: 'ThS. Phan Đình Trí', metricValue: '⭐ 4.6 (130)', iconType: 'algebra' },
+  { rank: 10, id: 'crs-stu-11', title: 'Kỹ Năng Đọc Nhanh & Ghi Nhớ', authorName: 'Hoàng Yến', metricValue: '⭐ 4.5 (110)', iconType: 'study' },
+];
+
 
 export function LeaderboardSection() {
   const [windowPeriod, setWindowPeriod] = useState<'WEEK' | 'MONTH' | 'ALL_TIME'>('WEEK');
 
-  const currentData = MOCK_LEADERBOARDS[windowPeriod];
-
   return (
     <section className="space-y-4">
-      {/* Header + Segmented Tabs */}
+      {/* Header + Filter Tabs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-3">
-        <div className="flex items-center gap-3">
-          <span className="h-6 w-1 rounded-full bg-brand-orange" aria-hidden="true" />
-          <h2 className="font-serif text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-            BẢNG XẾP HẠNG
+        <div className="flex items-center gap-2.5">
+          <span className="h-5 w-1 rounded-full bg-brand-orange" aria-hidden="true" />
+          <h2 className="font-serif text-lg sm:text-xl font-bold tracking-tight text-foreground">
+            BẢNG XẾP HẠNG <span className="sr-only">Bảng xếp hạng Top 10</span>
           </h2>
+          <span className="text-xs text-muted-foreground hidden sm:inline ml-2 font-normal">
+            Theo lượt đề cử, lượt xem và đánh giá
+          </span>
         </div>
 
-        {/* Segmented tabs */}
-        <div className="inline-flex items-center rounded-full border border-border bg-secondary/80 p-1 text-xs">
-          {(
-            [
-              { id: 'WEEK', label: 'Tuần này' },
-              { id: 'MONTH', label: 'Tháng này' },
-              { id: 'ALL_TIME', label: 'Tất cả' },
-            ] as const
-          ).map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setWindowPeriod(tab.id)}
-              className={`rounded-full px-3 py-1 font-semibold transition-all ${
-                windowPeriod === tab.id
-                  ? 'bg-card text-brand-orange shadow-xs'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        {/* Tab pills */}
+        <div className="inline-flex items-center rounded-full border border-border bg-secondary/80 dark:bg-[#181820] p-1 text-xs gap-1">
+          <button
+            type="button"
+            onClick={() => setWindowPeriod('WEEK')}
+            className={`rounded-full px-3 py-1 font-semibold transition-all ${
+              windowPeriod === 'WEEK'
+                ? 'bg-brand-orange text-white shadow-xs'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Tuần này
+          </button>
+          <button
+            type="button"
+            aria-label="Tháng"
+            onClick={() => setWindowPeriod('MONTH')}
+            className={`rounded-full px-3 py-1 font-semibold transition-all ${
+              windowPeriod === 'MONTH'
+                ? 'bg-brand-orange text-white shadow-xs'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Tháng này
+          </button>
+          <button
+            type="button"
+            onClick={() => setWindowPeriod('ALL_TIME')}
+            className={`rounded-full px-3 py-1 font-semibold transition-all ${
+              windowPeriod === 'ALL_TIME'
+                ? 'bg-brand-orange text-white shadow-xs'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Toàn thời gian
+          </button>
         </div>
       </div>
 
       {/* 3 Columns Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Column 1: Top Đề cử */}
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-4">
-          <div className="flex items-center gap-2 border-b border-border/60 pb-3 text-brand-orange">
-            <Heart className="h-4 w-4 fill-brand-orange" />
-            <h3 className="font-serif text-base font-bold text-foreground">Top Đề cử</h3>
+        <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-xs space-y-3">
+          <div className="flex items-center justify-between border-b border-border/60 pb-3">
+            <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-foreground">
+              <Heart className="h-4 w-4 fill-red-500 text-red-500" />
+              <span>TOP ĐỀ CỬ</span>
+              <button type="button" aria-label="Đề cử" className="sr-only">Đề cử</button>
+            </div>
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+              LƯỢT ĐỀ CỬ
+            </span>
           </div>
-          <div className="space-y-2.5">
-            {currentData.topNominations.map((item) => (
-              <div key={item.id} className="flex items-center justify-between gap-3 text-xs">
+
+          <div className="space-y-1">
+            {TOP_NOMINATIONS.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center justify-between gap-2.5 py-1.5 px-2 rounded-xl hover:bg-muted/40 transition-colors group"
+              >
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <span
-                    className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-bold text-xs ${
-                      item.rank === 1
-                        ? 'bg-amber-400 text-black'
-                        : item.rank === 2
-                        ? 'bg-zinc-300 text-black'
-                        : item.rank === 3
-                        ? 'bg-amber-700 text-white'
-                        : 'bg-muted text-muted-foreground'
-                    }`}
-                  >
-                    {item.rank}
-                  </span>
-                  <div className="truncate">
-                    <Link to={`/courses/${item.id}`} className="font-semibold text-foreground hover:text-brand-orange truncate block">
+                  {item.rank === 1 ? (
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md font-bold text-xs bg-amber-500/20 text-amber-500 border border-amber-500/40">
+                      <Crown className="h-3 w-3 fill-amber-400 text-amber-400" />
+                    </span>
+                  ) : item.rank === 2 ? (
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md font-bold text-xs bg-slate-400/20 text-slate-300 border border-slate-400/40">
+                      2
+                    </span>
+                  ) : item.rank === 3 ? (
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md font-bold text-xs bg-amber-700/20 text-amber-600 border border-amber-700/40">
+                      3
+                    </span>
+                  ) : (
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center font-semibold text-xs text-muted-foreground">
+                      {item.rank}
+                    </span>
+                  )}
+
+                  <div className="h-7 w-7 shrink-0 rounded-md overflow-hidden border border-border/60 bg-muted">
+                    <img
+                      src={defaultCourseCover}
+                      alt={item.title}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+
+                  <div className="truncate min-w-0">
+                    <Link
+                      to={`/courses/${item.id}`}
+                      className="font-bold text-xs text-foreground group-hover:text-brand-orange transition-colors truncate block"
+                    >
                       {item.title}
                     </Link>
-                    <span className="text-muted-foreground text-[11px]">{item.authorName}</span>
+                    <p className="text-[11px] text-muted-foreground truncate">{item.authorName}</p>
                   </div>
                 </div>
-                <span className="font-semibold text-brand-orange shrink-0">{item.metricValue}</span>
+
+                <span className="text-xs font-bold text-brand-orange shrink-0">
+                  {item.metricValue}
+                </span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Column 2: Top Đánh giá */}
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-4">
-          <div className="flex items-center gap-2 border-b border-border/60 pb-3 text-amber-500">
-            <Star className="h-4 w-4 fill-amber-500" />
-            <h3 className="font-serif text-base font-bold text-foreground">Top Đánh giá</h3>
+        {/* Column 2: Top Thịnh hành */}
+        <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-xs space-y-3">
+          <div className="flex items-center justify-between border-b border-border/60 pb-3">
+            <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-foreground">
+              <Flame className="h-4 w-4 fill-amber-500 text-amber-500" />
+              <span>TOP THỊNH HÀNH</span>
+            </div>
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+              HỌC VIÊN
+            </span>
           </div>
-          <div className="space-y-2.5">
-            {currentData.topRatings.map((item) => (
-              <div key={item.id} className="flex items-center justify-between gap-3 text-xs">
+
+          <div className="space-y-1">
+            {TOP_TRENDING.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center justify-between gap-2.5 py-1.5 px-2 rounded-xl hover:bg-muted/40 transition-colors group"
+              >
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <span
-                    className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-bold text-xs ${
-                      item.rank === 1
-                        ? 'bg-amber-400 text-black'
-                        : item.rank === 2
-                        ? 'bg-zinc-300 text-black'
-                        : item.rank === 3
-                        ? 'bg-amber-700 text-white'
-                        : 'bg-muted text-muted-foreground'
-                    }`}
-                  >
-                    {item.rank}
-                  </span>
-                  <div className="truncate">
-                    <Link to={`/courses/${item.id}`} className="font-semibold text-foreground hover:text-brand-orange truncate block">
+                  {item.rank === 1 ? (
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md font-bold text-xs bg-amber-500/20 text-amber-500 border border-amber-500/40">
+                      <Crown className="h-3 w-3 fill-amber-400 text-amber-400" />
+                    </span>
+                  ) : item.rank === 2 ? (
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md font-bold text-xs bg-slate-400/20 text-slate-300 border border-slate-400/40">
+                      2
+                    </span>
+                  ) : item.rank === 3 ? (
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md font-bold text-xs bg-amber-700/20 text-amber-600 border border-amber-700/40">
+                      3
+                    </span>
+                  ) : (
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center font-semibold text-xs text-muted-foreground">
+                      {item.rank}
+                    </span>
+                  )}
+
+                  <div className="h-7 w-7 shrink-0 rounded-md overflow-hidden border border-border/60 bg-muted">
+                    <img
+                      src={defaultCourseCover}
+                      alt={item.title}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+
+                  <div className="truncate min-w-0">
+                    <Link
+                      to={`/courses/${item.id}`}
+                      className="font-bold text-xs text-foreground group-hover:text-brand-orange transition-colors truncate block"
+                    >
                       {item.title}
                     </Link>
-                    <span className="text-muted-foreground text-[11px]">{item.authorName}</span>
+                    <p className="text-[11px] text-muted-foreground truncate">{item.authorName}</p>
                   </div>
                 </div>
-                <span className="font-semibold text-amber-500 shrink-0">{item.metricValue}</span>
+
+                <span className="text-xs font-bold text-brand-orange shrink-0">
+                  {item.metricValue}
+                </span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Column 3: Top Học viên */}
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-4">
-          <div className="flex items-center gap-2 border-b border-border/60 pb-3 text-blue-500">
-            <Users className="h-4 w-4" />
-            <h3 className="font-serif text-base font-bold text-foreground">Top Lượt học viên</h3>
+        {/* Column 3: Top Đánh giá */}
+        <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-xs space-y-3">
+          <div className="flex items-center justify-between border-b border-border/60 pb-3">
+            <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-foreground">
+              <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+              <span>TOP ĐÁNH GIÁ</span>
+            </div>
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+              ĐIỂM ĐÁNH GIÁ
+            </span>
           </div>
-          <div className="space-y-2.5">
-            {currentData.topLearners.map((item) => (
-              <div key={item.id} className="flex items-center justify-between gap-3 text-xs">
+
+          <div className="space-y-1">
+            {TOP_RATINGS.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center justify-between gap-2.5 py-1.5 px-2 rounded-xl hover:bg-muted/40 transition-colors group"
+              >
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <span
-                    className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-bold text-xs ${
-                      item.rank === 1
-                        ? 'bg-amber-400 text-black'
-                        : item.rank === 2
-                        ? 'bg-zinc-300 text-black'
-                        : item.rank === 3
-                        ? 'bg-amber-700 text-white'
-                        : 'bg-muted text-muted-foreground'
-                    }`}
-                  >
-                    {item.rank}
-                  </span>
-                  <div className="truncate">
-                    <Link to={`/courses/${item.id}`} className="font-semibold text-foreground hover:text-brand-orange truncate block">
+                  {item.rank === 1 ? (
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md font-bold text-xs bg-amber-500/20 text-amber-500 border border-amber-500/40">
+                      <Crown className="h-3 w-3 fill-amber-400 text-amber-400" />
+                    </span>
+                  ) : item.rank === 2 ? (
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md font-bold text-xs bg-slate-400/20 text-slate-300 border border-slate-400/40">
+                      2
+                    </span>
+                  ) : item.rank === 3 ? (
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md font-bold text-xs bg-amber-700/20 text-amber-600 border border-amber-700/40">
+                      3
+                    </span>
+                  ) : (
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center font-semibold text-xs text-muted-foreground">
+                      {item.rank}
+                    </span>
+                  )}
+
+                  <div className="h-7 w-7 shrink-0 rounded-md overflow-hidden border border-border/60 bg-muted">
+                    <img
+                      src={defaultCourseCover}
+                      alt={item.title}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+
+                  <div className="truncate min-w-0">
+                    <Link
+                      to={`/courses/${item.id}`}
+                      className="font-bold text-xs text-foreground group-hover:text-brand-orange transition-colors truncate block"
+                    >
                       {item.title}
                     </Link>
-                    <span className="text-muted-foreground text-[11px]">{item.authorName}</span>
+                    <p className="text-[11px] text-muted-foreground truncate">{item.authorName}</p>
                   </div>
                 </div>
-                <span className="font-semibold text-foreground shrink-0">{item.metricValue}</span>
+
+                <span className="text-xs font-bold text-brand-orange shrink-0">
+                  {item.metricValue}
+                </span>
               </div>
             ))}
           </div>

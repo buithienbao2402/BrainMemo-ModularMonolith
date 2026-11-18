@@ -20,16 +20,59 @@ import {
   CourseManagementLayout,
   CourseManagementHomePage,
   CourseOverviewPage,
+  CourseStudentsPage,
+  CourseAccessPage,
 } from '@/features/course';
+import {
+  LearningPlayerPage,
+  MyBookmarksPage,
+  QuizPlayerPage,
+  QuizResultPage,
+  AssignmentPlayerPage,
+  LearningDashboardPage,
+} from '@/features/learning';
+import {
+  AssessmentRulesPage,
+  GradingQueuePage,
+  ManualGradingPage,
+  CourseGradebookPage,
+  LearnerGradebookPage,
+  OutcomesManagementPage,
+  OutcomeMappingMatrixPage,
+  AssessmentStatsPage,
+  CourseReviewsManagePage,
+} from '@/features/assessment';
 import {
   ChapterListPage,
   ChapterEditorPage,
   ChapterVersionHistoryPage,
   ResourceManagementPage,
+  QuestionBankPage,
 } from '@/features/content';
+import {
+  DiscoveryHomePage,
+  CourseDiscoveryPage,
+  Top10LeaderboardPage,
+} from '@/features/discovery';
+import { NotificationsPage } from '@/features/notification';
+import { MessagesPage } from '@/features/messaging';
+import {
+  CourseReportsPage,
+  AdminReportsPage,
+  AdminReportDetailPage,
+  AdminCourseReviewsPage,
+  AdminSanctionsPage,
+  AdminAuditLogsPage,
+} from '@/features/moderation';
+import {
+  AdminDashboardPage,
+  AdminUsersPage,
+  AdminAnnouncementsPage,
+} from '@/features/admin';
+import { AdminSystemSettingsPage } from '@/features/ai';
 import { RequireAdmin, RequireAuth, RequireVerifiedEmail } from './guards';
 import { AdminLayout, AppLayout, PublicLayout, SettingsLayout } from './layouts';
-import { HomeShellPage, LockedAccountPage, NotFoundPage, RouteStubPage } from './pages';
+import { LockedAccountPage, NotFoundPage, RouteStubPage } from './pages';
 import { RouterRootShell } from './RouterRootShell';
 
 export const appRoutes: RouteObject[] = [
@@ -43,20 +86,71 @@ export const appRoutes: RouteObject[] = [
       {
         element: <PublicLayout />,
         children: [
-          { path: '/', element: <HomeShellPage /> },
+          { path: '/', element: <DiscoveryHomePage /> },
+          { path: '/top10', element: <Top10LeaderboardPage /> },
           {
             path: '/courses',
-            element: (
-              <RouteStubPage
-                screenCode="SCR-DSC-02"
-                title="Khám phá khóa học"
-                description="Danh mục khóa học công khai và bộ lọc tìm kiếm đang được tích hợp."
-              />
-            ),
+            element: <CourseDiscoveryPage />,
           },
           {
             path: '/courses/:courseId',
             element: <CourseDetailPage />,
+          },
+          {
+            path: '/courses/:courseId/learn',
+            element: <LearningPlayerPage />,
+          },
+          {
+            path: '/courses/:courseId/learn/:chapterId',
+            element: <LearningPlayerPage />,
+          },
+          {
+            path: '/courses/:courseId/quiz-attempts/:attemptId',
+            element: (
+              <RequireAuth>
+                <QuizPlayerPage />
+              </RequireAuth>
+            ),
+          },
+          {
+            path: '/courses/:courseId/quiz-attempts/:attemptId/result',
+            element: (
+              <RequireAuth>
+                <QuizResultPage />
+              </RequireAuth>
+            ),
+          },
+          {
+            path: '/courses/:courseId/assignments/:blockId',
+            element: (
+              <RequireAuth>
+                <AssignmentPlayerPage />
+              </RequireAuth>
+            ),
+          },
+          {
+            path: '/courses/:courseId/gradebook',
+            element: (
+              <RequireAuth>
+                <LearnerGradebookPage />
+              </RequireAuth>
+            ),
+          },
+          {
+            path: '/quiz-attempts/:attemptId',
+            element: (
+              <RequireAuth>
+                <QuizPlayerPage />
+              </RequireAuth>
+            ),
+          },
+          {
+            path: '/quiz-attempts/:attemptId/result',
+            element: (
+              <RequireAuth>
+                <QuizResultPage />
+              </RequireAuth>
+            ),
           },
           {
             path: '/users/:userId',
@@ -80,13 +174,15 @@ export const appRoutes: RouteObject[] = [
         children: [
           {
             path: '/learning-dashboard',
-            element: (
-              <RouteStubPage
-                screenCode="SCR-LRN-01"
-                title="Dashboard học tập"
-                description="Theo dõi tiến độ học tập, biểu đồ hoạt động và kế hoạch học tập của bạn."
-              />
-            ),
+            element: <LearningDashboardPage />,
+          },
+          {
+            path: '/learning-dashboard/gradebook',
+            element: <LearnerGradebookPage />,
+          },
+          {
+            path: '/learning-dashboard/gradebook/:courseId',
+            element: <LearnerGradebookPage />,
           },
           {
             path: '/me/courses',
@@ -94,23 +190,15 @@ export const appRoutes: RouteObject[] = [
           },
           {
             path: '/me/bookmarks',
-            element: (
-              <RouteStubPage
-                screenCode="SCR-LRN-07"
-                title="Khóa học đã lưu (Bookmark)"
-                description="Danh sách khóa học được bạn đánh dấu."
-              />
-            ),
+            element: <MyBookmarksPage />,
+          },
+          {
+            path: '/me/messages',
+            element: <MessagesPage />,
           },
           {
             path: '/notifications',
-            element: (
-              <RouteStubPage
-                screenCode="SCR-NTF-01"
-                title="Thông báo"
-                description="Trung tâm thông báo học tập và phản hồi hệ thống."
-              />
-            ),
+            element: <NotificationsPage />,
           },
           {
             path: '/settings',
@@ -139,13 +227,7 @@ export const appRoutes: RouteObject[] = [
           },
           {
             path: '/manage/questions',
-            element: (
-              <RouteStubPage
-                screenCode="SCR-LMS-02"
-                title="Ngân hàng câu hỏi"
-                description="Hệ thống quản lý kho câu hỏi trắc nghiệm, tự luận và flashcard đang được hoàn thiện."
-              />
-            ),
+            element: <QuestionBankPage />,
           },
           {
             path: '/manage/resources',
@@ -172,6 +254,14 @@ export const appRoutes: RouteObject[] = [
             element: <CourseOverviewPage />,
           },
           {
+            path: '/courses/:courseId/manage/students',
+            element: <CourseStudentsPage />,
+          },
+          {
+            path: '/courses/:courseId/manage/access',
+            element: <CourseAccessPage />,
+          },
+          {
             path: '/courses/:courseId/manage/content',
             element: <ChapterListPage />,
           },
@@ -191,6 +281,50 @@ export const appRoutes: RouteObject[] = [
             path: '/courses/:courseId/manage/resources',
             element: <ResourceManagementPage />,
           },
+          {
+            path: '/courses/:courseId/manage/questions',
+            element: <QuestionBankPage />,
+          },
+          {
+            path: '/courses/:courseId/manage/assessment',
+            element: <AssessmentRulesPage />,
+          },
+          {
+            path: '/courses/:courseId/manage/grading',
+            element: <GradingQueuePage />,
+          },
+          {
+            path: '/courses/:courseId/manage/grading/:kind/:id',
+            element: <ManualGradingPage />,
+          },
+          {
+            path: '/courses/:courseId/manage/gradebook',
+            element: <CourseGradebookPage />,
+          },
+          {
+            path: '/courses/:courseId/manage/outcomes',
+            element: <OutcomesManagementPage />,
+          },
+          {
+            path: '/courses/:courseId/manage/outcomes/mapping',
+            element: <OutcomeMappingMatrixPage />,
+          },
+          {
+            path: '/courses/:courseId/manage/outcomes/rules',
+            element: <AssessmentRulesPage />,
+          },
+          {
+            path: '/courses/:courseId/manage/stats',
+            element: <AssessmentStatsPage />,
+          },
+          {
+            path: '/courses/:courseId/manage/reviews',
+            element: <CourseReviewsManagePage />,
+          },
+          {
+            path: '/courses/:courseId/manage/reports',
+            element: <CourseReportsPage />,
+          },
         ],
       },
       {
@@ -203,13 +337,35 @@ export const appRoutes: RouteObject[] = [
         children: [
           {
             index: true,
-            element: (
-              <RouteStubPage
-                screenCode="SCR-ADM-01"
-                title="Tổng quan quản trị"
-                description="Bảng điều khiển quản trị hệ thống BrainMemo LMS."
-              />
-            ),
+            element: <AdminDashboardPage />,
+          },
+          {
+            path: 'reports',
+            element: <AdminReportsPage />,
+          },
+          {
+            path: 'course-reviews',
+            element: <AdminCourseReviewsPage />,
+          },
+          {
+            path: 'reports/:id',
+            element: <AdminReportDetailPage />,
+          },
+          {
+            path: 'sanctions',
+            element: <AdminSanctionsPage />,
+          },
+          {
+            path: 'users',
+            element: <AdminUsersPage />,
+          },
+          {
+            path: 'announcements',
+            element: <AdminAnnouncementsPage />,
+          },
+          {
+            path: 'audit-logs',
+            element: <AdminAuditLogsPage />,
           },
           {
             path: 'moderation',
@@ -218,28 +374,6 @@ export const appRoutes: RouteObject[] = [
                 screenCode="SCR-ADM-02"
                 title="Kiểm duyệt nội dung"
                 description="Hàng đợi kiểm duyệt khóa học và chương bài học."
-                backTo="/admin"
-              />
-            ),
-          },
-          {
-            path: 'reports',
-            element: (
-              <RouteStubPage
-                screenCode="SCR-ADM-03"
-                title="Báo cáo vi phạm"
-                description="Xử lý báo cáo vi phạm từ người học và tác giả."
-                backTo="/admin"
-              />
-            ),
-          },
-          {
-            path: 'users',
-            element: (
-              <RouteStubPage
-                screenCode="SCR-ADM-04"
-                title="Quản lý tài khoản"
-                description="Quản lý quyền và trạng thái khóa tài khoản."
                 backTo="/admin"
               />
             ),
@@ -257,36 +391,11 @@ export const appRoutes: RouteObject[] = [
           },
           {
             path: 'ai-settings',
-            element: (
-              <RouteStubPage
-                screenCode="SCR-ADM-06"
-                title="Cấu hình AI kiểm duyệt"
-                description="Thiết lập tham số và hạn mức tính năng AI."
-                backTo="/admin"
-              />
-            ),
-          },
-          {
-            path: 'audit-logs',
-            element: (
-              <RouteStubPage
-                screenCode="SCR-ADM-07"
-                title="Nhật ký hệ thống"
-                description="Lịch sử thao tác quản trị và kiểm toán bảo mật."
-                backTo="/admin"
-              />
-            ),
+            element: <AdminSystemSettingsPage />,
           },
           {
             path: 'settings',
-            element: (
-              <RouteStubPage
-                screenCode="SCR-ADM-08"
-                title="Cài đặt hệ thống"
-                description="Cấu hình vận hành nền tảng BrainMemo."
-                backTo="/admin"
-              />
-            ),
+            element: <AdminSystemSettingsPage />,
           },
         ],
       },

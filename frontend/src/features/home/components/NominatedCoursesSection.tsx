@@ -6,19 +6,46 @@ interface NominatedCourseItem {
   id: string;
   title: string;
   authorName: string;
-  nominationCount: number;
-  coverUrl?: string;
-  tag: string;
+  nominationCount: string;
+  iconType: 'cpu' | 'code' | 'gitfork' | 'layout' | 'atom';
 }
 
 const MOCK_NOMINATED_COURSES: NominatedCourseItem[] = [
-  { id: 'nom-1', title: 'Python Nâng Cao & Tối Ưu', authorName: 'TS. Đỗ Hoàng Nam', nominationCount: 342, tag: 'Python' },
-  { id: 'nom-2', title: 'Trí Tuệ Nhân Tạo & LLM', authorName: 'ThS. Nguyễn Lan Anh', nominationCount: 289, tag: 'AI' },
-  { id: 'nom-3', title: 'React 19 & Fullstack Architecture', authorName: 'Kỹ sư Vũ Đạt', nominationCount: 215, tag: 'Frontend' },
-  { id: 'nom-4', title: 'Cấu Trúc Dữ Liệu Nâng Cao', authorName: 'TS. Trần Khoa', nominationCount: 198, tag: 'Thuật toán' },
-  { id: 'nom-5', title: 'Toán Rời Rạc Ứng Dụng', authorName: 'PGS. Lê Huy', nominationCount: 156, tag: 'Toán' },
-  { id: 'nom-6', title: 'Thiết Kế Hệ Thống Lớn', authorName: 'TS. Phạm Hùng', nominationCount: 142, tag: 'System' },
-  { id: 'nom-7', title: 'An Toàn Thông Tin Ứng Dụng', authorName: 'ThS. Đặng Tuấn', nominationCount: 128, tag: 'Security' },
+  {
+    id: 'nom-01',
+    title: 'AI Prompting Cơ Bản & Thực Chiến',
+    authorName: 'Lê Quang Minh',
+    nominationCount: '1,250 đề cử',
+    iconType: 'cpu',
+  },
+  {
+    id: 'nom-02',
+    title: 'Python Cho Lập Trình Viên Backend',
+    authorName: 'TS. Đỗ Hoàng Nam',
+    nominationCount: '980 đề cử',
+    iconType: 'code',
+  },
+  {
+    id: 'nom-03',
+    title: 'Toán Rời Rạc & Lý Thuyết Đồ Thị',
+    authorName: 'ThS. Nguyễn Lan Anh',
+    nominationCount: '840 đề cử',
+    iconType: 'gitfork',
+  },
+  {
+    id: 'nom-04',
+    title: 'React 19 & Tương Lai Phát Triển Web',
+    authorName: 'Trần Đức Toàn',
+    nominationCount: '710 đề cử',
+    iconType: 'layout',
+  },
+  {
+    id: 'nom-05',
+    title: 'Vật Lý Lượng Tử & Ứng Dụng Trong Chíp',
+    authorName: 'PGS. TS. Trần Văn Hùng',
+    nominationCount: '580 đề cử',
+    iconType: 'atom',
+  },
 ];
 
 export function NominatedCoursesSection({
@@ -29,42 +56,48 @@ export function NominatedCoursesSection({
   return (
     <section className="space-y-4">
       {/* Header */}
-      <div className="flex items-center gap-3 border-b border-border/60 pb-3">
-        <span className="h-6 w-1 rounded-full bg-brand-orange" aria-hidden="true" />
-        <h2 className="font-serif text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+      <div className="flex items-center gap-2.5 border-b border-border/60 pb-3">
+        <span className="h-5 w-1 rounded-full bg-brand-orange" aria-hidden="true" />
+        <h2 className="font-serif text-lg sm:text-xl font-bold tracking-tight text-foreground">
           MỚI ĐƯỢC ĐỀ CỬ
         </h2>
       </div>
 
-      {/* Horizontal smooth scroll */}
-      <div className="flex gap-4 overflow-x-auto pb-4 pt-1">
+      {/* Grid of 5 cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
         {courses.map((item) => (
           <div
             key={item.id}
-            className="group w-[220px] shrink-0 overflow-hidden rounded-2xl border border-border bg-card shadow-xs transition-all hover:border-brand-orange/40 hover:shadow-md"
+            className="group flex flex-col justify-between rounded-2xl border border-border bg-card p-4 shadow-xs transition-all hover:border-brand-orange/40 hover:shadow-md"
           >
-            <div className="relative aspect-video w-full overflow-hidden bg-muted">
-              <img
-                src={item.coverUrl || defaultCourseCover}
-                alt={item.title}
-                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                loading="lazy"
-              />
-              <span className="absolute top-2 left-2 rounded-md bg-black/60 backdrop-blur-xs px-2 py-0.5 text-[10px] font-bold text-white">
-                {item.tag}
-              </span>
-              <div className="absolute top-2 right-2 flex items-center gap-1 rounded-full bg-brand-orange/90 px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
-                <Heart className="h-3 w-3 fill-white" />
-                <span>{item.nominationCount}</span>
+            <div>
+              {/* Top Box containing course cover */}
+              <div className="aspect-video w-full rounded-xl overflow-hidden border border-border/60 mb-3 bg-muted">
+                <img
+                  src={defaultCourseCover}
+                  alt={item.title}
+                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                />
               </div>
-            </div>
 
-            <div className="p-3.5 space-y-1.5">
-              <h3 className="line-clamp-2 font-serif text-xs font-bold text-foreground group-hover:text-brand-orange transition-colors">
+              {/* Title & Author */}
+              <h3 className="line-clamp-2 font-serif text-xs sm:text-sm font-bold text-foreground group-hover:text-brand-orange transition-colors min-h-[2.5rem] leading-snug">
                 <Link to={`/courses/${item.id}`}>{item.title}</Link>
               </h3>
-              <p className="text-[11px] text-muted-foreground truncate">
+
+              <p className="mt-1 text-[11px] text-muted-foreground truncate">
                 {item.authorName}
+              </p>
+            </div>
+
+            {/* Bottom: Nomination count & Subtext */}
+            <div className="mt-3 pt-2.5 border-t border-border/60">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-red-500">
+                <Heart className="h-3.5 w-3.5 fill-red-500 text-red-500" />
+                <span>{item.nominationCount}</span>
+              </div>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Chưa có đề cử nào từ bạn
               </p>
             </div>
           </div>

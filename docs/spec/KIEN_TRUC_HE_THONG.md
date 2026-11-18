@@ -22,33 +22,29 @@ flowchart TB
             BG["Hosted Services chạy nền<br/>Outbox Dispatcher, Scheduler: tự nộp bài quá hạn,<br/>gỡ khóa tài khoản / tạm ẩn khóa học hết hạn, tính Top 10, dọn tệp"]
             BB["BuildingBlocks<br/>SharedKernel, Event Bus in-process, Outbox / Inbox, Phân trang, Clock"]
 
-            subgraph Modules["10 MODULE NGHIỆP VỤ (mỗi module: Api / Application / Domain / Infrastructure / Contracts)"]
-                subgraph GrpNen["Nền tảng"]
+            subgraph Modules["11 MODULE NGHIỆP VỤ (mỗi module: Api / Application / Domain / Infrastructure / Contracts)"]
+                subgraph GrpNen["Nền tảng & Giao tiếp"]
                     ModIdn["Identity<br/>Xác thực, phiên, khóa tài khoản, role Admin"]
                     ModPrf["Profile<br/>Hồ sơ, quyền riêng tư, giao diện"]
                     ModNtf["Notification<br/>In-app (polling), Email, Broadcast"]
+                    ModMsg["Messaging<br/>Nhắn tin 1-1 học viên – giảng viên theo khóa"]
                 end
                 subgraph GrpHocLieu["Học liệu & Đánh giá"]
-                    ModCrs["Course<br/>Khóa học, truy cập khóa/chương, ghi danh, đề cử"]
+                    ModCrs["Course<br/>Khóa học, xuất bản, truy cập khóa/chương, ghi danh, đề cử"]
                     ModCnt["Content<br/>Chương, Block, ngân hàng câu hỏi, bài thi, phiên bản, tệp"]
-                    ModLrn["Learning<br/>Tiến độ, làm bài, bài tập, bình luận"]
+                    ModLrn["Learning<br/>Tiến độ, làm bài, bài tập, hỏi đáp bài học (Q&A)"]
                     ModAst["Assessment<br/>Chấm điểm, CLO/PLO, đánh giá khóa, xuất báo cáo"]
                 end
                 subgraph GrpKhac["Khám phá & Kiểm soát"]
-                    ModDsc["Discovery<br/>Tìm kiếm, lọc, Top 10"]
-                    ModMod["Moderation<br/>Báo cáo, chế tài, Audit Log"]
+                    ModDsc["Discovery<br/>Tìm kiếm, lọc, Top 10 (chỉ khóa đã xuất bản)"]
+                    ModMod["Moderation<br/>Duyệt xuất bản khóa, báo cáo, chế tài, Audit Log"]
                 end
                 subgraph GrpAI["Trí tuệ nhân tạo"]
-                    ModAI["AI<br/>Sinh quiz, sinh flashcard, quét vi phạm, Quota Guard"]
+                    ModAI["AI<br/>Sinh quiz, sinh flashcard (LLM), Quota Guard"]
                 end
             end
 
-            Infra["Infrastructure Adapters<br/>EF Core (DbContext riêng mỗi module), IFileStorage (S3), ILlmClient,<br/>IEmailSender, IPhoBertClient, Google OAuth, Excel / PDF Exporter"]
-        end
-
-        subgraph PythonAI["AI Service Container: Python (CPU)"]
-            FastAPI_AI["FastAPI Moderation Controller"]
-            PhoPipe["PhoBERT Pipeline<br/>Tách từ tiếng Việt + PhoBERT (ONNX int8)"]
+            Infra["Infrastructure Adapters<br/>EF Core (DbContext riêng mỗi module), IFileStorage (S3), ILlmClient,<br/>IEmailSender, Google OAuth, Excel / PDF Exporter"]
         end
 
         MySQL[("MySQL 8<br/>1 database, bảng tiền tố theo module")]
@@ -77,14 +73,12 @@ flowchart TB
 
     Infra -->|"EF Core (TCP 3306)"| MySQL
     Infra -->|"S3 SDK (Presigned URL)"| R2Storage
-    Infra -->|"HTTP nội bộ (timeout 10s, lỗi thì bỏ qua + ghi log)"| FastAPI_AI
-    FastAPI_AI --> PhoPipe
     Infra -->|"HTTPS (timeout 30s, retry + circuit breaker)"| LLMApi
     Infra -->|"SMTP (timeout 10s)"| SMTP
     Infra <-->|"OAuth 2.0"| GoogleOAuth
 
     classDef mod fill:#e8f1ff,stroke:#3b6fd4,color:#000
-    class ModIdn,ModPrf,ModNtf,ModCrs,ModCnt,ModLrn,ModAst,ModDsc,ModMod,ModAI mod
+    class ModIdn,ModPrf,ModNtf,ModMsg,ModCrs,ModCnt,ModLrn,ModAst,ModDsc,ModMod,ModAI mod
 ```
 
 ## 2. QUAN HỆ PHỤ THUỘC GIỮA CÁC MODULE
@@ -103,36 +97,37 @@ flowchart BT
     Moderation["Moderation"]
     Notification["Notification"]
     Discovery["Discovery"]
+    Messaging["Messaging"]
     AllMods["Tất cả module khác"]
 
     AllMods -->|"IAccessChecker, trạng thái tài khoản"| Identity
     Profile -.->|"UserRegistered"| Identity
 
-    Course -->|"IProfilePrivacy, IUserDirectory"| Profile
+    Course -->|"IUserDirectory"| Profile
     Content -->|"ICourseAccess; implements ICourseContentStats"| Course
     Learning -->|"ICourseAccess; implements ICourseLearningStats"| Course
     Learning -->|"cấu trúc đã đăng tải, IQuestionEvaluator"| Content
     Assessment -->|"danh sách học viên, quyền"| Course
     Assessment -->|"cấu hình bài thi, IQuestionEvaluator; implements IQuestionUsageProvider"| Content
-    Learning & Assessment -->|"IUserDirectory"| Profile
+    Learning & Assessment & Messaging -->|"IUserDirectory"| Profile
     Assessment -.->|"AttemptSubmitted, AssignmentSubmitted"| Learning
 
-    AI -->|"ICourseVisibility (loại Only Me)"| Course
+    Messaging -->|"ICourseContract (kiểm tra ghi danh, chủ khóa)"| Course
+
+    AI -->|"ICourseContract (loại Only Me)"| Course
     AI -->|"đọc nội dung chương, IQuestionDraftWriter"| Content
-    AI -.->|"CommentPosted, CourseInfoChanged"| Learning
-    AI -.-> Course
 
-    Moderation -->|"IModerationReader, ẩn/khôi phục/xóa vĩnh viễn"| Course
-    Moderation -->|"đọc, xóa mềm bình luận"| Learning
+    Moderation -->|"ICourseContract (duyệt/từ chối xuất bản, ẩn/khôi phục/xóa)"| Course
+    Moderation -->|"đọc, xóa mềm Q&A"| Learning
     Moderation -->|"lệnh khóa / mở khóa tài khoản"| Identity
-    Moderation -.->|"ContentFlagged"| AI
 
-    Content & Learning & Assessment & Discovery -.->|"CoursePurged, CourseVisibilityChanged"| Course
+    Content & Learning & Assessment & Discovery -.->|"CoursePurged, CourseUpserted"| Course
     Notification -.->|"Event của mọi module"| Course
     Notification -.-> Learning
     Notification -.-> Assessment
     Notification -.-> Moderation
     Notification -.-> Identity
+    Notification -.-> Messaging
     Discovery -.->|"Event cập nhật read model"| Content
     Discovery -.-> Learning
     Discovery -.-> Assessment
@@ -145,9 +140,9 @@ flowchart BT
 flowchart TB
     Req["Request đến API"] --> HasJwt{"Có JWT?"}
 
-    HasJwt -->|"Không"| GuestChk{"Khóa Public, chương Public,<br/>khóa không Tạm ẩn / Đã xóa / Only Me?"}
+    HasJwt -->|"Không"| GuestChk{"Khóa Đã xuất bản (PUBLISHED), Public,<br/>chương Public, không Tạm ẩn / Đã xóa?"}
     GuestChk -->|"Có"| AllowG["Cho phép đọc<br/>(không lưu tiến độ / điểm)"]
-    GuestChk -->|"Không"| Deny401["401 / 403"]
+    GuestChk -->|"Không"| Deny401["401 / 404"]
 
     HasJwt -->|"Có"| S1{"Bước 1: Tài khoản bị khóa?"}
     S1 -->|"Có"| DenyLock["Chặn ngay"]
@@ -157,7 +152,11 @@ flowchart TB
     OM -->|"Có"| Own1{"Là Chủ khóa?"}
     Own1 -->|"Không"| Deny404["404 (không lộ sự tồn tại)<br/>kể cả Admin"]
     Own1 -->|"Có"| Allow["Cho phép"]
-    OM -->|"Không"| Hid{"Khóa Tạm ẩn / Đã xóa?"}
+    OM -->|"Không"| PubChk{"Khóa Đã xuất bản (PUBLISHED)?"}
+    PubChk -->|"Chưa (DRAFT / PENDING / REJECTED)"| OwnPub{"Là Chủ khóa hoặc Admin<br/>trong chế độ kiểm duyệt?"}
+    OwnPub -->|"Có"| Allow
+    OwnPub -->|"Không"| Deny404
+    PubChk -->|"Đã xuất bản"| Hid{"Khóa Tạm ẩn / Đã xóa?"}
     Hid -->|"Có"| Own2{"Là Chủ khóa, hoặc Admin<br/>trong phạm vi xử lý báo cáo?"}
     Own2 -->|"Có"| Allow
     Own2 -->|"Không"| Deny403b["403 / 404"]
