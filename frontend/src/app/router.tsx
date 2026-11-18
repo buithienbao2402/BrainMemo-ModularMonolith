@@ -68,6 +68,7 @@ import {
   AdminDashboardPage,
   AdminUsersPage,
   AdminAnnouncementsPage,
+  AdminCoursesPage,
 } from '@/features/admin';
 import { AdminSystemSettingsPage } from '@/features/ai';
 import { RequireAdmin, RequireAuth, RequireVerifiedEmail } from './guards';
@@ -84,6 +85,14 @@ export const appRoutes: RouteObject[] = [
         element: <LockedAccountPage />,
       },
       {
+        path: '/courses/:courseId/learn',
+        element: <LearningPlayerPage />,
+      },
+      {
+        path: '/courses/:courseId/learn/:chapterId',
+        element: <LearningPlayerPage />,
+      },
+      {
         element: <PublicLayout />,
         children: [
           { path: '/', element: <DiscoveryHomePage /> },
@@ -95,14 +104,6 @@ export const appRoutes: RouteObject[] = [
           {
             path: '/courses/:courseId',
             element: <CourseDetailPage />,
-          },
-          {
-            path: '/courses/:courseId/learn',
-            element: <LearningPlayerPage />,
-          },
-          {
-            path: '/courses/:courseId/learn/:chapterId',
-            element: <LearningPlayerPage />,
           },
           {
             path: '/courses/:courseId/quiz-attempts/:attemptId',
@@ -380,14 +381,7 @@ export const appRoutes: RouteObject[] = [
           },
           {
             path: 'courses',
-            element: (
-              <RouteStubPage
-                screenCode="SCR-ADM-05"
-                title="Quản lý khóa học"
-                description="Theo dõi và điều phối khóa học toàn hệ thống."
-                backTo="/admin"
-              />
-            ),
+            element: <AdminCoursesPage />,
           },
           {
             path: 'ai-settings',

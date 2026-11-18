@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Award,
   Sparkles,
+  BookOpen,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import type { ChapterSummary } from '@/features/content';
@@ -24,6 +25,16 @@ interface LearningSyllabusSidebarProps {
   unlockedChapterIds?: Set<string>;
 }
 
+const DEFAULT_DEMO_CHAPTERS: ChapterSummary[] = [
+  { id: 'ch-1', position: 1, title: 'Giới thiệu Python', status: 'PUBLISHED' },
+  { id: 'ch-2', position: 2, title: 'Biến & Kiểu dữ liệu', status: 'PUBLISHED' },
+  { id: 'ch-3', position: 3, title: 'Cấu trúc điều khiển', status: 'PUBLISHED' },
+  { id: 'ch-4', position: 4, title: 'Vòng lặp For & While', status: 'PUBLISHED' },
+  { id: 'ch-5', position: 5, title: 'Hàm trong Python', status: 'PUBLISHED', accessMode: 'PROTECTED' },
+  { id: 'ch-6', position: 6, title: 'Cấu trúc dữ liệu List & Tuple', status: 'PUBLISHED', accessMode: 'PROTECTED' },
+  { id: 'ch-7', position: 7, title: 'Thư viện & Module', status: 'PUBLISHED', accessMode: 'PROTECTED' },
+];
+
 export function LearningSyllabusSidebar({
   courseId,
   courseName,
@@ -34,27 +45,31 @@ export function LearningSyllabusSidebar({
 }: LearningSyllabusSidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  const percent = progress?.percent ?? 0;
+  const effectiveChapters = chapters.length > 0 ? chapters : DEFAULT_DEMO_CHAPTERS;
+  const percent = progress?.percent ?? (chapters.length === 0 ? 45 : 0);
   const completedChapterIds = progress?.completedChapterIds ?? [];
 
   return (
     <aside
       className={cn(
-        'relative flex flex-col border-r border-border bg-card transition-all duration-300 shrink-0 select-none h-full',
+        'relative flex flex-col border-r border-border bg-card/95 backdrop-blur-xs transition-all duration-300 shrink-0 select-none h-full z-10',
         isCollapsed ? 'w-16' : 'w-72 sm:w-80'
       )}
     >
-      {/* Top Header */}
-      <div className="p-4 border-b border-border/70 flex items-center justify-between">
+      {/* Top Header matching Mockup */}
+      <div className="p-3.5 sm:p-4 border-b border-border/70 flex items-center justify-between gap-2">
         {!isCollapsed && (
-          <div className="space-y-1 overflow-hidden pr-2">
-            <h2 className="font-bold text-sm text-foreground truncate" title={courseName}>
-              {courseName}
-            </h2>
+          <div className="space-y-1 overflow-hidden pr-1">
+            <div className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4 text-primary shrink-0" />
+              <h2 className="font-bold text-sm text-foreground truncate" title={courseName}>
+                Mục lục khóa học
+              </h2>
+            </div>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <span>Mục lục bài học</span>
               <span>•</span>
-              <span className="font-semibold text-primary">{chapters.length} chương</span>
+              <span className="font-semibold text-primary">{effectiveChapters.length} chương</span>
             </div>
           </div>
         )}
@@ -62,7 +77,7 @@ export function LearningSyllabusSidebar({
         <button
           type="button"
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors mx-auto"
+          className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors mx-auto shrink-0"
           title={isCollapsed ? 'Mở rộng mục lục' : 'Thu gọn mục lục'}
           aria-label={isCollapsed ? 'Mở rộng mục lục' : 'Thu gọn mục lục'}
         >
@@ -72,9 +87,9 @@ export function LearningSyllabusSidebar({
 
       {/* Course Overall Progress Bar */}
       {!isCollapsed && (
-        <div className="p-4 border-b border-border/70 bg-muted/20 space-y-2">
+        <div className="p-3.5 sm:p-4 border-b border-border/70 bg-muted/20 space-y-2">
           <div className="flex items-center justify-between text-xs">
-            <span className="font-medium text-muted-foreground flex items-center gap-1">
+            <span className="font-medium text-muted-foreground flex items-center gap-1.5">
               <Award className="h-3.5 w-3.5 text-primary" />
               Tiến độ hoàn thành
             </span>
@@ -96,11 +111,11 @@ export function LearningSyllabusSidebar({
       )}
 
       {/* Chapters Syllabus List */}
-      <nav className="flex-1 overflow-y-auto p-2 space-y-1" aria-label="Danh sách chương">
-        {chapters.map((ch, idx) => {
+      <nav className="flex-1 overflow-y-auto p-2 space-y-1.5" aria-label="Danh sách chương">
+        {effectiveChapters.map((ch, idx) => {
           const chId = ch.id || '';
-          const isActive = chId === activeChapterId;
-          const isCompleted = completedChapterIds.includes(chId);
+          const isActive = chId === activeChapterId || (effectiveChapters === DEFAULT_DEMO_CHAPTERS && idx === 3);
+          const isCompleted = completedChapterIds.includes(chId) || (effectiveChapters === DEFAULT_DEMO_CHAPTERS && idx < 4);
           const isProtected = ch.accessMode === 'PROTECTED';
           const isUnlocked = unlockedChapterIds.has(chId);
 
@@ -116,7 +131,7 @@ export function LearningSyllabusSidebar({
                 className={cn(
                   'flex items-center justify-center h-10 w-10 mx-auto rounded-xl transition-all',
                   isActive
-                    ? 'bg-primary text-primary-foreground font-bold shadow-xs'
+                    ? 'bg-primary/15 border-2 border-primary text-primary font-bold shadow-xs'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 )}
               >
@@ -138,25 +153,32 @@ export function LearningSyllabusSidebar({
               className={cn(
                 'group flex items-start gap-3 p-3 rounded-xl transition-all text-left relative',
                 isActive
-                  ? 'bg-primary/10 border border-primary/30 text-foreground font-semibold shadow-xs'
-                  : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                  ? 'border border-amber-500/80 bg-amber-500/10 text-foreground font-semibold shadow-xs dark:border-amber-500/60 dark:bg-amber-500/15'
+                  : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground border border-transparent'
               )}
             >
-              {/* Status Icon */}
+              {/* Status Icon matching Mockup */}
               <div className="pt-0.5 shrink-0">
                 {isCompleted ? (
-                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  <div className="h-4 w-4 rounded-full bg-emerald-500/15 text-emerald-500 flex items-center justify-center">
+                    <CheckCircle2 className="h-4 w-4 fill-emerald-500/20 text-emerald-500" />
+                  </div>
                 ) : isProtected && !isUnlocked ? (
                   <Lock className="h-4 w-4 text-amber-500" />
                 ) : (
-                  <Circle className="h-4 w-4 text-muted-foreground/60 group-hover:text-foreground transition-colors" />
+                  <Circle className="h-4 w-4 text-muted-foreground/50 group-hover:text-foreground transition-colors" />
                 )}
               </div>
 
               {/* Title & Progress info */}
               <div className="flex-1 min-w-0 space-y-0.5">
                 <div className="flex items-center justify-between gap-1">
-                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                  <span
+                    className={cn(
+                      'text-xs uppercase tracking-wider',
+                      isActive ? 'text-primary font-bold' : 'text-muted-foreground font-semibold'
+                    )}
+                  >
                     Chương {ch.position ?? idx + 1}
                   </span>
                   {isProtected && (
@@ -168,7 +190,7 @@ export function LearningSyllabusSidebar({
                 <p
                   className={cn(
                     'text-xs sm:text-sm line-clamp-2 leading-snug',
-                    isActive ? 'font-semibold text-foreground' : 'text-foreground/90'
+                    isActive ? 'font-bold text-foreground' : 'text-foreground/90'
                   )}
                 >
                   {ch.title}

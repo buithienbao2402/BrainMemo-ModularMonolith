@@ -1,4 +1,5 @@
 using BrainMemo.Content.Domain.Entities;
+using BrainMemo.Content.Infrastructure.Persistence.Converters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -13,7 +14,7 @@ public class BlockConfiguration : IEntityTypeConfiguration<Block>
         builder.HasKey(b => b.Id);
         builder.Property(b => b.Id).HasColumnName("id");
         builder.Property(b => b.ChapterId).HasColumnName("chapter_id").IsRequired();
-        builder.Property(b => b.BlockType).HasColumnName("block_type").HasConversion<string>().HasMaxLength(30).IsRequired();
+        builder.Property(b => b.BlockType).HasColumnName("block_type").HasConversion<BlockTypeValueConverter>().HasMaxLength(30).IsRequired();
         builder.Property(b => b.Position).HasColumnName("position").IsRequired();
         builder.Property(b => b.Title).HasColumnName("title").HasMaxLength(200);
         builder.Property(b => b.Body).HasColumnName("body").HasColumnType("mediumtext");
@@ -21,7 +22,7 @@ public class BlockConfiguration : IEntityTypeConfiguration<Block>
         builder.Property(b => b.QuestionId).HasColumnName("question_id");
         builder.Property(b => b.Flashcards).HasColumnName("flashcards").HasColumnType("json");
         builder.Property(b => b.AiJobId).HasColumnName("ai_job_id");
-        builder.Property(b => b.AiReviewStatus).HasColumnName("ai_review_status").HasConversion<string>().HasMaxLength(30).IsRequired();
+        builder.Property(b => b.AiReviewStatus).HasColumnName("ai_review_status").HasConversion<AiReviewStatusValueConverter>().HasMaxLength(30).IsRequired();
         builder.Property(b => b.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(b => b.UpdatedAt).HasColumnName("updated_at").IsRequired();
 

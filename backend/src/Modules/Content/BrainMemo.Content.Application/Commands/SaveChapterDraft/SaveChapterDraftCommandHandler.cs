@@ -143,7 +143,11 @@ public sealed class SaveChapterDraftCommandHandler(
             string? sanitizedBody = b.Body is not null ? htmlSanitizer.Sanitize(b.Body) : null;
             string? flashcardsJson = b.Flashcards is not null ? JsonSerializer.Serialize(b.Flashcards, JsonOptions) : null;
 
-            Enum.TryParse<AiReviewStatus>(b.AiReviewStatus, true, out var aiStatus);
+            string normalizedAiStatus = (b.AiReviewStatus ?? string.Empty).Replace("_", string.Empty);
+            if (!Enum.TryParse<AiReviewStatus>(normalizedAiStatus, true, out var aiStatus) || aiStatus == 0)
+            {
+                aiStatus = AiReviewStatus.NotApplicable;
+            }
 
             Guid blockId = b.Id != Guid.Empty ? b.Id : Guid.NewGuid();
 
@@ -166,8 +170,10 @@ public sealed class SaveChapterDraftCommandHandler(
             sanitizedBlockDtos.Add(b with
             {
                 Id = blockId,
+                BlockType = ChapterDetailMapper.FormatBlockType(blockType),
                 Position = block.Position,
-                Body = sanitizedBody
+                Body = sanitizedBody,
+                AiReviewStatus = ChapterDetailMapper.FormatAiReviewStatus(aiStatus)
             });
         }
 

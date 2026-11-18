@@ -1,4 +1,5 @@
 using BrainMemo.Content.Domain.Entities;
+using BrainMemo.Content.Infrastructure.Persistence.Converters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -13,7 +14,7 @@ public class QuestionConfiguration : IEntityTypeConfiguration<Question>
         builder.HasKey(q => q.Id);
         builder.Property(q => q.Id).HasColumnName("id");
         builder.Property(q => q.BankId).HasColumnName("bank_id").IsRequired();
-        builder.Property(q => q.QuestionType).HasColumnName("question_type").HasConversion<string>().HasMaxLength(30).IsRequired();
+        builder.Property(q => q.QuestionType).HasColumnName("question_type").HasConversion<QuestionTypeValueConverter>().HasMaxLength(30).IsRequired();
         builder.Property(q => q.AllowMultiple).HasColumnName("allow_multiple").IsRequired();
         builder.Property(q => q.Stem).HasColumnName("stem").HasColumnType("text").IsRequired();
         builder.Property(q => q.Explanation).HasColumnName("explanation").HasColumnType("text");

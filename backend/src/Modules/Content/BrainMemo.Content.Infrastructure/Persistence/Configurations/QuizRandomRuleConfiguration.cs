@@ -1,4 +1,5 @@
 using BrainMemo.Content.Domain.Entities;
+using BrainMemo.Content.Infrastructure.Persistence.Converters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -18,7 +19,7 @@ public class QuizRandomRuleConfiguration : IEntityTypeConfiguration<QuizRandomRu
         builder.Property(r => r.PointsEach).HasColumnName("points_each").HasPrecision(6, 2).IsRequired();
         builder.Property(r => r.FilterTag).HasColumnName("filter_tag").HasMaxLength(50);
         builder.Property(r => r.FilterDifficultyCode).HasColumnName("filter_difficulty_code");
-        builder.Property(r => r.FilterQuestionType).HasColumnName("filter_question_type").HasConversion<string>().HasMaxLength(30);
+        builder.Property(r => r.FilterQuestionType).HasColumnName("filter_question_type").HasConversion<NullableQuestionTypeValueConverter>().HasMaxLength(30);
 
         builder.HasIndex(r => new { r.QuizBlockId, r.Position })
             .HasDatabaseName("ix_cnt_quiz_random_rule_block");

@@ -42,10 +42,17 @@ public sealed class NotificationRepository(
 
     public async Task<int> GetUnreadCountAsync(Guid recipientUserId, CancellationToken ct = default)
     {
-        return await dbContext.Notifications
-            .AsNoTracking()
-            .CountAsync(n => n.RecipientUserId == recipientUserId && n.DeletedAt == null && n.ReadAt == null, ct)
-            .ConfigureAwait(false);
+        try
+        {
+            return await dbContext.Notifications
+                .AsNoTracking()
+                .CountAsync(n => n.RecipientUserId == recipientUserId && n.DeletedAt == null && n.ReadAt == null, ct)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            return 0;
+        }
     }
 
     public async Task<NotificationItem?> FindByIdAsync(Guid id, Guid recipientUserId, CancellationToken ct = default)

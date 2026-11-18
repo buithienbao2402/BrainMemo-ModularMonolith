@@ -1,4 +1,5 @@
 using BrainMemo.Content.Domain.Entities;
+using BrainMemo.Content.Infrastructure.Persistence.Converters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -17,7 +18,7 @@ public class QuizConfigConfiguration : IEntityTypeConfiguration<QuizConfig>
         builder.Property(c => c.TimeLimitMinutes).HasColumnName("time_limit_minutes");
         builder.Property(c => c.MaxAttempts).HasColumnName("max_attempts");
         builder.Property(c => c.PassScore).HasColumnName("pass_score").HasPrecision(6, 2);
-        builder.Property(c => c.ResultDisplay).HasColumnName("result_display").HasConversion<string>().HasMaxLength(30).IsRequired();
+        builder.Property(c => c.ResultDisplay).HasColumnName("result_display").HasConversion<QuizResultDisplayValueConverter>().HasMaxLength(30).IsRequired();
         builder.Property(c => c.ShuffleQuestions).HasColumnName("shuffle_questions").IsRequired();
         builder.Property(c => c.ShuffleOptions).HasColumnName("shuffle_options").IsRequired();
         builder.Property(c => c.PasswordHash).HasColumnName("password_hash").HasMaxLength(100);

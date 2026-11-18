@@ -12,6 +12,34 @@ export type ChapterDetail = components['schemas']['ChapterDetail'];
 export type SaveChapterRequest = components['schemas']['SaveChapterRequest'];
 export type BlockDto = components['schemas']['BlockDto'];
 export type BlockType = components['schemas']['BlockType'];
+
+export function normalizeBlockType(raw: string | undefined | null): BlockType {
+  const clean = (raw || '').replace(/_/g, '').toUpperCase();
+  switch (clean) {
+    case 'RICHTEXT':
+      return 'RICH_TEXT';
+    case 'MARKDOWN':
+      return 'MARKDOWN';
+    case 'IMAGE':
+      return 'IMAGE';
+    case 'VIDEO':
+      return 'VIDEO';
+    case 'AUDIO':
+      return 'AUDIO';
+    case 'FILE':
+      return 'FILE';
+    case 'FLASHCARD':
+      return 'FLASHCARD';
+    case 'QUESTION':
+      return 'QUESTION';
+    case 'ASSIGNMENT':
+      return 'ASSIGNMENT';
+    case 'QUIZ':
+      return 'QUIZ';
+    default:
+      return 'RICH_TEXT';
+  }
+}
 export type ChapterVersionDto = components['schemas']['ChapterVersionDto'];
 export type ResourceDto = components['schemas']['ResourceDto'];
 export type QuizConfig = components['schemas']['QuizConfig'];

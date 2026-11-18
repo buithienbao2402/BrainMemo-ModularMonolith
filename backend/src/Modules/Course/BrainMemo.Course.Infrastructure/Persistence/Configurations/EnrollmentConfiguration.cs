@@ -1,5 +1,6 @@
 using BrainMemo.Course.Domain.Entities;
 using BrainMemo.Course.Domain.Enums;
+using BrainMemo.Course.Infrastructure.Persistence.Converters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -26,7 +27,7 @@ public sealed class EnrollmentConfiguration : IEntityTypeConfiguration<Enrollmen
 
         builder.Property(e => e.Status)
             .HasColumnName("status")
-            .HasConversion<string>()
+            .HasConversion<EnrollmentStatusValueConverter>()
             .HasMaxLength(30)
             .IsRequired();
 

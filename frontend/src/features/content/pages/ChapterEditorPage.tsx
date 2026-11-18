@@ -10,7 +10,6 @@ import {
   Lock,
   RotateCcw,
   AlertTriangle,
-  Sparkles,
 } from 'lucide-react';
 import { AiGenerateModal } from '@/features/ai';
 import {
@@ -40,6 +39,7 @@ import {
   useChaptersQuery,
   useReorderChaptersMutation,
   useSetChapterAccessMutation,
+  normalizeBlockType,
   type BlockDto,
   type BlockType,
   type ResourceDto,
@@ -225,7 +225,10 @@ export function ChapterEditorPage() {
 
       let loadedBlocks: BlockDto[] = [];
       if (chapter.blocks && chapter.blocks.length > 0) {
-        loadedBlocks = chapter.blocks;
+        loadedBlocks = chapter.blocks.map((b) => ({
+          ...b,
+          blockType: normalizeBlockType(b.blockType),
+        }));
       } else {
         loadedBlocks = [createEmptyTextBlock(1)];
       }
@@ -583,8 +586,8 @@ export function ChapterEditorPage() {
         type === 'RICH_TEXT'
           ? JSON.stringify(createEmptyRichDocJson())
           : type === 'MARKDOWN'
-          ? ''
-          : null,
+            ? ''
+            : null,
       resourceId: null,
       questionId: null,
       flashcards: type === 'FLASHCARD' ? [{ front: '', back: '' }] : undefined,
@@ -743,8 +746,8 @@ export function ChapterEditorPage() {
             targetType === 'RICH_TEXT'
               ? JSON.stringify(createEmptyRichDocJson())
               : targetType === 'MARKDOWN'
-              ? ''
-              : null,
+                ? ''
+                : null,
           resourceId: null,
           questionId: null,
           flashcards: targetType === 'FLASHCARD' ? [{ front: '', back: '' }] : undefined,
@@ -892,17 +895,16 @@ export function ChapterEditorPage() {
           (old: any) =>
             old
               ? {
-                  ...old,
-                  accessMode: newMode,
-                  passcode: newPasscode,
-                }
+                ...old,
+                accessMode: newMode,
+                passcode: newPasscode,
+              }
               : old
         );
         pushToast({
           title: 'Cập nhật chế độ truy cập thành công',
-          description: `Chương đã chuyển sang chế độ ${
-            newMode === 'PROTECTED' ? 'Protected (Có mật khẩu)' : 'Public (Công khai)'
-          }.`,
+          description: `Chương đã chuyển sang chế độ ${newMode === 'PROTECTED' ? 'Protected (Có mật khẩu)' : 'Public (Công khai)'
+            }.`,
           tone: 'success',
         });
       } catch (err) {
@@ -926,13 +928,13 @@ export function ChapterEditorPage() {
   };
 
   // Save Draft (Chỉ lưu khi click nút "Lưu nháp")
-  const handleSaveDraft = async (): Promise<boolean> => {
+  const handleSaveDraft = async (): Promise<string | null> => {
     if (!title.trim()) {
       pushToast({
         title: 'Vui lòng nhập tên chương',
         tone: 'warning',
       });
-      return false;
+      return null;
     }
 
     try {
@@ -1005,7 +1007,9 @@ export function ChapterEditorPage() {
 
           setIsDirty(false);
           navigate(`/courses/${courseId}/manage/content/${created.id}`, { replace: true });
+          return created.id;
         }
+        return null;
       } else {
         // Lưu chương hiện có (với body đã là JSON)
         const updated = await saveDraft({
@@ -1025,11 +1029,11 @@ export function ChapterEditorPage() {
         queryClient.setQueryData(queryKeys.content.chapterDraft(courseId, chapterId), (old: any) =>
           old
             ? {
-                ...old,
-                status: 'DRAFT',
-                hasUnpublishedChanges: true,
-                lastVersionNo: updated.lastVersionNo,
-              }
+              ...old,
+              status: 'DRAFT',
+              hasUnpublishedChanges: true,
+              lastVersionNo: updated.lastVersionNo,
+            }
             : old
         );
 
@@ -1038,8 +1042,8 @@ export function ChapterEditorPage() {
           description: `Bản nháp đã được lưu an toàn (Phiên bản #${updated.lastVersionNo}).`,
           tone: 'success',
         });
+        return chapterId;
       }
-      return true;
     } catch (err: unknown) {
       if (
         (err instanceof ApiProblemError && err.status === 409) ||
@@ -1047,37 +1051,40 @@ export function ChapterEditorPage() {
         (err && typeof err === 'object' && 'status' in err && (err as { status: number }).status === 409)
       ) {
         const detailMsg =
-          err && typeof err === 'object' && 'detail' in err
+          err && typeof err === 'object' && 'detail' in err && (err as { detail?: string }).detail
             ? String((err as { detail?: string }).detail)
             : 'Xung đột phiên bản: Chương này đã được chỉnh sửa từ một phiên làm việc khác. Để tránh ghi đè dữ liệu, vui lòng tải lại phiên bản mới nhất.';
         setConflictErrorMessage(detailMsg);
         setConflictDialogOpen(true);
       } else {
         const msg =
-          err && typeof err === 'object' && 'detail' in err
+          err && typeof err === 'object' && 'detail' in err && (err as { detail?: string }).detail
             ? String((err as { detail?: string }).detail)
-            : err instanceof Error
-            ? err.message
-            : 'Có lỗi xảy ra khi lưu nháp.';
+            : err && typeof err === 'object' && 'title' in err && (err as { title?: string }).title
+              ? String((err as { title?: string }).title)
+              : err instanceof Error
+                ? err.message
+                : 'Có lỗi xảy ra khi lưu nháp.';
         pushToast({
           title: 'Lưu bản nháp thất bại',
           description: msg,
           tone: 'error',
         });
       }
-      return false;
+      return null;
     }
   };
 
   // Publish Chapter
   const handlePublish = async () => {
-    if (isDirty) {
-      const saved = await handleSaveDraft();
-      if (!saved) return;
+    let targetId = chapterId;
+    if (isDirty || isNewMode) {
+      const savedId = await handleSaveDraft();
+      if (!savedId) return;
+      targetId = savedId;
     }
 
     try {
-      const targetId = isNewMode ? chapterId : chapterId;
       const published = await publishChapter(targetId);
       pushToast({
         title: 'Đăng tải chương thành công',
@@ -1093,18 +1100,20 @@ export function ChapterEditorPage() {
         (err && typeof err === 'object' && 'status' in err && (err as { status: number }).status === 422)
       ) {
         const detailMsg =
-          err && typeof err === 'object' && 'detail' in err
+          err && typeof err === 'object' && 'detail' in err && (err as { detail?: string }).detail
             ? String((err as { detail?: string }).detail)
             : 'Không thể đăng tải: Chương chưa đáp ứng đủ điều kiện kiểm duyệt.';
         setPublishBlockedMessage(detailMsg);
         setPublishBlockedDialogOpen(true);
       } else {
         const msg =
-          err && typeof err === 'object' && 'detail' in err
+          err && typeof err === 'object' && 'detail' in err && (err as { detail?: string }).detail
             ? String((err as { detail?: string }).detail)
-            : err instanceof Error
-            ? err.message
-            : 'Không thể đăng tải chương.';
+            : err && typeof err === 'object' && 'title' in err && (err as { title?: string }).title
+              ? String((err as { title?: string }).title)
+              : err instanceof Error
+                ? err.message
+                : 'Không thể đăng tải chương.';
         pushToast({
           title: 'Đăng tải thất bại',
           description: msg,
@@ -1219,21 +1228,6 @@ export function ChapterEditorPage() {
 
           {/* Right: Actions */}
           <div className="flex items-center gap-2 shrink-0">
-            {/* Tạo nội dung với AI */}
-            {!isNewMode && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setIsAiModalOpen(true)}
-                className="text-xs h-8 px-3 font-medium border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-300 dark:hover:bg-purple-950/40 flex items-center gap-1.5"
-              >
-                <Sparkles className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
-                <span className="hidden md:inline">Tạo nội dung với AI</span>
-                <span className="md:hidden">AI</span>
-              </Button>
-            )}
-
             {/* Lưu nháp (Chỉ lưu khi click) */}
             <Button
               type="button"

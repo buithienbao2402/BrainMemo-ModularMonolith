@@ -1,4 +1,5 @@
 using BrainMemo.Moderation.Domain.Entities;
+using BrainMemo.Moderation.Infrastructure.Persistence.Converters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -18,7 +19,7 @@ public sealed class SanctionConfiguration : IEntityTypeConfiguration<Sanction>
 
         builder.Property(s => s.SanctionType)
             .HasColumnName("sanction_type")
-            .HasConversion<string>()
+            .HasConversion<SanctionTypeValueConverter>()
             .HasMaxLength(40)
             .IsRequired();
 

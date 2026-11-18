@@ -13,6 +13,49 @@ public static class ChapterDetailMapper
         PropertyNameCaseInsensitive = true
     };
 
+    public static string FormatBlockType(BlockType type) => type switch
+    {
+        BlockType.RichText => "RICH_TEXT",
+        BlockType.Image => "IMAGE",
+        BlockType.Video => "VIDEO",
+        BlockType.Audio => "AUDIO",
+        BlockType.File => "FILE",
+        BlockType.Markdown => "MARKDOWN",
+        BlockType.Flashcard => "FLASHCARD",
+        BlockType.Question => "QUESTION",
+        BlockType.Assignment => "ASSIGNMENT",
+        BlockType.Quiz => "QUIZ",
+        _ => "RICH_TEXT"
+    };
+
+    public static string FormatAiReviewStatus(AiReviewStatus status) => status switch
+    {
+        AiReviewStatus.Pending => "PENDING",
+        AiReviewStatus.Approved => "APPROVED",
+        _ => "NOT_APPLICABLE"
+    };
+
+    public static string FormatQuizResultDisplay(QuizResultDisplay display) => display switch
+    {
+        QuizResultDisplay.AfterEachAnswer => "AFTER_EACH_ANSWER",
+        QuizResultDisplay.AfterSubmit => "AFTER_SUBMIT",
+        QuizResultDisplay.AfterClose => "AFTER_CLOSE",
+        QuizResultDisplay.AfterGrading => "AFTER_GRADING",
+        _ => "AFTER_SUBMIT"
+    };
+
+    public static string? FormatQuestionType(QuestionType? type) => type switch
+    {
+        null => null,
+        QuestionType.MultipleChoice => "MULTIPLE_CHOICE",
+        QuestionType.TrueFalse => "TRUE_FALSE",
+        QuestionType.FillBlank => "FILL_BLANK",
+        QuestionType.Matching => "MATCHING",
+        QuestionType.ShortEssay => "SHORT_ESSAY",
+        QuestionType.Essay => "ESSAY",
+        _ => type.Value.ToString().ToUpperInvariant()
+    };
+
     public static async Task<ChapterDetailDto> MapToDetailDtoAsync(
         Chapter chapter,
         IReadOnlyList<Block> blocks,
@@ -52,7 +95,7 @@ public static class ChapterDetailMapper
                         qc.TimeLimitMinutes,
                         qc.MaxAttempts,
                         qc.PassScore,
-                        qc.ResultDisplay.ToString().ToUpperInvariant(),
+                        FormatQuizResultDisplay(qc.ResultDisplay),
                         qc.ShuffleQuestions,
                         qc.ShuffleOptions,
                         null,
@@ -64,7 +107,7 @@ public static class ChapterDetailMapper
                             r.PointsEach,
                             r.FilterTag,
                             r.FilterDifficultyCode,
-                            r.FilterQuestionType?.ToString().ToUpperInvariant())).ToList(),
+                            FormatQuestionType(r.FilterQuestionType))).ToList(),
                         qp.Select(p => new QuizPrerequisiteDto(p.TargetKind.ToString().ToUpperInvariant(), p.TargetId)).ToList());
                 }
             }
@@ -84,14 +127,14 @@ public static class ChapterDetailMapper
 
             blockDtos.Add(new BlockDto(
                 b.Id,
-                b.BlockType.ToString().ToUpperInvariant(),
+                FormatBlockType(b.BlockType),
                 b.Position,
                 b.Title,
                 b.Body,
                 b.ResourceId,
                 b.QuestionId,
                 flashcards,
-                b.AiReviewStatus.ToString().ToUpperInvariant(),
+                FormatAiReviewStatus(b.AiReviewStatus),
                 quizConfigDto,
                 assignmentConfigDto));
         }

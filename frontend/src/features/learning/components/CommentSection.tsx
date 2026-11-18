@@ -7,7 +7,6 @@ import {
   MessageSquare,
   Pin,
   PinOff,
-  Search,
   Send,
   Trash2,
   User as UserIcon,
@@ -23,7 +22,6 @@ import {
 import { ReportModal } from '@/features/moderation';
 import {
   useCommentsQuery,
-  useCommentsSummaryQuery,
   useCreateCommentMutation,
   useDeleteCommentMutation,
   useEditCommentMutation,
@@ -66,18 +64,16 @@ export function CommentSection({
 
   const [newQuestionTitle, setNewQuestionTitle] = useState('');
   const [newCommentText, setNewCommentText] = useState('');
-  const [filterByChapter, setFilterByChapter] = useState(Boolean(chapterId));
   const [qaFilter, setQaFilter] = useState<'ALL' | 'UNRESOLVED' | 'RESOLVED' | 'MINE'>('ALL');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery] = useState('');
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   const [reportCommentId, setReportCommentId] = useState<string | null>(null);
 
-  const { data: summary } = useCommentsSummaryQuery(courseId);
   const { data, isLoading } = useCommentsQuery(courseId, {
-    chapterId: filterByChapter ? chapterId : undefined,
+    chapterId: chapterId || undefined,
     isResolved: qaFilter === 'RESOLVED' ? true : qaFilter === 'UNRESOLVED' ? false : undefined,
     mine: qaFilter === 'MINE' ? true : undefined,
     search: searchQuery.trim() || undefined,
@@ -105,7 +101,7 @@ export function CommentSection({
       await createComment({
         title: newQuestionTitle.trim() || undefined,
         content: trimmed,
-        chapterId: filterByChapter ? chapterId : chapterId,
+        chapterId: chapterId || undefined,
       });
       setNewQuestionTitle('');
       setNewCommentText('');
@@ -142,7 +138,7 @@ export function CommentSection({
     try {
       await createComment({
         content: trimmed,
-        chapterId: filterByChapter ? chapterId : undefined,
+        chapterId: chapterId || undefined,
         parentCommentId,
       });
       setReplyText('');
@@ -219,8 +215,9 @@ export function CommentSection({
 
   return (
     <section
+      id="qa-section"
       aria-label="Khu vực thảo luận và bình luận"
-      className="rounded-2xl border border-border bg-card p-5 sm:p-7 space-y-6 shadow-xs"
+      className="rounded-2xl border border-border bg-card p-5 sm:p-7 space-y-6 shadow-xs scroll-mt-20"
     >
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/80 pb-4">
@@ -232,29 +229,11 @@ export function CommentSection({
             <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
               <span>Hỏi đáp & Thảo luận</span>
               <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                {summary?.totalComments ?? comments.length}
+                {comments.length}
               </span>
             </h2>
-            <p className="text-xs text-muted-foreground">
-              Trao đổi thắc mắc bài học trực tiếp với Giảng viên và cộng đồng.
-            </p>
           </div>
         </div>
-
-        {chapterId ? (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground self-start sm:self-auto">
-            <input
-              type="checkbox"
-              id="filter-chapter"
-              checked={filterByChapter}
-              onChange={(e) => setFilterByChapter(e.target.checked)}
-              className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary cursor-pointer"
-            />
-            <label htmlFor="filter-chapter" className="cursor-pointer select-none">
-              Chỉ hiện hỏi đáp bài học này
-            </label>
-          </div>
-        ) : null}
       </div>
 
       {/* Q&A Search & Filter Bar */}
@@ -272,21 +251,11 @@ export function CommentSection({
               size="sm"
               variant={qaFilter === tab.key ? 'primary' : 'outline'}
               className="h-7 text-xs"
-              onClick={() => setQaFilter(tab.key as any)}
+              onClick={() => setQaFilter(tab.key as 'ALL' | 'UNRESOLVED' | 'RESOLVED' | 'MINE')}
             >
               {tab.label}
             </Button>
           ))}
-        </div>
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Tìm câu hỏi trong bài..."
-            className="h-8 w-full rounded-lg border border-input bg-background pl-8 pr-3 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          />
         </div>
       </div>
 
@@ -584,6 +553,11 @@ export function CommentSection({
                           <span className="font-semibold text-foreground">
                             {reply.author.displayName}
                           </span>
+                          {reply.isInstructorReply || reply.author.displayName.includes('Giảng viên') ? (
+                            <span className="text-[10px] font-semibold bg-primary/15 px-1.5 py-0.5 rounded text-primary">
+                              Giảng viên
+                            </span>
+                          ) : null}
                           {reply.author.id === currentUserId ? (
                             <span className="text-[10px] font-medium bg-muted px-1.5 py-0.2 rounded text-muted-foreground">
                               Bạn
@@ -635,6 +609,13 @@ export function CommentSection({
           targetType="COMMENT"
           targetId={reportCommentId}
           targetTitle="Bình luận bài học"
+          targetAuthorName={
+            data?.items?.find((c) => c.id === reportCommentId)?.author.displayName ||
+            'Người dùng'
+          }
+          targetContent={
+            data?.items?.find((c) => c.id === reportCommentId)?.content
+          }
         />
       ) : null}
     </section>

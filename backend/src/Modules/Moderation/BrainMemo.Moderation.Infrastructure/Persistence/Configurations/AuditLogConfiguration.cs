@@ -1,4 +1,5 @@
 using BrainMemo.Moderation.Domain.Entities;
+using BrainMemo.Moderation.Infrastructure.Persistence.Converters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -19,7 +20,7 @@ public sealed class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
 
         builder.Property(a => a.ActorType)
             .HasColumnName("actor_type")
-            .HasConversion<string>()
+            .HasConversion<AuditActorTypeValueConverter>()
             .HasMaxLength(20)
             .IsRequired();
 
@@ -28,13 +29,13 @@ public sealed class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
 
         builder.Property(a => a.Action)
             .HasColumnName("action")
-            .HasConversion<string>()
+            .HasConversion<AuditActionValueConverter>()
             .HasMaxLength(50)
             .IsRequired();
 
         builder.Property(a => a.ObjectType)
             .HasColumnName("object_type")
-            .HasConversion<string>()
+            .HasConversion<AuditObjectTypeValueConverter>()
             .HasMaxLength(20)
             .IsRequired();
 

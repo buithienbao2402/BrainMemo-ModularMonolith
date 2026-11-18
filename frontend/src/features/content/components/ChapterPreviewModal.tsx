@@ -12,7 +12,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { Button } from '@/shared/ui';
-import type { BlockDto } from '../api/contentApi';
+import { normalizeBlockType, type BlockDto } from '../api/contentApi';
 import { RichTextDocumentRenderer } from './RichTextDocumentRenderer';
 
 interface ChapterPreviewModalProps {
@@ -107,20 +107,22 @@ export function ChapterPreviewModal({
               Chương này chưa có khối nội dung nào. Thêm các khối nội dung vào bản nháp để xem trước.
             </div>
           ) : (
-            blocks.map((block) => (
+            blocks.map((block) => {
+              const type = normalizeBlockType(block.blockType);
+              return (
               <div
                 key={block.id}
                 className="rounded-2xl border border-border bg-card p-6 sm:p-7 shadow-xs"
               >
                 {/* 1. Rich Text Block (Rendered from JSON AST) */}
-                {block.blockType === 'RICH_TEXT' && (
+                {type === 'RICH_TEXT' && (
                   <div className="prose dark:prose-invert max-w-none text-sm sm:text-base text-foreground leading-relaxed">
                     <RichTextDocumentRenderer doc={block.body} />
                   </div>
                 )}
 
                 {/* 2. Markdown Block */}
-                {block.blockType === 'MARKDOWN' && (
+                {type === 'MARKDOWN' && (
                   <div className="prose dark:prose-invert max-w-none font-sans text-sm sm:text-base text-foreground">
                     <pre className="p-4 bg-muted/60 rounded-xl font-mono text-xs overflow-x-auto whitespace-pre-wrap">
                       {block.body || 'Nội dung Markdown trống'}
@@ -129,7 +131,7 @@ export function ChapterPreviewModal({
                 )}
 
                 {/* 3. Image Block */}
-                {block.blockType === 'IMAGE' && (
+                {type === 'IMAGE' && (
                   <figure className="space-y-2 text-center">
                     <div className="rounded-xl border border-border bg-muted/20 p-2 flex items-center justify-center min-h-[180px]">
                       {block.resourceId ? (
@@ -156,7 +158,7 @@ export function ChapterPreviewModal({
                 )}
 
                 {/* 4. Video Block */}
-                {block.blockType === 'VIDEO' && (
+                {type === 'VIDEO' && (
                   <div className="space-y-2">
                     {block.title && (
                       <h4 className="text-sm font-bold text-foreground">{block.title}</h4>
@@ -171,7 +173,7 @@ export function ChapterPreviewModal({
                 )}
 
                 {/* 5. Audio Block */}
-                {block.blockType === 'AUDIO' && (
+                {type === 'AUDIO' && (
                   <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-2">
                     <h4 className="text-sm font-semibold text-foreground">
                       {block.title || 'Bài nghe âm thanh'}
@@ -189,7 +191,7 @@ export function ChapterPreviewModal({
                 )}
 
                 {/* 6. File Attachment Block */}
-                {block.blockType === 'FILE' && (
+                {type === 'FILE' && (
                   <div className="flex items-center justify-between rounded-xl border border-border bg-muted/20 p-4">
                     <div className="flex items-center gap-3">
                       <FileText className="h-8 w-8 text-primary" />
@@ -210,7 +212,7 @@ export function ChapterPreviewModal({
                 )}
 
                 {/* 7. Flashcard Block */}
-                {block.blockType === 'FLASHCARD' && (() => {
+                {type === 'FLASHCARD' && (() => {
                   const cards = block.flashcards || [];
                   const activeIdx = activeCardIndexes[block.id] ?? 0;
                   const isFlipped = flippedCards[block.id] ?? false;
@@ -285,7 +287,7 @@ export function ChapterPreviewModal({
                 })()}
 
                 {/* 8. Question Block */}
-                {block.blockType === 'QUESTION' && (
+                {type === 'QUESTION' && (
                   <div className="rounded-xl border border-border bg-muted/10 p-5 space-y-3">
                     <div className="flex items-center gap-2">
                       <HelpCircle className="h-4 w-4 text-purple-500" />
@@ -300,7 +302,7 @@ export function ChapterPreviewModal({
                 )}
 
                 {/* 9. Assignment Block */}
-                {block.blockType === 'ASSIGNMENT' && (
+                {type === 'ASSIGNMENT' && (
                   <div className="rounded-xl border border-border bg-card p-5 space-y-3 shadow-xs">
                     <div className="flex items-center justify-between border-b border-border pb-3">
                       <h4 className="text-base font-bold text-foreground">
@@ -333,7 +335,7 @@ export function ChapterPreviewModal({
                 )}
 
                 {/* 10. Quiz Block */}
-                {block.blockType === 'QUIZ' && (
+                {type === 'QUIZ' && (
                   <div className="rounded-xl border border-border bg-card p-5 space-y-3 shadow-xs">
                     <h4 className="text-base font-bold text-foreground">
                       {block.title || 'Bài kiểm tra đánh giá'}
@@ -364,7 +366,8 @@ export function ChapterPreviewModal({
                   </div>
                 )}
               </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>

@@ -17,6 +17,12 @@ public sealed class GlobalExceptionHandler(
         Exception exception,
         CancellationToken cancellationToken)
     {
+        if (exception is OperationCanceledException or TaskCanceledException)
+        {
+            logger.LogDebug("Request {Method} {Path} was canceled by the client.", httpContext.Request.Method, httpContext.Request.Path);
+            return true;
+        }
+
         if (exception is BadHttpRequestException or JsonException)
         {
             logger.LogWarning(exception, "Malformed HTTP request on {Method} {Path}", httpContext.Request.Method, httpContext.Request.Path);

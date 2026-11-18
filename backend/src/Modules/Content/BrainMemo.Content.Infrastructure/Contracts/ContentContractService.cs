@@ -3,6 +3,7 @@ using BrainMemo.Content.Contracts;
 using BrainMemo.Content.Contracts.Dtos;
 using BrainMemo.Content.Domain.Entities;
 using BrainMemo.Content.Domain.Enums;
+using BrainMemo.Content.Infrastructure.Persistence.Converters;
 using BrainMemo.Course.Contracts;
 using BrainMemo.Course.Contracts.Dtos;
 using BrainMemo.Course.Contracts.Enums;
@@ -120,16 +121,24 @@ public class ContentContractService(
         }
 
         IReadOnlyList<PublishedBlock> blocks = contentRepository.GetPublishedBlocksByChapterIdAsync(chapterId).GetAwaiter().GetResult();
+        IReadOnlyList<Block> workingBlocks = contentRepository.GetBlocksByChapterIdAsync(chapterId).GetAwaiter().GetResult();
+        Dictionary<Guid, Block> blockMap = workingBlocks.ToDictionary(b => b.Id);
 
         var blockRefs = blocks.OrderBy(b => b.Position)
-            .Select(b => new PublishedBlockRef(
-                b.BlockId,
-                b.ChapterId,
-                b.BlockType.ToString().ToUpperInvariant(),
-                b.Position,
-                b.ResourceId,
-                b.QuestionId,
-                b.VersionNo))
+            .Select(b => {
+                blockMap.TryGetValue(b.BlockId, out Block? wb);
+                return new PublishedBlockRef(
+                    b.BlockId,
+                    b.ChapterId,
+                    BlockTypeValueConverter.ToDbString(b.BlockType),
+                    b.Position,
+                    b.ResourceId,
+                    b.QuestionId,
+                    b.VersionNo,
+                    wb?.Title,
+                    wb?.Body,
+                    wb?.Flashcards);
+            })
             .ToList();
 
         var dto = new PublishedChapterContentDto(
@@ -152,7 +161,7 @@ public class ContentContractService(
             .Select(b => new PublishedBlockRef(
                 b.BlockId,
                 b.ChapterId,
-                b.BlockType.ToString().ToUpperInvariant(),
+                BlockTypeValueConverter.ToDbString(b.BlockType),
                 b.Position,
                 b.ResourceId,
                 b.QuestionId,
@@ -173,7 +182,7 @@ public class ContentContractService(
         var dto = new PublishedBlockRef(
             block.BlockId,
             block.ChapterId,
-            block.BlockType.ToString().ToUpperInvariant(),
+            BlockTypeValueConverter.ToDbString(block.BlockType),
             block.Position,
             block.ResourceId,
             block.QuestionId,
