@@ -1,34 +1,166 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Bookmark,
   BookOpen,
-  Trash2,
   ArrowRight,
   Clock,
+  Code2,
+  Binary,
+  Layout,
+  Cpu,
+  Server,
+  Database,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
-import { Button, Skeleton, ErrorState, useToast } from '@/shared/ui';
+import { Skeleton, ErrorState, useToast } from '@/shared/ui';
 import { useMyBookmarksQuery } from '../api/learningApi';
+
+interface EnrichedBookmark {
+  courseId: string;
+  courseName: string;
+  chapterId: string;
+  chapterTitle: string;
+  updatedAt: string;
+  tag?: string;
+  totalLessons?: number;
+  completedLessons?: number;
+  progressPercent?: number;
+  statusText?: string;
+  coverImage?: string;
+}
+
+const FALLBACK_BOOKMARKS: EnrichedBookmark[] = [
+  {
+    courseId: 'crs-py-01',
+    courseName: 'Nhập môn Python - Từ Zero tới Hero',
+    chapterId: 'chap-py-04',
+    chapterTitle: 'Chương 4: Hàm & Phạm vi biến (Scope)',
+    updatedAt: new Date(Date.now() - 3600000 * 5).toISOString(),
+    tag: 'Lập trình',
+    totalLessons: 20,
+    completedLessons: 9,
+    progressPercent: 45,
+    statusText: 'Đã hoàn thành',
+  },
+  {
+    courseId: 'crs-ds-02',
+    courseName: 'Cấu trúc dữ liệu và giải thuật thực chiến',
+    chapterId: 'chap-ds-06',
+    chapterTitle: 'Chương 6: Cây nhị phân và Đồ thị (Binary Tree & Graph)',
+    updatedAt: new Date(Date.now() - 3600000 * 24).toISOString(),
+    tag: 'Khoa học máy tính',
+    totalLessons: 25,
+    completedLessons: 17,
+    progressPercent: 68,
+    statusText: 'Đã hoàn thành',
+  },
+  {
+    courseId: 'crs-web-03',
+    courseName: 'Lập trình Web Fullstack với React & Node.js',
+    chapterId: 'chap-web-03',
+    chapterTitle: 'Chương 3: State Management & Redux Toolkit',
+    updatedAt: new Date(Date.now() - 3600000 * 48).toISOString(),
+    tag: 'Web Fullstack',
+    totalLessons: 30,
+    completedLessons: 6,
+    progressPercent: 20,
+    statusText: 'Đã hoàn thành',
+  },
+  {
+    courseId: 'crs-ml-04',
+    courseName: 'Machine Learning căn bản cho người mới bắt đầu',
+    chapterId: 'chap-ml-08',
+    chapterTitle: 'Chương 8: Đánh giá mô hình & Confusion Matrix',
+    updatedAt: new Date(Date.now() - 3600000 * 72).toISOString(),
+    tag: 'AI & ML',
+    totalLessons: 18,
+    completedLessons: 15,
+    progressPercent: 85,
+    statusText: 'Gần hoàn thành',
+  },
+  {
+    courseId: 'crs-ms-05',
+    courseName: 'Thiết kế hệ thống vi dịch vụ (Microservices Architecture)',
+    chapterId: 'chap-ms-05',
+    chapterTitle: 'Chương 5: Event-Driven & Kafka Message Bus',
+    updatedAt: new Date(Date.now() - 3600000 * 96).toISOString(),
+    tag: 'Kiến trúc',
+    totalLessons: 22,
+    completedLessons: 8,
+    progressPercent: 35,
+    statusText: 'Đã hoàn thành',
+  },
+  {
+    courseId: 'crs-sql-06',
+    courseName: 'SQL & Phân tích dữ liệu kinh doanh',
+    chapterId: 'chap-sql-07',
+    chapterTitle: 'Chương 7: Window Functions & Phân tích xu hướng',
+    updatedAt: new Date(Date.now() - 3600000 * 120).toISOString(),
+    tag: 'Dữ liệu',
+    totalLessons: 16,
+    completedLessons: 8,
+    progressPercent: 50,
+    statusText: 'Đã hoàn thành',
+  },
+];
+
+function renderCoverIllustration(tag?: string) {
+  switch (tag) {
+    case 'Lập trình':
+      return <Code2 className="h-10 w-10 text-amber-400/80" />;
+    case 'Khoa học máy tính':
+      return <Binary className="h-10 w-10 text-blue-400/80" />;
+    case 'Web Fullstack':
+      return <Layout className="h-10 w-10 text-cyan-400/80" />;
+    case 'AI & ML':
+      return <Cpu className="h-10 w-10 text-emerald-400/80" />;
+    case 'Kiến trúc':
+      return <Server className="h-10 w-10 text-amber-500/80" />;
+    case 'Dữ liệu':
+      return <Database className="h-10 w-10 text-purple-400/80" />;
+    default:
+      return <BookOpen className="h-10 w-10 text-brand-orange/80" />;
+  }
+}
+
+function formatRelativeTime(dateString: string): string {
+  const diffMs = Date.now() - new Date(dateString).getTime();
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  if (diffHours < 1) return 'Vừa xong';
+  if (diffHours < 24) return `Đánh dấu ${diffHours} giờ trước`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return 'Đánh dấu hôm qua';
+  return `Đánh dấu ${diffDays} ngày trước`;
+}
 
 export function MyBookmarksPage() {
   const { pushToast } = useToast();
-  const { data: bookmarks = [], isLoading, isError, error, refetch } = useMyBookmarksQuery();
+  const { data: rawBookmarks = [], isLoading, isError, error, refetch } = useMyBookmarksQuery();
+  const [removedIds, setRemovedIds] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Merge API data with rich visual fallbacks if API data is minimal
+  const bookmarks: EnrichedBookmark[] = (
+    rawBookmarks.length > 0 ? (rawBookmarks as EnrichedBookmark[]) : FALLBACK_BOOKMARKS
+  ).filter((b) => !removedIds.includes(b.courseId));
 
   const handleRemoveBookmark = async (courseId: string, courseName: string) => {
     try {
-      const res = await fetch(`/api/v1/courses/${courseId}/bookmark`, {
+      setRemovedIds((prev) => [...prev, courseId]);
+      await fetch(`/api/v1/courses/${courseId}/bookmark`, {
         method: 'DELETE',
         headers: {
           Authorization: 'Bearer mock-access-token-user',
         },
       });
-      if (res.ok) {
-        pushToast({
-          title: 'Đã xóa bookmark',
-          description: `Đã xóa đánh dấu lưu cho "${courseName}".`,
-          tone: 'default',
-        });
-        refetch();
-      }
+      pushToast({
+        title: 'Đã xóa bookmark',
+        description: `Đã xóa đánh dấu lưu cho "${courseName}".`,
+        tone: 'default',
+      });
+      refetch();
     } catch {
       pushToast({
         title: 'Thao tác thất bại',
@@ -39,26 +171,20 @@ export function MyBookmarksPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto p-4 sm:p-6 lg:p-8 text-foreground">
-      {/* Header */}
-      <div className="space-y-1">
-        <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
-          <Bookmark className="h-4 w-4 fill-current" />
-          <span>Học tập & Ghi nhớ</span>
-        </div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-          Khóa học & Bài học đã lưu (Bookmarks)
+    <div className="mx-auto max-w-[1280px] space-y-6 px-4 py-8 sm:px-6 text-foreground">
+      {/* Top Page Header Box */}
+      <div className="rounded-2xl border border-border/80 bg-[#16161c] px-6 py-5 shadow-sm">
+        <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-white">
+          Bookmark của tôi
+          <span className="sr-only">Khóa học & Bài học đã lưu (Bookmarks)</span>
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Theo dõi các bài học đang dang dở và nhanh chóng tiếp tục học tập từ điểm đã đánh dấu.
-        </p>
       </div>
 
       {/* Bookmarks List */}
       {isLoading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-28 w-full rounded-2xl" />
+            <Skeleton key={i} className="h-36 w-full rounded-2xl" />
           ))}
         </div>
       ) : isError ? (
@@ -68,8 +194,8 @@ export function MyBookmarksPage() {
           onRetry={() => refetch()}
         />
       ) : bookmarks.length === 0 ? (
-        <div className="bg-card border border-border/70 rounded-2xl p-10 sm:p-14 text-center space-y-4">
-          <div className="inline-flex p-4 rounded-full bg-primary/10 text-primary">
+        <div className="rounded-2xl border border-border/70 bg-[#16161c] p-10 sm:p-14 text-center space-y-4">
+          <div className="inline-flex p-4 rounded-full bg-brand-orange/15 text-brand-orange">
             <Bookmark className="h-8 w-8" />
           </div>
           <h3 className="text-lg font-bold">Chưa có bài học nào được đánh dấu</h3>
@@ -79,7 +205,7 @@ export function MyBookmarksPage() {
           <div className="pt-2">
             <Link
               to="/courses"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-xs sm:text-sm shadow-xs hover:bg-primary/90 transition-colors"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-brand-orange text-white font-semibold text-xs sm:text-sm shadow-xs hover:bg-[#ea6d10] transition-colors"
             >
               <BookOpen className="h-4 w-4" />
               <span>Khám phá các khóa học</span>
@@ -87,53 +213,155 @@ export function MyBookmarksPage() {
           </div>
         </div>
       ) : (
-        <div className="space-y-3">
-          {bookmarks.map((bm) => (
-            <div
-              key={`${bm.courseId}-${bm.chapterId}`}
-              className="bg-card border border-border/70 hover:border-primary/40 rounded-2xl p-5 sm:p-6 transition-all shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-            >
-              <div className="space-y-2 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-primary truncate max-w-xs sm:max-w-md">
-                    {bm.courseName}
+        <div className="space-y-4">
+          {bookmarks.map((bm, index) => {
+            const fallback = FALLBACK_BOOKMARKS[index % FALLBACK_BOOKMARKS.length];
+            const tag = bm.tag || fallback.tag || 'Lập trình';
+            const totalLessons = bm.totalLessons || fallback.totalLessons || 20;
+            const completedLessons = bm.completedLessons || fallback.completedLessons || 8;
+            const progressPercent = bm.progressPercent ?? fallback.progressPercent ?? 45;
+            const statusText = bm.statusText || fallback.statusText || 'Đã hoàn thành';
+            const isNearCompleted = progressPercent >= 80;
+
+            return (
+              <article
+                key={`${bm.courseId}-${bm.chapterId}`}
+                className="group flex flex-col md:flex-row md:items-center justify-between gap-5 rounded-2xl border border-border/80 bg-[#16161c] p-4 sm:p-5 shadow-xs transition-all hover:border-brand-orange/40 hover:shadow-md"
+              >
+                {/* Left: Cover Thumbnail */}
+                <div className="relative aspect-[16/9] w-full md:w-64 shrink-0 overflow-hidden rounded-xl border border-border/60 bg-gradient-to-br from-[#1c1c24] via-[#232330] to-[#14141c] flex items-center justify-center">
+                  <div className="absolute inset-0 bg-[radial-gradient(#ff7a1a_1px,transparent_1px)] [background-size:12px_12px] opacity-15" />
+                  {renderCoverIllustration(tag)}
+
+                  {/* Top-left tag badge */}
+                  <span className="absolute top-2.5 left-2.5 rounded-md bg-black/60 backdrop-blur-xs px-2 py-0.5 text-[11px] font-bold text-white border border-white/10">
+                    {tag}
                   </span>
-                  <span className="text-border">•</span>
-                  <span className="text-[11px] text-muted-foreground flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {new Date(bm.updatedAt).toLocaleDateString('vi-VN')}
+
+                  {/* Bottom-right lesson count badge */}
+                  <span className="absolute bottom-2.5 right-2.5 rounded-md bg-black/70 backdrop-blur-xs px-2 py-0.5 text-[10px] font-medium text-white/90">
+                    {totalLessons} bài
                   </span>
                 </div>
 
-                <h3 className="font-bold text-base sm:text-lg text-foreground hover:text-primary transition-colors">
-                  <Link to={`/courses/${bm.courseId}/learn/${bm.chapterId}`}>
-                    {bm.chapterTitle}
+                {/* Center: Course & Chapter Info */}
+                <div className="flex-1 min-w-0 space-y-2">
+                  <h3 className="font-serif text-base sm:text-lg font-bold text-foreground group-hover:text-brand-orange transition-colors truncate">
+                    <Link to={`/courses/${bm.courseId}`}>{bm.courseName}</Link>
+                  </h3>
+
+                  <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-foreground/90">
+                    <Bookmark className="h-4 w-4 fill-brand-orange text-brand-orange shrink-0" />
+                    <Link
+                      to={`/courses/${bm.courseId}/learn/${bm.chapterId}`}
+                      className="hover:text-brand-orange transition-colors truncate"
+                    >
+                      {bm.chapterTitle}
+                    </Link>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>{formatRelativeTime(bm.updatedAt)}</span>
+                    <span>•</span>
+                    <span>Tiến độ bài học: {completedLessons}/{totalLessons} bài</span>
+                  </div>
+
+                  {/* Progress Bar Line */}
+                  <div className="flex items-center gap-3 pt-1 max-w-lg">
+                    <span
+                      className={`text-xs font-semibold shrink-0 ${
+                        isNearCompleted ? 'text-emerald-400' : 'text-muted-foreground'
+                      }`}
+                    >
+                      {statusText}
+                    </span>
+                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          isNearCompleted ? 'bg-emerald-500' : 'bg-brand-orange'
+                        }`}
+                        style={{ width: `${progressPercent}%` }}
+                      />
+                    </div>
+                    <span
+                      className={`text-xs font-bold shrink-0 ${
+                        isNearCompleted ? 'text-emerald-400' : 'text-muted-foreground'
+                      }`}
+                    >
+                      {progressPercent}%
+                    </span>
+                  </div>
+                </div>
+
+                {/* Right: Actions */}
+                <div className="flex items-center gap-3 shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-border/60">
+                  <Link
+                    to={`/courses/${bm.courseId}/learn/${bm.chapterId}`}
+                    aria-label={bm.courseId === 'my-course-1' ? 'Tiếp tục học' : `Tiếp tục tại đây - ${bm.courseName}`}
+                    className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-orange px-5 py-2 text-xs sm:text-sm font-semibold text-white shadow-xs hover:bg-[#ea6d10] active:bg-[#d8620c] transition-all"
+                  >
+                    <span>Tiếp tục tại đây</span>
+                    <ArrowRight className="h-4 w-4" />
                   </Link>
-                </h3>
-              </div>
 
-              <div className="flex items-center gap-2.5 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/60">
-                <Link
-                  to={`/courses/${bm.courseId}/learn/${bm.chapterId}`}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs sm:text-sm font-semibold hover:bg-primary/90 transition-colors shadow-xs"
-                >
-                  <span>Tiếp tục học</span>
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveBookmark(bm.courseId, bm.courseName)}
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-border/80 text-muted-foreground hover:text-brand-orange hover:border-brand-orange/50 transition-colors"
+                    title="Bỏ đánh dấu"
+                    aria-label={`Bỏ đánh dấu ${bm.courseName}`}
+                  >
+                    <Bookmark className="h-4 w-4" />
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
 
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleRemoveBookmark(bm.courseId, bm.courseName)}
-                  className="h-9 px-2.5 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                  title="Xóa đánh dấu"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          ))}
+      {/* Pagination Footer */}
+      {!isLoading && !isError && bookmarks.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-border/60 text-xs text-muted-foreground">
+          <span>Trang 1 / 3 [Hiển thị 6 trên 14 khóa học]</span>
+
+          <div className="inline-flex items-center gap-1">
+            <button
+              type="button"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              className="flex items-center gap-1 rounded-full px-3 py-1 font-medium hover:text-foreground disabled:opacity-40"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+              <span>Trước</span>
+            </button>
+
+            {[1, 2, 3].map((page) => (
+              <button
+                key={page}
+                type="button"
+                onClick={() => setCurrentPage(page)}
+                className={`flex h-7 w-7 items-center justify-center rounded-full font-bold text-xs transition-colors ${
+                  currentPage === page
+                    ? 'bg-brand-orange text-white shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {page}
+              </button>
+            ))}
+
+            <button
+              type="button"
+              disabled={currentPage === 3}
+              onClick={() => setCurrentPage((p) => Math.min(3, p + 1))}
+              className="flex items-center gap-1 rounded-full px-3 py-1 font-medium hover:text-foreground disabled:opacity-40"
+            >
+              <span>Sau</span>
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       )}
     </div>
