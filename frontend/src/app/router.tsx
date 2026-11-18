@@ -31,7 +31,7 @@ import {
   AssignmentPlayerPage,
 } from '@/features/learning';
 import {
-  AssessmentConfigPage,
+  AssessmentRulesPage,
   GradingQueuePage,
   ManualGradingPage,
   CourseGradebookPage,
@@ -284,7 +284,7 @@ export const appRoutes: RouteObject[] = [
           },
           {
             path: '/courses/:courseId/manage/assessment',
-            element: <AssessmentConfigPage />,
+            element: <AssessmentRulesPage />,
           },
           {
             path: '/courses/:courseId/manage/grading',
@@ -305,6 +305,10 @@ export const appRoutes: RouteObject[] = [
           {
             path: '/courses/:courseId/manage/outcomes/mapping',
             element: <OutcomeMappingMatrixPage />,
+          },
+          {
+            path: '/courses/:courseId/manage/outcomes/rules',
+            element: <AssessmentRulesPage />,
           },
           {
             path: '/courses/:courseId/manage/stats',

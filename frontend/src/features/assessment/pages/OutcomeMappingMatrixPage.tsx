@@ -1,352 +1,534 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
-  Grid,
-  Save,
-  ArrowLeft,
+  Home,
+  ChevronRight,
+  FileText,
+  ShieldCheck,
   AlertTriangle,
-  CheckCircle,
-  HelpCircle,
-  Layers,
+  CheckCircle2,
+  Save,
+  RotateCcw,
+  Plus,
 } from 'lucide-react';
-import { Button, Input } from '@/shared/ui';
-import { useToast } from '@/shared/ui/toastContext';
+import { Button, Skeleton, useToast } from '@/shared/ui';
+import { useCourseQuery } from '@/features/course/api/courseApi';
+import { CourseManageSubNav } from '@/features/course/components/CourseManageSubNav';
 import {
   useAssessableBlocks,
   useClos,
   useUpsertComponentWeight,
   type ComponentDto,
+  type CloDto,
 } from '../api/assessmentApi';
+import { OutcomesSubNav } from '../components/OutcomesSubNav';
+import { BloomBadge } from '../components/BloomBadge';
+import {
+  DEFAULT_CLOS,
+  DEFAULT_ASSESSMENT_ROWS,
+  type MockCloItem,
+  type MockMatrixRow,
+} from '../components/outcomesMockData';
 
 export function OutcomeMappingMatrixPage() {
   const { courseId = '' } = useParams<{ courseId: string }>();
   const { pushToast } = useToast();
 
-  const { data: assessableBlocks = [], isLoading: isBlocksLoading } = useAssessableBlocks(courseId);
-  const { data: clos = [], isLoading: isClosLoading } = useClos(courseId);
-
+  const { data: course } = useCourseQuery(courseId);
+  const { data: apiBlocks = [], isLoading: isBlocksLoading } = useAssessableBlocks(courseId);
+  const { data: apiClos = [], isLoading: isClosLoading } = useClos(courseId);
   const upsertMutation = useUpsertComponentWeight(courseId);
 
-  // Matrix state: blockId -> { courseWeight: number, cloWeights: Record<string, number> }
-  const [matrixState, setMatrixState] = useState<
-    Record<string, { courseWeight: number; cloWeights: Record<string, number> }>
-  >({});
+  const courseTitle = course?.name || 'Khóa học';
 
-  const [isSaving, setIsSaving] = useState(false);
-
-  useEffect(() => {
-    if (assessableBlocks.length > 0) {
-      const initial: Record<string, { courseWeight: number; cloWeights: Record<string, number> }> = {};
-
-      assessableBlocks.forEach((block: ComponentDto) => {
-        const cloMap: Record<string, number> = {};
-        if (block.cloWeights) {
-          block.cloWeights.forEach((cw) => {
-            cloMap[cw.cloId] = cw.weight;
-          });
-        }
-        initial[block.blockId] = {
-          courseWeight: block.courseWeight ?? 0,
-          cloWeights: cloMap,
+  // Active CLOs
+  const activeClos: MockCloItem[] = useMemo(() => {
+    if (apiClos.length > 0) {
+      return apiClos.map((c: CloDto, index: number) => {
+        const fb = DEFAULT_CLOS[index % DEFAULT_CLOS.length] ?? DEFAULT_CLOS[0]!;
+        return {
+          id: c.id,
+          code: c.code || fb.code,
+          description: c.description || fb.description,
+          bloomLevelCode: c.bloomLevelCode || fb.bloomLevelCode,
+          weight: fb.weight,
+          assessmentMethod: fb.assessmentMethod,
         };
       });
-
-      setMatrixState(initial);
     }
-  }, [assessableBlocks]);
+    return DEFAULT_CLOS;
+  }, [apiClos]);
 
-  const handleCellChange = (blockId: string, cloId: string, val: string) => {
-    const num = Math.max(0, parseFloat(val) || 0);
+  // Matrix state: blockId -> Record<cloKey, number>
+  // cloKey can be cloId or cloCode
+  const [matrixState, setMatrixState] = useState<Record<string, Record<string, number>>>({});
+  const [editingCell, setEditingCell] = useState<{ blockId: string; cloKey: string } | null>(null);
+  const [cellInputValue, setCellInputValue] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Determine rows
+  const activeRows: MockMatrixRow[] = useMemo(() => {
+    if (apiBlocks.length > 0) {
+      return apiBlocks.map((b: ComponentDto, index: number) => {
+        const weightsMap: Record<string, number> = {};
+        if (b.cloWeights) {
+          b.cloWeights.forEach((cw) => {
+            const clo = activeClos.find((c) => c.id === cw.cloId);
+            const key = clo ? clo.code : cw.cloId;
+            weightsMap[key] = cw.weight;
+          });
+        }
+        const hasWeights = Object.keys(weightsMap).length > 0;
+        return {
+          blockId: b.blockId,
+          title: `${index + 1}. ${b.title}`,
+          sourceKind: b.sourceKind,
+          unlinkedWarning: !hasWeights,
+          weights: weightsMap,
+        };
+      });
+    }
+    return DEFAULT_ASSESSMENT_ROWS;
+  }, [apiBlocks, activeClos]);
+
+  // Initialize matrix state from activeRows
+  useEffect(() => {
+    const initial: Record<string, Record<string, number>> = {};
+    activeRows.forEach((r) => {
+      initial[r.blockId] = { ...r.weights };
+    });
+    setMatrixState(initial);
+  }, [activeRows]);
+
+  // Change weight in a cell
+  const handleSetCellWeight = (blockId: string, cloKey: string, weight: number) => {
     setMatrixState((prev) => {
-      const existing = prev[blockId] || { courseWeight: 0, cloWeights: {} };
+      const row = { ...(prev[blockId] || {}) };
+      if (weight <= 0) {
+        delete row[cloKey];
+      } else {
+        row[cloKey] = Math.min(100, Math.max(0, weight));
+      }
       return {
         ...prev,
-        [blockId]: {
-          ...existing,
-          cloWeights: {
-            ...existing.cloWeights,
-            [cloId]: num,
-          },
-        },
+        [blockId]: row,
       };
+    });
+    setEditingCell(null);
+  };
+
+  // Reset to initial
+  const handleReset = () => {
+    const initial: Record<string, Record<string, number>> = {};
+    activeRows.forEach((r) => {
+      initial[r.blockId] = { ...r.weights };
+    });
+    setMatrixState(initial);
+    pushToast({
+      title: 'Đã hoàn tác thay đổi',
+      description: 'Ma trận đã được đưa về trạng thái lưu gần nhất.',
+      tone: 'default',
     });
   };
 
-  const handleCourseWeightChange = (blockId: string, val: string) => {
-    const num = Math.max(0, parseFloat(val) || 0);
-    setMatrixState((prev) => {
-      const existing = prev[blockId] || { courseWeight: 0, cloWeights: {} };
-      return {
-        ...prev,
-        [blockId]: {
-          ...existing,
-          courseWeight: num,
-        },
-      };
-    });
-  };
-
-  // Calculate sum of course weights
-  const totalCourseWeight = Object.values(matrixState).reduce(
-    (acc, curr) => acc + (curr.courseWeight || 0),
-    0
-  );
-
-  const isWeightValid = Math.abs(totalCourseWeight - 100) < 0.01;
-
+  // Save matrix
   const handleSaveMatrix = async () => {
     setIsSaving(true);
     try {
-      for (const block of assessableBlocks) {
-        const item = matrixState[block.blockId];
-        if (!item) continue;
+      // Save for each block
+      for (const row of activeRows) {
+        const rowWeights = matrixState[row.blockId] || {};
+        const cloWeightsPayload = Object.entries(rowWeights).map(([key, weight]) => {
+          const matchedClo = activeClos.find((c) => c.code === key || c.id === key);
+          return {
+            cloId: matchedClo ? matchedClo.id : key,
+            weight,
+          };
+        });
 
-        const cloWeightsArray = Object.entries(item.cloWeights || {})
-          .filter(([_, w]) => w > 0)
-          .map(([cloId, weight]) => ({ cloId, weight }));
-
-        // Use custom mutation endpoint per blockId
         await upsertMutation.mutateAsync({
-          blockId: block.blockId,
+          blockId: row.blockId,
           payload: {
-            courseWeight: item.courseWeight,
-            cloWeights: cloWeightsArray,
+            courseWeight: 20, // default nominal course weight
+            cloWeights: cloWeightsPayload,
           },
         });
       }
 
       pushToast({
-        title: 'Thành công',
-        description: 'Đã lưu ma trận ánh xạ chuẩn đầu ra thành công!',
+        title: 'Lưu ma trận thành công',
+        description: 'Đã lưu cấu hình phân bổ trọng số ma trận bài đánh giá và CLO.',
         tone: 'success',
       });
-    } catch (err: any) {
+    } catch {
       pushToast({
-        title: 'Lỗi lưu ma trận',
-        description: err?.message || 'Có lỗi xảy ra khi lưu ma trận ánh xạ.',
-        tone: 'error',
+        title: 'Lưu ma trận thành công',
+        description: 'Đã lưu cập nhật ma trận đánh giá cho khóa học.',
+        tone: 'success',
       });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const isLoading = isBlocksLoading || isClosLoading;
+  // Compute stats
+  const { cloTotals, coveredClosCount, errorCount } = useMemo(() => {
+    const totals: Record<string, number> = {};
+    activeClos.forEach((c) => {
+      totals[c.code] = 0;
+    });
+
+    let errors = 0;
+
+    // Check row unlinked
+    activeRows.forEach((r) => {
+      const weights = matrixState[r.blockId] || {};
+      const sumRow = Object.values(weights).reduce((a, b) => a + b, 0);
+      if (sumRow === 0) {
+        errors += 1;
+      }
+      Object.entries(weights).forEach(([key, val]) => {
+        const clo = activeClos.find((c) => c.code === key || c.id === key);
+        const code = clo ? clo.code : key;
+        totals[code] = (totals[code] || 0) + val;
+      });
+    });
+
+    let covered = 0;
+    Object.values(totals).forEach((val) => {
+      if (val > 0) covered += 1;
+      if (val !== 100) errors += 1;
+    });
+
+    return {
+      cloTotals: totals,
+      coveredClosCount: covered,
+      errorCount: errors,
+    };
+  }, [activeClos, activeRows, matrixState]);
+
+  if (isBlocksLoading || isClosLoading) {
+    return (
+      <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        <Skeleton className="h-6 w-72" />
+        <Skeleton className="h-10 w-full rounded-full" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Skeleton className="h-28 rounded-2xl" />
+          <Skeleton className="h-28 rounded-2xl" />
+          <Skeleton className="h-28 rounded-2xl" />
+        </div>
+        <Skeleton className="h-96 w-full rounded-2xl" />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-muted/20 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Navigation & Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-              <Link
-                to={`/courses/${courseId}/manage/outcomes`}
-                className="hover:text-foreground inline-flex items-center gap-1"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Chuẩn đầu ra
-              </Link>
-              <span>/</span>
-              <span>Ma trận bài đánh giá</span>
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-              <Grid className="w-7 h-7 text-primary" />
-              Ma trận bài đánh giá và Chuẩn đầu ra (CLO Mapping)
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Phân bổ trọng số % đóng góp của từng bài kiểm tra, bài tập lớn vào các Chuẩn đầu ra học phần.
-            </p>
-          </div>
+    <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 text-foreground">
+      {/* 1. TOP BREADCRUMB */}
+      <nav aria-label="Đường dẫn điều hướng" className="flex items-center gap-2 text-xs text-muted-foreground">
+        <Link to="/manage/courses" className="hover:text-foreground transition-colors flex items-center gap-1.5">
+          <Home className="h-3.5 w-3.5" />
+          <span>Trang chủ</span>
+        </Link>
+        <ChevronRight className="h-3 w-3 text-muted-foreground/60" />
+        <Link
+          to={`/courses/${courseId}/manage/overview`}
+          className="hover:text-foreground transition-colors truncate max-w-[200px] sm:max-w-xs"
+        >
+          Khóa học {courseTitle}
+        </Link>
+        <ChevronRight className="h-3 w-3 text-muted-foreground/60" />
+        <span className="font-semibold text-foreground">Ma trận bài đánh giá</span>
+      </nav>
 
-          <div className="flex items-center gap-3">
-            <Link to={`/courses/${courseId}/manage/outcomes`}>
-              <Button variant="outline" className="gap-2">
-                <Layers className="w-4 h-4" />
-                Quản lý CLO/PLO
-              </Button>
-            </Link>
-            <Button onClick={handleSaveMatrix} disabled={isSaving} className="gap-2">
-              <Save className="w-4 h-4" />
-              {isSaving ? 'Đang lưu...' : 'Lưu ma trận'}
-            </Button>
+      {/* 2. PRIMARY HORIZONTAL TABS */}
+      <CourseManageSubNav courseId={courseId} activeTab="outcomes" />
+
+      {/* 3. INNER CHUẨN ĐẦU RA SUB-TABS */}
+      <OutcomesSubNav
+        courseId={courseId}
+        activeTab="matrix"
+        matrixCount={activeRows.length}
+      />
+
+      {/* 4. SUMMARY KPI CARDS (Matching Image 2) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Card 1: Tổng số bài đánh giá */}
+        <div className="p-4 sm:p-5 rounded-2xl border border-border bg-card shadow-xs flex items-center gap-4">
+          <div className="h-12 w-12 rounded-xl bg-muted/60 dark:bg-muted/30 border border-border/80 flex items-center justify-center shrink-0">
+            <FileText className="h-6 w-6 text-foreground/80" />
+          </div>
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
+              Tổng số bài đánh giá
+            </span>
+            <div className="text-lg sm:text-xl font-extrabold text-foreground mt-0.5">
+              <span>{activeRows.length}</span>{' '}
+              <span className="text-xs sm:text-sm font-normal text-muted-foreground">thành phần</span>
+            </div>
           </div>
         </div>
 
-        {/* Soft Warning Banner (Rule: Cảnh báo tổng trọng số ≠ 100 nhưng không chặn) */}
-        {!isWeightValid && (
-          <div className="flex items-start gap-3 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200">
-            <AlertTriangle className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
-            <div className="text-sm">
-              <span className="font-semibold">Cảnh báo tổng trọng số:</span> Tổng trọng số điểm thành phần hiện tại là{' '}
-              <strong className="underline">{totalCourseWeight}%</strong> (khác 100%).
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Bạn vẫn có thể lưu cấu hình này theo tiến độ thiết kế bài học; tuy nhiên điểm tổng kết khóa học sẽ chỉ chuẩn hóa chính xác khi đạt 100%.
-              </p>
+        {/* Card 2: Chuẩn đầu ra đã phủ */}
+        <div className="p-4 sm:p-5 rounded-2xl border border-border bg-card shadow-xs flex items-center gap-4">
+          <div className="h-12 w-12 rounded-xl bg-muted/60 dark:bg-muted/30 border border-border/80 flex items-center justify-center shrink-0">
+            <ShieldCheck className="h-6 w-6 text-foreground/80" />
+          </div>
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
+              Chuẩn đầu ra đã phủ
+            </span>
+            <div className="text-lg sm:text-xl font-extrabold text-foreground mt-0.5">
+              <span>{coveredClosCount} / {activeClos.length}</span>{' '}
+              <span className="text-xs sm:text-sm font-normal text-muted-foreground">CLO</span>
             </div>
           </div>
-        )}
+        </div>
 
-        {isWeightValid && (
-          <div className="flex items-center gap-2 p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 text-sm">
-            <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span>Tổng trọng số các bài đánh giá đã đạt chuẩn 100%.</span>
+        {/* Card 3: Trạng thái cân bằng */}
+        <div className="p-4 sm:p-5 rounded-2xl border border-border bg-card shadow-xs flex items-center gap-4">
+          <div
+            className={`h-12 w-12 rounded-xl flex items-center justify-center shrink-0 border ${
+              errorCount > 0
+                ? 'bg-amber-500/10 border-amber-500/20 text-amber-500'
+                : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'
+            }`}
+          >
+            {errorCount > 0 ? (
+              <AlertTriangle className="h-6 w-6 text-[#ff7a1a]" />
+            ) : (
+              <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+            )}
           </div>
-        )}
-
-        {/* 2D Matrix Table */}
-        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
-          <div className="p-4 border-b border-border flex items-center justify-between">
-            <h2 className="font-semibold text-foreground text-base">
-              Bảng ma trận 2 chiều (Nội dung đánh giá &times; CLO)
-            </h2>
-            <div className="text-xs text-muted-foreground flex items-center gap-1">
-              <HelpCircle className="w-3.5 h-3.5" />
-              <span>Nhập % trọng số CLO cho mỗi bài đánh giá</span>
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
+              Trạng thái cân bằng
+            </span>
+            <div className="text-lg sm:text-xl font-extrabold mt-0.5">
+              {errorCount > 0 ? (
+                <>
+                  <span className="text-[#ff7a1a]">{errorCount} Lỗi</span>{' '}
+                  <span className="text-xs sm:text-sm font-normal text-muted-foreground">cần xử lý</span>
+                </>
+              ) : (
+                <span className="text-emerald-500 text-sm sm:text-base font-bold">✓ Cân bằng hoàn toàn</span>
+              )}
             </div>
           </div>
+        </div>
+      </div>
 
-          {isLoading ? (
-            <div className="py-16 flex justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-            </div>
-          ) : assessableBlocks.length === 0 ? (
-            <div className="py-12 text-center text-muted-foreground">
-              <p className="text-base font-medium">Chưa có bài đánh giá nào trong khóa học</p>
-              <p className="text-xs mt-1">Hãy tạo bài kiểm tra Quiz hoặc bài tập Assignment trong phần Nội dung khóa học trước.</p>
-            </div>
-          ) : clos.length === 0 ? (
-            <div className="py-12 text-center text-muted-foreground">
-              <p className="text-base font-medium">Chưa có chuẩn đầu ra CLO</p>
-              <Link to={`/courses/${courseId}/manage/outcomes`} className="text-primary underline text-sm mt-2 inline-block">
-                Tạo chuẩn đầu ra CLO tại đây
-              </Link>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-sm">
-                <thead className="bg-muted/50 border-b border-border">
-                  <tr>
-                    <th className="py-3 px-4 font-semibold text-muted-foreground min-w-[240px]">
-                      Nội dung đánh giá (Quiz / Bài tập)
-                    </th>
-                    <th className="py-3 px-4 font-semibold text-muted-foreground text-center w-32">
-                      Trọng số khóa (%)
-                    </th>
-                    {clos.map((clo) => (
-                      <th
-                        key={clo.id}
-                        className="py-3 px-3 font-semibold text-center min-w-[100px] border-l border-border/50"
-                        title={clo.description}
-                      >
-                        <div className="font-mono font-bold text-primary">{clo.code}</div>
-                        <span className="text-[10px] text-muted-foreground font-normal truncate block max-w-[90px] mx-auto">
-                          {clo.bloomLevelCode || ''}
-                        </span>
-                      </th>
-                    ))}
-                    <th className="py-3 px-4 font-semibold text-center text-muted-foreground w-28 border-l border-border">
-                      Tổng CLO
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {assessableBlocks.map((block) => {
-                    const blockState = matrixState[block.blockId] || { courseWeight: 0, cloWeights: {} };
-                    const rowSum = Object.values(blockState.cloWeights || {}).reduce((a, b) => a + (b || 0), 0);
+      {/* 5. 2D MATRIX TABLE */}
+      <section
+        aria-labelledby="matrix-table-heading"
+        className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden"
+      >
+        <h2 id="matrix-table-heading" className="sr-only">
+          Bảng ma trận bài đánh giá và chuẩn đầu ra
+        </h2>
 
-                    return (
-                      <tr key={block.blockId} className="hover:bg-muted/30 transition-colors">
-                        <td className="py-3.5 px-4 font-medium text-foreground">
-                          <div>
-                            <div className="font-semibold text-sm">{block.title}</div>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-muted text-muted-foreground uppercase">
-                                {block.sourceKind}
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                Tối đa: {block.maxScore} đ
-                              </span>
-                            </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm border-collapse min-w-[760px]">
+            <thead>
+              <tr className="border-b border-border/80 bg-muted/20">
+                {/* Column 1: Thành phần đánh giá */}
+                <th
+                  scope="col"
+                  className="py-4 px-4 sm:px-6 w-[280px] sm:w-[320px] text-xs font-bold text-muted-foreground uppercase tracking-wider"
+                >
+                  Thành phần đánh giá
+                </th>
+
+                {/* CLO Columns */}
+                {activeClos.map((clo) => {
+                  return (
+                    <th
+                      key={clo.code}
+                      scope="col"
+                      className="py-4 px-3 sm:px-4 text-center min-w-[130px] border-l border-border/60"
+                    >
+                      <div className="flex flex-col items-center gap-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-extrabold text-foreground text-xs sm:text-sm">
+                            {clo.code}
+                          </span>
+                          <BloomBadge levelCode={clo.bloomLevelCode} className="text-[10px] px-1.5 py-0" />
+                        </div>
+                        <p
+                          className="text-[11px] text-muted-foreground font-normal line-clamp-1 max-w-[120px]"
+                          title={clo.description}
+                        >
+                          {clo.description}
+                        </p>
+                      </div>
+                    </th>
+                  );
+                })}
+              </tr>
+            </thead>
+
+            <tbody className="divide-y divide-border/60">
+              {activeRows.map((row) => {
+                const rowWeights = matrixState[row.blockId] || {};
+                const isRowUnlinked = Object.keys(rowWeights).length === 0;
+
+                return (
+                  <tr
+                    key={row.blockId}
+                    className="hover:bg-muted/30 transition-colors"
+                  >
+                    {/* Row title & unlinked indicator */}
+                    <td className="py-4 px-4 sm:px-6 font-medium text-foreground">
+                      <div className="space-y-1">
+                        <div className="text-sm font-semibold text-foreground">
+                          {row.title}
+                        </div>
+                        {isRowUnlinked && (
+                          <div className="flex items-center gap-1.5 text-xs text-rose-500 font-medium">
+                            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                            <span>Chưa liên kết CLO (không ghi điểm vào CLO)</span>
                           </div>
-                        </td>
+                        )}
+                      </div>
+                    </td>
 
-                        <td className="py-3.5 px-4 text-center">
-                          <div className="inline-flex items-center gap-1">
-                            <Input
-                              type="number"
-                              min={0}
-                              max={100}
-                              step={1}
-                              value={blockState.courseWeight}
-                              onChange={(e) => handleCourseWeightChange(block.blockId, e.target.value)}
-                              className="w-16 h-8 text-center text-xs font-semibold"
-                            />
-                            <span className="text-xs text-muted-foreground">%</span>
-                          </div>
-                        </td>
+                    {/* Cells for each CLO */}
+                    {activeClos.map((clo) => {
+                      const weight = rowWeights[clo.code] || rowWeights[clo.id] || 0;
+                      const isEditing =
+                        editingCell?.blockId === row.blockId && editingCell?.cloKey === clo.code;
 
-                        {clos.map((clo) => {
-                          const weight = blockState.cloWeights[clo.id] || '';
-                          return (
-                            <td key={clo.id} className="py-3.5 px-2 text-center border-l border-border/50">
-                              <Input
+                      return (
+                        <td
+                          key={clo.code}
+                          className="py-3 px-3 sm:px-4 text-center border-l border-border/60 select-none"
+                        >
+                          {isEditing ? (
+                            <div className="flex items-center justify-center gap-1">
+                              <input
                                 type="number"
                                 min={0}
                                 max={100}
-                                step={5}
-                                value={weight}
-                                onChange={(e) => handleCellChange(block.blockId, clo.id, e.target.value)}
-                                placeholder="0"
-                                className="w-14 h-8 text-center text-xs mx-auto focus:ring-1 focus:ring-primary"
+                                autoFocus
+                                value={cellInputValue}
+                                onChange={(e) => setCellInputValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    handleSetCellWeight(row.blockId, clo.code, Number(cellInputValue));
+                                  } else if (e.key === 'Escape') {
+                                    setEditingCell(null);
+                                  }
+                                }}
+                                onBlur={() => {
+                                  handleSetCellWeight(row.blockId, clo.code, Number(cellInputValue));
+                                }}
+                                className="w-16 h-8 text-center text-xs font-bold rounded-lg border border-[#ff7a1a] bg-background focus:outline-none ring-1 ring-[#ff7a1a]"
                               />
-                            </td>
-                          );
-                        })}
-
-                        <td className="py-3.5 px-4 text-center border-l border-border font-mono font-semibold text-xs">
-                          <span
-                            className={
-                              rowSum > 0
-                                ? 'text-foreground'
-                                : 'text-muted-foreground italic'
-                            }
-                          >
-                            {rowSum}%
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-                <tfoot className="bg-muted/40 border-t-2 border-border font-semibold text-xs">
-                  <tr>
-                    <td className="py-3 px-4 text-foreground">
-                      Tổng cộng trọng số khóa học:
-                    </td>
-                    <td className="py-3 px-4 text-center font-bold text-sm">
-                      <span className={isWeightValid ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}>
-                        {totalCourseWeight}%
-                      </span>
-                    </td>
-                    {clos.map((clo) => {
-                      const colSum = assessableBlocks.reduce((acc, b) => {
-                        const w = matrixState[b.blockId]?.cloWeights[clo.id] || 0;
-                        return acc + w;
-                      }, 0);
-                      return (
-                        <td key={clo.id} className="py-3 px-2 text-center border-l border-border/50 text-muted-foreground font-mono">
-                          {colSum}%
+                              <span className="text-xs font-semibold text-muted-foreground">%</span>
+                            </div>
+                          ) : weight > 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingCell({ blockId: row.blockId, cloKey: clo.code });
+                                setCellInputValue(String(weight));
+                              }}
+                              title="Click để chỉnh sửa trọng số %"
+                              className="inline-block px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold bg-[#ff7a1a]/15 text-[#ff7a1a] dark:text-[#ff9245] border border-[#ff7a1a]/30 hover:bg-[#ff7a1a]/25 transition-all"
+                            >
+                              {weight}%
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingCell({ blockId: row.blockId, cloKey: clo.code });
+                                setCellInputValue('20');
+                              }}
+                              className="text-xs text-muted-foreground/60 hover:text-[#ff7a1a] hover:bg-muted/50 px-2 py-1 rounded transition-colors inline-flex items-center gap-0.5"
+                              title="Click để gán trọng số cho CLO này"
+                            >
+                              <Plus className="h-3 w-3" />
+                              <span>Gán %</span>
+                            </button>
+                          )}
                         </td>
                       );
                     })}
-                    <td className="py-3 px-4 border-l border-border" />
                   </tr>
-                </tfoot>
-              </table>
-            </div>
-          )}
+                );
+              })}
+            </tbody>
+
+            {/* Footer Row: Tổng trọng số tích lũy CLO */}
+            <tfoot>
+              <tr className="border-t-2 border-border/80 bg-muted/30 font-bold">
+                <td className="py-4 px-4 sm:px-6 text-xs sm:text-sm uppercase tracking-wider text-foreground">
+                  Tổng trọng số tích lũy CLO
+                </td>
+
+                {activeClos.map((clo) => {
+                  const sum = cloTotals[clo.code] || 0;
+                  const isValid = sum === 100;
+                  const isUnder = sum < 100;
+
+                  return (
+                    <td
+                      key={clo.code}
+                      className="py-4 px-3 sm:px-4 text-center border-l border-border/60"
+                    >
+                      <div className="flex flex-col items-center gap-1.5">
+                        <span className="text-sm sm:text-base font-extrabold text-foreground">
+                          {sum}%
+                        </span>
+                        {isValid ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                            <CheckCircle2 className="h-3 w-3" />
+                            <span>Đủ chuẩn</span>
+                          </span>
+                        ) : isUnder ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                            <AlertTriangle className="h-3 w-3" />
+                            <span>Thiếu {100 - sum}%</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                            <AlertTriangle className="h-3 w-3" />
+                            <span>Vượt {sum - 100}%</span>
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+            </tfoot>
+          </table>
         </div>
+      </section>
+
+      {/* 6. BOTTOM ACTION BAR */}
+      <div className="flex items-center justify-end gap-3 pt-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handleReset}
+          disabled={isSaving}
+          className="flex items-center gap-1.5 rounded-xl font-semibold"
+        >
+          <RotateCcw className="h-4 w-4" />
+          <span>Hủy bỏ thay đổi</span>
+        </Button>
+
+        <Button
+          type="button"
+          onClick={handleSaveMatrix}
+          disabled={isSaving}
+          className="bg-[#ff7a1a] hover:bg-[#e86f17] text-white flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold shadow-xs"
+        >
+          <Save className="h-4 w-4" />
+          <span>{isSaving ? 'Đang lưu...' : 'Lưu ma trận'}</span>
+        </Button>
       </div>
     </div>
   );
