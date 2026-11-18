@@ -60,11 +60,56 @@ public sealed class ReadChapterQueryHandler(
         foreach (PublishedBlockRef block in chapter.Blocks.OrderBy(b => b.Position))
         {
             bool completed = completedBlockIds.Contains(block.BlockId);
+            object? flashcardsObj = null;
+            if (!string.IsNullOrWhiteSpace(block.Flashcards))
+            {
+                try
+                {
+                    flashcardsObj = System.Text.Json.JsonSerializer.Deserialize<object>(block.Flashcards);
+                }
+                catch
+                {
+                    // Ignore malformed flashcards JSON
+                }
+            }
+
+            object? questionObj = null;
+            if (block.BlockType == "QUESTION")
+            {
+                Result<PracticeQuestionDto> qResult = contentContract.GetQuestionForPractice(block.BlockId);
+                if (qResult.IsSuccess)
+                {
+                    questionObj = qResult.Value;
+                }
+            }
+
+            object? quizObj = null;
+            if (block.BlockType == "QUIZ")
+            {
+                Result<QuizDefinitionDto> qzResult = contentContract.GetPublishedQuizDefinition(block.BlockId);
+                if (qzResult.IsSuccess)
+                {
+                    quizObj = qzResult.Value;
+                }
+            }
+
+            string? resourceUrl = null;
+            if (block.ResourceId.HasValue)
+            {
+                resourceUrl = $"/api/v1/courses/{request.CourseId}/resources/{block.ResourceId.Value}/download-url";
+            }
+
             blocks.Add(new LearnBlockDto(
                 Id: block.BlockId,
                 BlockType: block.BlockType,
                 Position: block.Position,
-                Completed: completed));
+                Completed: completed,
+                Title: block.Title,
+                Body: block.Body,
+                ResourceUrl: resourceUrl,
+                Flashcards: flashcardsObj,
+                Question: questionObj,
+                QuizSummary: quizObj));
         }
 
         return Result.Success(new LearnChapterDto(

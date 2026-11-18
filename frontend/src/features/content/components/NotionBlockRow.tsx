@@ -27,7 +27,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSeparator,
 } from '@/shared/ui';
-import type { BlockDto, BlockType } from '../api/contentApi';
+import { normalizeBlockType, type BlockDto, type BlockType } from '../api/contentApi';
 import { richJsonToHtml, htmlToRichJson, isRichDocEmpty } from '../lib/richTextDocument';
 import { isCaretAtTop, isCaretAtBottom, setCaretToStart, setCaretToEnd } from '../lib/editorSelection';
 import { MarkdownEditor } from './MarkdownEditor';
@@ -97,9 +97,12 @@ export function NotionBlockRow({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isDraggingRef = useRef(false);
 
+  const normalizedType = normalizeBlockType(block.blockType);
+  const isRichText = normalizedType === 'RICH_TEXT';
+
   // Sync content with server/state value for RICH_TEXT
   useEffect(() => {
-    if (block.blockType === 'RICH_TEXT' && editableRef.current && !isInternalChangeRef.current) {
+    if (isRichText && editableRef.current && !isInternalChangeRef.current) {
       const currentHtml = editableRef.current.innerHTML;
       const targetHtml = richJsonToHtml(block.body);
       if (currentHtml !== targetHtml) {
@@ -107,11 +110,11 @@ export function NotionBlockRow({
       }
     }
     isInternalChangeRef.current = false;
-  }, [block.body, block.blockType]);
+  }, [block.body, isRichText]);
 
   // Handle focus & caret placement
   useEffect(() => {
-    if (isFocused && block.blockType === 'RICH_TEXT' && editableRef.current) {
+    if (isFocused && isRichText && editableRef.current) {
       if (focusDirection === 'FROM_BOTTOM') {
         setCaretToEnd(editableRef.current);
       } else if (focusDirection === 'FROM_TOP') {
@@ -120,7 +123,7 @@ export function NotionBlockRow({
         editableRef.current.focus();
       }
     }
-  }, [isFocused, focusDirection, block.blockType]);
+  }, [isFocused, focusDirection, isRichText]);
 
   const handleInput = () => {
     if (editableRef.current) {
@@ -209,8 +212,9 @@ export function NotionBlockRow({
   };
 
   // Meta helper
-  const getBlockMeta = (type: BlockType) => {
-    switch (type) {
+  const getBlockMeta = (type: BlockType | string | undefined) => {
+    const clean = normalizeBlockType(type);
+    switch (clean) {
       case 'RICH_TEXT':
         return { label: 'Văn bản (Rich Text)', icon: AlignLeft, color: 'text-blue-500' };
       case 'MARKDOWN':
@@ -231,10 +235,12 @@ export function NotionBlockRow({
         return { label: 'Bài tập nộp tệp', icon: FileUp, color: 'text-orange-500' };
       case 'QUIZ':
         return { label: 'Bài kiểm tra (Quiz)', icon: ListChecks, color: 'text-pink-500' };
+      default:
+        return { label: 'Văn bản (Rich Text)', icon: AlignLeft, color: 'text-blue-500' };
     }
   };
 
-  const meta = getBlockMeta(block.blockType);
+  const meta = getBlockMeta(normalizedType);
 
   return (
     <div
@@ -427,7 +433,7 @@ export function NotionBlockRow({
 
       {/* 2. BLOCK CONTENT CANVAS */}
       <div className="flex-1 min-w-0 px-2">
-        {block.blockType === 'RICH_TEXT' ? (
+        {isRichText ? (
           <div className="relative">
             <div
               ref={editableRef}
@@ -477,19 +483,19 @@ export function NotionBlockRow({
             </div>
 
             {/* Specialized block body */}
-            {block.blockType === 'MARKDOWN' && (
+            {normalizedType === 'MARKDOWN' && (
               <MarkdownEditor
                 value={block.body || ''}
                 onChange={(body) => onUpdate({ ...block, body })}
               />
             )}
 
-            {(block.blockType === 'IMAGE' ||
-              block.blockType === 'VIDEO' ||
-              block.blockType === 'AUDIO') && (
+            {(normalizedType === 'IMAGE' ||
+              normalizedType === 'VIDEO' ||
+              normalizedType === 'AUDIO') && (
               <MediaBlockEditor
                 courseId={courseId}
-                blockType={block.blockType}
+                blockType={normalizedType}
                 title={block.title}
                 resourceId={block.resourceId}
                 onUpdate={(updates) => onUpdate({ ...block, ...updates })}
@@ -497,7 +503,7 @@ export function NotionBlockRow({
               />
             )}
 
-            {block.blockType === 'FILE' && (
+            {normalizedType === 'FILE' && (
               <FileBlockEditor
                 courseId={courseId}
                 title={block.title}
@@ -507,7 +513,7 @@ export function NotionBlockRow({
               />
             )}
 
-            {block.blockType === 'FLASHCARD' && (
+            {normalizedType === 'FLASHCARD' && (
               <FlashcardBlockEditor
                 flashcards={block.flashcards || []}
                 aiReviewStatus={block.aiReviewStatus}
@@ -515,7 +521,7 @@ export function NotionBlockRow({
               />
             )}
 
-            {block.blockType === 'QUESTION' && (
+            {normalizedType === 'QUESTION' && (
               <QuestionBlockEditor
                 title={block.title}
                 questionId={block.questionId}
@@ -523,7 +529,7 @@ export function NotionBlockRow({
               />
             )}
 
-            {block.blockType === 'ASSIGNMENT' && (
+            {normalizedType === 'ASSIGNMENT' && (
               <AssignmentBlockEditor
                 title={block.title}
                 body={block.body}
@@ -532,7 +538,7 @@ export function NotionBlockRow({
               />
             )}
 
-            {block.blockType === 'QUIZ' && (
+            {normalizedType === 'QUIZ' && (
               <QuizBlockEditor
                 title={block.title}
                 quizConfig={block.quizConfig}

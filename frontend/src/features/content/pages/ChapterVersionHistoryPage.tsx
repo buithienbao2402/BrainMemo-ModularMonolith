@@ -29,6 +29,7 @@ import {
   useChapterVersionsQuery,
   useRestoreChapterVersionMutation,
   useChapterDraftQuery,
+  normalizeBlockType,
   type ChapterVersionDto,
   type BlockDto,
 } from '../api/contentApi';
@@ -240,27 +241,29 @@ export function ChapterVersionHistoryPage() {
                   Phiên bản này không có khối nội dung nào.
                 </div>
               ) : (
-                previewBlocks.map((block: BlockDto, idx: number) => (
+                previewBlocks.map((block: BlockDto, idx: number) => {
+                  const type = normalizeBlockType(block.blockType);
+                  return (
                   <div key={block.id || idx} className="py-1">
-                    {block.blockType === 'RICH_TEXT' ? (
+                    {type === 'RICH_TEXT' ? (
                       <RichTextDocumentRenderer doc={block.body} />
-                    ) : block.blockType === 'MARKDOWN' ? (
+                    ) : type === 'MARKDOWN' ? (
                       <div className="p-4 rounded-xl bg-card border border-border/70 text-sm font-mono whitespace-pre-wrap text-foreground">
                         {block.body}
                       </div>
                     ) : (
                       <div className="p-4 rounded-xl bg-card border border-border/70 flex items-center gap-3">
-                        {block.blockType === 'IMAGE' && <ImageIcon className="h-5 w-5 text-emerald-500" />}
-                        {block.blockType === 'VIDEO' && <Video className="h-5 w-5 text-rose-500" />}
-                        {block.blockType === 'AUDIO' && <Music className="h-5 w-5 text-amber-500" />}
-                        {block.blockType === 'FILE' && <Paperclip className="h-5 w-5 text-cyan-500" />}
-                        {block.blockType === 'FLASHCARD' && <Sparkles className="h-5 w-5 text-[#ff7a1a]" />}
-                        {block.blockType === 'QUESTION' && <HelpCircle className="h-5 w-5 text-purple-500" />}
-                        {block.blockType === 'ASSIGNMENT' && <FileUp className="h-5 w-5 text-orange-500" />}
-                        {block.blockType === 'QUIZ' && <ListChecks className="h-5 w-5 text-pink-500" />}
+                        {type === 'IMAGE' && <ImageIcon className="h-5 w-5 text-emerald-500" />}
+                        {type === 'VIDEO' && <Video className="h-5 w-5 text-rose-500" />}
+                        {type === 'AUDIO' && <Music className="h-5 w-5 text-amber-500" />}
+                        {type === 'FILE' && <Paperclip className="h-5 w-5 text-cyan-500" />}
+                        {type === 'FLASHCARD' && <Sparkles className="h-5 w-5 text-[#ff7a1a]" />}
+                        {type === 'QUESTION' && <HelpCircle className="h-5 w-5 text-purple-500" />}
+                        {type === 'ASSIGNMENT' && <FileUp className="h-5 w-5 text-orange-500" />}
+                        {type === 'QUIZ' && <ListChecks className="h-5 w-5 text-pink-500" />}
                         <div>
                           <div className="text-xs font-semibold text-foreground">
-                            {block.title || `Khối ${block.blockType}`}
+                            {block.title || `Khối ${type}`}
                           </div>
                           <div className="text-[11px] text-muted-foreground">
                             Nội dung khối bài học chuyên biệt
@@ -269,7 +272,8 @@ export function ChapterVersionHistoryPage() {
                       </div>
                     )}
                   </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>

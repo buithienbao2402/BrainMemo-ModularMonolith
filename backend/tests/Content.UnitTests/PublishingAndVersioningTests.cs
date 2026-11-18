@@ -586,7 +586,7 @@ public sealed class PublishingAndVersioningTests
 
         Assert.True(result.IsSuccess);
         Assert.Equal(pb.BlockId, result.Value.BlockId);
-        Assert.Equal("RICHTEXT", result.Value.BlockType);
+        Assert.Equal("RICH_TEXT", result.Value.BlockType);
     }
 
     [Fact]

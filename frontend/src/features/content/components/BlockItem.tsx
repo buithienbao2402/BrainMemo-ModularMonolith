@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import type { BlockDto, BlockType } from '../api/contentApi';
+import { normalizeBlockType } from '../api/contentApi';
 import { RichTextEditor } from './RichTextEditor';
 import { MarkdownEditor } from './MarkdownEditor';
 import { MediaBlockEditor } from './MediaBlockEditor';
@@ -52,8 +53,11 @@ export function BlockItem({
 }: BlockItemProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  const getBlockMeta = (type: BlockType) => {
-    switch (type) {
+  const normalizedType = normalizeBlockType(block.blockType);
+
+  const getBlockMeta = (type: BlockType | string | undefined) => {
+    const clean = normalizeBlockType(type);
+    switch (clean) {
       case 'RICH_TEXT':
         return { label: 'Văn bản (Rich Text)', icon: AlignLeft, color: 'text-blue-500' };
       case 'MARKDOWN':
@@ -74,10 +78,12 @@ export function BlockItem({
         return { label: 'Bài tập nộp tệp', icon: FileUp, color: 'text-orange-500' };
       case 'QUIZ':
         return { label: 'Bài kiểm tra (Quiz)', icon: ListChecks, color: 'text-pink-500' };
+      default:
+        return { label: 'Văn bản (Rich Text)', icon: AlignLeft, color: 'text-blue-500' };
     }
   };
 
-  const meta = getBlockMeta(block.blockType);
+  const meta = getBlockMeta(normalizedType);
   const Icon = meta.icon;
 
   return (
@@ -157,26 +163,26 @@ export function BlockItem({
       {/* Block Body Content */}
       {!isCollapsed && (
         <div className="p-4">
-          {block.blockType === 'RICH_TEXT' && (
+          {normalizedType === 'RICH_TEXT' && (
             <RichTextEditor
               value={block.body || ''}
               onChange={(body) => onUpdate({ ...block, body })}
             />
           )}
 
-          {block.blockType === 'MARKDOWN' && (
+          {normalizedType === 'MARKDOWN' && (
             <MarkdownEditor
               value={block.body || ''}
               onChange={(body) => onUpdate({ ...block, body })}
             />
           )}
 
-          {(block.blockType === 'IMAGE' ||
-            block.blockType === 'VIDEO' ||
-            block.blockType === 'AUDIO') && (
+          {(normalizedType === 'IMAGE' ||
+            normalizedType === 'VIDEO' ||
+            normalizedType === 'AUDIO') && (
             <MediaBlockEditor
               courseId={courseId}
-              blockType={block.blockType}
+              blockType={normalizedType}
               title={block.title}
               resourceId={block.resourceId}
               onUpdate={(updates) => onUpdate({ ...block, ...updates })}
@@ -184,7 +190,7 @@ export function BlockItem({
             />
           )}
 
-          {block.blockType === 'FILE' && (
+          {normalizedType === 'FILE' && (
             <FileBlockEditor
               courseId={courseId}
               title={block.title}
@@ -194,7 +200,7 @@ export function BlockItem({
             />
           )}
 
-          {block.blockType === 'FLASHCARD' && (
+          {normalizedType === 'FLASHCARD' && (
             <FlashcardBlockEditor
               flashcards={block.flashcards || []}
               aiReviewStatus={block.aiReviewStatus}
@@ -202,7 +208,7 @@ export function BlockItem({
             />
           )}
 
-          {block.blockType === 'QUESTION' && (
+          {normalizedType === 'QUESTION' && (
             <QuestionBlockEditor
               title={block.title}
               questionId={block.questionId}
@@ -210,7 +216,7 @@ export function BlockItem({
             />
           )}
 
-          {block.blockType === 'ASSIGNMENT' && (
+          {normalizedType === 'ASSIGNMENT' && (
             <AssignmentBlockEditor
               title={block.title}
               body={block.body}
@@ -219,7 +225,7 @@ export function BlockItem({
             />
           )}
 
-          {block.blockType === 'QUIZ' && (
+          {normalizedType === 'QUIZ' && (
             <QuizBlockEditor
               title={block.title}
               quizConfig={block.quizConfig}

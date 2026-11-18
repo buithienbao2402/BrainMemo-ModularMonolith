@@ -1,5 +1,6 @@
 using BrainMemo.Learning.Domain.Entities;
 using BrainMemo.Learning.Domain.Enums;
+using BrainMemo.Learning.Infrastructure.Persistence.Converters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -32,7 +33,7 @@ public sealed class BlockCompletionConfiguration : IEntityTypeConfiguration<Bloc
 
         builder.Property(c => c.BlockType)
             .HasColumnName("block_type")
-            .HasConversion<string>()
+            .HasConversion<LearningBlockTypeValueConverter>()
             .HasMaxLength(20)
             .IsRequired();
 

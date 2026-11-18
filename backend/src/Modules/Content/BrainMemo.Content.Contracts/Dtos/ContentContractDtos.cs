@@ -29,7 +29,10 @@ public sealed record PublishedBlockRef(
     int Position,
     Guid? ResourceId,
     Guid? QuestionId,
-    int VersionNo);
+    int VersionNo,
+    string? Title = null,
+    string? Body = null,
+    string? Flashcards = null);
 
 public sealed record AssessableBlockDto(
     Guid BlockId,

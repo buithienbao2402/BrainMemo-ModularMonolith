@@ -1,3 +1,4 @@
+using BrainMemo.Course.Infrastructure.Persistence.Converters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using CourseEntity = BrainMemo.Course.Domain.Entities.Course;
@@ -34,7 +35,7 @@ public sealed class CourseConfiguration : IEntityTypeConfiguration<CourseEntity>
 
         builder.Property(c => c.AccessMode)
             .HasColumnName("access_mode")
-            .HasConversion<string>()
+            .HasConversion<CourseAccessModeValueConverter>()
             .HasMaxLength(20)
             .IsRequired();
 
@@ -46,7 +47,7 @@ public sealed class CourseConfiguration : IEntityTypeConfiguration<CourseEntity>
 
         builder.Property(c => c.PublishStatus)
             .HasColumnName("publish_status")
-            .HasConversion<string>()
+            .HasConversion<CoursePublishStatusValueConverter>()
             .HasMaxLength(30)
             .IsRequired();
 

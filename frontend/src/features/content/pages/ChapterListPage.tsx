@@ -457,16 +457,27 @@ export function ChapterListPage() {
                       {/* Cột 5: THAO TÁC (Bỏ nút di chuyển lên/xuống) */}
                       <td className="py-4 px-4 text-right align-middle">
                         <div className="flex items-center justify-end gap-1">
-                          {/* 1. Nút xem trước */}
-                          <button
-                            type="button"
-                            title="Xem trước nội dung"
-                            aria-label={`Xem trước chương ${ch.title}`}
-                            onClick={() => setPreviewChapterId(ch.id!)}
-                            className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                          </button>
+                          {/* 1. Nút xem trước - nếu đã PUBLISHED chuyển đến trang học viên, nếu DRAFT mở modal xem trước bản nháp */}
+                          {ch.status === 'PUBLISHED' ? (
+                            <Link
+                              to={`/courses/${courseId}/learn/${ch.id}`}
+                              title="Xem trước trên giao diện học viên"
+                              aria-label={`Xem trước chương ${ch.title}`}
+                              className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </Link>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setPreviewChapterId(ch.id)}
+                              title="Xem trước bản nháp"
+                              aria-label={`Xem trước bản nháp ${ch.title}`}
+                              className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </button>
+                          )}
 
                           {/* 2. Nút chỉnh sửa */}
                           <Link

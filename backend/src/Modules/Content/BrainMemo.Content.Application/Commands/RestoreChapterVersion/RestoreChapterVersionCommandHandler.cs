@@ -122,7 +122,11 @@ public sealed class RestoreChapterVersionCommandHandler(
         {
             string normalizedType = sb.BlockType.Replace("_", string.Empty);
             Enum.TryParse<BlockType>(normalizedType, true, out var blockType);
-            Enum.TryParse<AiReviewStatus>(sb.AiReviewStatus ?? "NotApplicable", true, out var aiReviewStatus);
+            string normalizedAiStatus = (sb.AiReviewStatus ?? "NotApplicable").Replace("_", string.Empty);
+            if (!Enum.TryParse<AiReviewStatus>(normalizedAiStatus, true, out var aiReviewStatus) || aiReviewStatus == 0)
+            {
+                aiReviewStatus = AiReviewStatus.NotApplicable;
+            }
             string? flashcardsJson = sb.Flashcards is not null ? JsonSerializer.Serialize(sb.Flashcards, JsonOptions) : null;
 
             var block = new Block(

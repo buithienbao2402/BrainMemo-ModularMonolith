@@ -469,6 +469,148 @@ export const initialMockChapters: Record<string, MockChapterItem[]> = {
         },
       ],
     },
+    {
+      id: 'chapter-4444-closure',
+      position: 4,
+      title: 'Chương 4: Hàm, Phạm vi biến (Scope) và Kỹ thuật Closure',
+      description: 'Khái niệm Hàm, triết lý DRY, quy tắc tìm kiếm biến LEGB và Closure trong Python.',
+      status: 'PUBLISHED',
+      accessMode: 'PUBLIC',
+      hasUnpublishedChanges: false,
+      lastVersionNo: 1,
+      publishedVersionNo: 1,
+      blocks: [
+        {
+          id: 'blk-py-1',
+          blockType: 'RICH_TEXT',
+          position: 1,
+          title: 'Khái niệm Hàm và Triết lý DRY',
+          body: `<p>Trong quá trình phát triển phần mềm hiện đại, hàm (function) đóng vai trò là khối xây dựng cơ sở (building block) quan trọng nhất. Một hàm chuẩn mực không chỉ giải quyết một tác vụ đơn lẻ (<strong>Single Responsibility Principle</strong>) mà còn hiện thực hóa triệt để nguyên lý <strong>DRY (Don't Repeat Yourself)</strong>.</p>
+<p>Việc cô lập logic phức tạp vào các hàm con đem lại ba lợi điểm then chốt: tăng khả năng tái sử dụng, giảm thiểu phân mảnh logic khi mở rộng hệ thống, và thiết lập ranh giới dữ liệu rõ ràng thông qua không gian tên cục bộ.</p>
+<p class="font-semibold text-foreground pt-2">Khi thiết kế hàm trong kiến trúc Pythonic, cần nghiêm túc tuân thủ các quy chuẩn sau:</p>
+<ul class="list-disc pl-5 space-y-1.5 text-foreground/90">
+  <li><strong>Pure Function (Hàm thuần khiết):</strong> Đầu ra chỉ phụ thuộc vào đối số đầu vào, không tạo ra side-effect ngoài bộ nhớ.</li>
+  <li><strong>Tính đóng gói:</strong> Sử dụng cục bộ các biến đếm, không đọc hoặc ghi đè tùy tiện lên global namespace.</li>
+</ul>
+<div class="relative border-l-4 border-amber-500 bg-amber-500/10 rounded-r-xl p-4 my-4 space-y-1">
+  <span class="text-[11px] font-bold uppercase tracking-wider text-amber-500">First-class citizen: 1</span>
+  <p class="text-sm font-medium italic text-foreground/90 leading-relaxed">&ldquo;Sự phức tạp là kẻ thù lớn nhất của phần mềm. Bằng các giới hạn phạm vi tác động của biến trong từng giới hạn, tạo giảm thiểu được rủi ro liên quan đến state.&rdquo;</p>
+</div>
+<p class="pt-2 font-semibold">Ví dụ về hàm đệ quy có ghi nhớ trạng thái (Memoization) bằng Closure:</p>
+<pre class="bg-[#12131a] text-slate-100 p-4 rounded-xl font-mono text-xs overflow-x-auto my-3"><code>def make_fibonacci_memo():
+    # Enclosing scope (Internal storage)
+    memo = {0: 0, 1: 1}
+
+    def fib(n: int) -> int:
+        if n not in memo:
+            memo[n] = fib(n - 1) + fib(n - 2)
+        return memo[n]
+
+    return fib
+
+fib_calc = make_fibonacci_memo()
+print(fib_calc(10))  # Tính toán cực tốc độ O(n)</code></pre>`,
+        },
+        {
+          id: 'blk-py-2',
+          blockType: 'IMAGE',
+          position: 2,
+          title: 'Thứ bậc tìm kiếm biến (LEGB Rule)',
+          body: 'Hình 4.1: Sơ đồ nội suy Call Stack và mô hình LEGB trong Python Runtime',
+          resourceUrl: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1200&q=80',
+        },
+        {
+          id: 'blk-py-3',
+          blockType: 'VIDEO',
+          position: 3,
+          title: 'Video minh họa: Vùng dời biến và Garbage Collection',
+          body: 'Theo dõi diễn giải trực quan cách CPython cấp phát và thu hồi con trỏ biến khi một hàm hoàn tất execution frame:',
+          resourceUrl: '',
+        },
+        {
+          id: 'blk-py-4',
+          blockType: 'AUDIO',
+          position: 4,
+          title: 'Tóm tắt nhanh (Audio Recap)',
+          body: 'Audio Recap: Khi nào nên sử dụng Closure thay vì Class?',
+          resourceUrl: '',
+        },
+        {
+          id: 'blk-py-5',
+          blockType: 'FILE',
+          position: 5,
+          title: 'bai-tap-mau-closure.zip',
+          body: '2.4 MB • Tài liệu và mã nguồn thực hành',
+          resourceUrl: '/files/bai-tap-mau-closure.zip',
+        },
+        {
+          id: 'blk-py-6',
+          blockType: 'RICH_TEXT',
+          position: 6,
+          title: 'So sánh đối số biến thiên: *args và **kwargs',
+          body: `<p>Khi hàm cần tiếp nhận số lượng đối số động chưa xác định trước:</p>
+<div class="overflow-x-auto rounded-xl border border-border/80 my-3">
+  <table class="w-full text-left text-xs sm:text-sm border-collapse">
+    <thead>
+      <tr class="border-b border-border bg-muted/40 font-semibold">
+        <th class="p-3">Tiêu chí</th>
+        <th class="p-3 font-mono text-primary">*args</th>
+        <th class="p-3 font-mono text-primary">**kwargs</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-border/60">
+      <tr>
+        <td class="p-3 font-medium">Kiểu dữ liệu nội tại</td>
+        <td class="p-3 font-mono">tuple</td>
+        <td class="p-3 font-mono">dict</td>
+      </tr>
+      <tr>
+        <td class="p-3 font-medium">Hình thức truyền tham số</td>
+        <td class="p-3">Theo thứ tự vị trí (Positional)</td>
+        <td class="p-3">Theo tên từ khóa (Keyword/Named)</td>
+      </tr>
+      <tr>
+        <td class="p-3 font-medium">Trường hợp ứng dụng chính</td>
+        <td class="p-3">Gom tổng danh sách, decorator logging</td>
+        <td class="p-3">Cấu hình tham số tùy chọn (Options/Config)</td>
+      </tr>
+    </tbody>
+  </table>
+</div>`,
+        },
+        {
+          id: 'blk-py-7',
+          blockType: 'FLASHCARD',
+          position: 7,
+          title: 'Thẻ ghi nhớ kiến thức Closure',
+          flashcards: [
+            {
+              id: 'fc-py-1',
+              frontText: 'Closure trong Python được tạo ra khi nào?',
+              backText: 'Khi một hàm lồng nhau (nested function) tham chiếu và ghi nhớ các biến trong phạm vi bao đóng (enclosing scope) của hàm cha ngay cả sau khi hàm cha đã hoàn tất thực thi.',
+            },
+          ],
+        },
+        {
+          id: 'blk-py-8',
+          blockType: 'QUESTION',
+          position: 8,
+          title: 'Câu hỏi thực hành LEGB Rule',
+          question: {
+            questionType: 'SINGLE_CHOICE',
+            stem: 'Quy tắc tìm kiếm biến LEGB viết tắt của những từ nào?',
+            options: [
+              { id: 'opt-legb-1', content: 'Line, Element, Global, Binary' },
+              { id: 'opt-legb-2', content: 'Local, Enclosing, Global, Built-in' },
+              { id: 'opt-legb-3', content: 'Logic, Execution, Garbage, Base' },
+            ],
+            matchingPairs: [],
+          },
+          correctOptionId: 'opt-legb-2',
+          explanation: 'Chính xác! Thứ tự tìm kiếm biến trong Python là: Local (cục bộ) -> Enclosing (bao đóng) -> Global (toàn cục) -> Built-in (tích hợp sẵn).',
+        },
+      ],
+    },
   ],
   'course-intro-1': [
     {
@@ -881,7 +1023,10 @@ export interface MockCommentItem {
   chapterId: string | null;
   parentCommentId?: string | null;
   author: { id: string; displayName: string; avatarUrl?: string };
+  title?: string | null;
   content: string;
+  isResolved?: boolean;
+  isInstructorReply?: boolean;
   isPinned: boolean;
   isDeleted?: boolean;
   editedAt: string | null;
@@ -2252,10 +2397,37 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 });
   }),
 
-  http.get('*/api/v1/courses/:courseId/comments', ({ params }) => {
+  http.get('*/api/v1/courses/:courseId/comments', ({ request, params }) => {
     const courseId = String(params.courseId);
     const all = getStoredComments();
-    const items = all[courseId] || all['my-course-1'] || [];
+    let items = [...(all[courseId] || all['my-course-1'] || [])];
+
+    const url = new URL(request.url);
+    const chapterId = url.searchParams.get('chapterId');
+    const isResolvedParam = url.searchParams.get('isResolved');
+    const mineParam = url.searchParams.get('mine');
+    const searchParam = url.searchParams.get('search');
+
+    if (chapterId) {
+      items = items.filter((c) => c.chapterId === chapterId || c.chapterId === null);
+    }
+    if (isResolvedParam !== null && isResolvedParam !== undefined) {
+      const isResolved = isResolvedParam === 'true';
+      items = items.filter((c) => Boolean(c.isResolved) === isResolved);
+    }
+    if (mineParam === 'true') {
+      items = items.filter((c) => c.author?.id === 'user-1' || c.author?.id === 'my-user-id');
+    }
+    if (searchParam) {
+      const q = searchParam.toLowerCase();
+      items = items.filter(
+        (c) =>
+          c.content?.toLowerCase().includes(q) ||
+          c.title?.toLowerCase().includes(q) ||
+          c.author?.displayName?.toLowerCase().includes(q)
+      );
+    }
+
     return HttpResponse.json(
       {
         items,
@@ -3024,12 +3196,12 @@ export const handlers = [
 
     const list = mockChapters[courseId] || mockChapters['my-course-1'] || [];
     const chapter = list.find((c) => c.id === chapterId);
-    if (!chapter) {
+    if (!chapter || chapter.status !== 'PUBLISHED') {
       return problemResponse(404, {
         title: 'Chương không tồn tại',
         status: 404,
         code: 'CHAPTER_NOT_FOUND',
-        detail: 'Không tìm thấy nội dung bài học cho chương này.',
+        detail: 'Không tìm thấy nội dung bài học đã đăng tải cho chương này.',
       });
     }
 

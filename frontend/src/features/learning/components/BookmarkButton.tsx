@@ -57,14 +57,14 @@ export function BookmarkButton({
       disabled={isPending}
       className={`h-8 px-2.5 rounded-lg text-xs flex items-center gap-1.5 transition-colors ${
         isBookmarked
-          ? 'bg-primary/10 border-primary/40 text-primary font-semibold'
-          : 'text-muted-foreground hover:text-foreground'
+          ? 'bg-amber-500/15 border-amber-500/50 text-amber-600 dark:text-amber-400 font-semibold'
+          : 'text-muted-foreground hover:text-foreground border-border/80'
       }`}
-      title={isBookmarked ? 'Đã lưu bài học' : 'Lưu bài học để đọc lại'}
-      aria-label={isBookmarked ? 'Đã lưu' : 'Lưu bài'}
+      title={isBookmarked ? 'Đã đánh dấu bài học' : 'Đánh dấu bài học để đọc lại'}
+      aria-label={isBookmarked ? 'Đã đánh dấu' : 'Đánh dấu'}
     >
-      <Bookmark className={`h-3.5 w-3.5 ${isBookmarked ? 'fill-current text-primary' : ''}`} />
-      <span>{isBookmarked ? 'Đã lưu' : 'Lưu bài'}</span>
+      <Bookmark className={`h-3.5 w-3.5 ${isBookmarked ? 'fill-current text-amber-500 dark:text-amber-400' : ''}`} />
+      <span>{isBookmarked ? 'Đã đánh dấu' : 'Đánh dấu'}</span>
     </Button>
   );
 }

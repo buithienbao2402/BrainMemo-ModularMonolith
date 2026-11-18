@@ -83,6 +83,14 @@ export const appRoutes: RouteObject[] = [
         element: <LockedAccountPage />,
       },
       {
+        path: '/courses/:courseId/learn',
+        element: <LearningPlayerPage />,
+      },
+      {
+        path: '/courses/:courseId/learn/:chapterId',
+        element: <LearningPlayerPage />,
+      },
+      {
         element: <PublicLayout />,
         children: [
           { path: '/', element: <DiscoveryHomePage /> },
@@ -94,14 +102,6 @@ export const appRoutes: RouteObject[] = [
           {
             path: '/courses/:courseId',
             element: <CourseDetailPage />,
-          },
-          {
-            path: '/courses/:courseId/learn',
-            element: <LearningPlayerPage />,
-          },
-          {
-            path: '/courses/:courseId/learn/:chapterId',
-            element: <LearningPlayerPage />,
           },
           {
             path: '/courses/:courseId/quiz-attempts/:attemptId',
