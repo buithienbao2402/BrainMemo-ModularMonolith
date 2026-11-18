@@ -3,12 +3,10 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Home,
   ChevronRight,
-  LayoutDashboard,
   BookOpen,
   Users,
   CheckSquare,
   GraduationCap,
-  BarChart3,
   ExternalLink,
   MoreVertical,
   Edit3,
@@ -38,6 +36,7 @@ import {
   type EnrollmentRequestItem,
 } from '../api/courseApi';
 import { CoursePublishStatusBanner } from '../components/CoursePublishStatusBanner';
+import { CourseManageSubNav } from '../components/CourseManageSubNav';
 import defaultCourseCover from '@/assets/courses';
 
 export function CourseOverviewPage() {
@@ -154,94 +153,8 @@ export function CourseOverviewPage() {
         </span>
       </nav>
 
-      {/* 2. SUB-NAVIGATION TABS (Matching Figma Frame 28:7070) */}
-      <div className="border-b border-border/70 pb-3 overflow-x-auto">
-        <div className="flex items-center gap-2 min-w-max">
-          {/* Active Tab: Tổng quan */}
-          <div className="bg-[#ff7a1a] text-[#5e2700] flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-xs sm:text-sm shadow-xs select-none">
-            <LayoutDashboard className="h-4 w-4" />
-            <span>Tổng quan</span>
-          </div>
-
-          {/* Link Tab: Danh sách chương */}
-          <Link
-            to={`/courses/${courseId}/manage/content`}
-            className="flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-xs sm:text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-          >
-            <BookOpen className="h-4 w-4" />
-            <span>Danh sách chương</span>
-          </Link>
-
-          {/* Link Tab: Danh sách học viên */}
-          <Link
-            to={`/courses/${courseId}/manage/students`}
-            className="flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-xs sm:text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-          >
-            <Users className="h-4 w-4" />
-            <span>Danh sách học viên</span>
-          </Link>
-
-          {/* Link Tab: Chế độ truy cập */}
-          <Link
-            to={`/courses/${courseId}/manage/access`}
-            className="flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-xs sm:text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-          >
-            <ShieldCheck className="h-4 w-4" />
-            <span>Chế độ truy cập</span>
-          </Link>
-
-          {/* Link Tab: Chấm điểm (badge 12) */}
-          <button
-            type="button"
-            onClick={() =>
-              pushToast({
-                title: 'Hệ thống chấm điểm',
-                description: 'Hàng đợi chấm thi & bảng điểm thuộc phạm vi Slice 8 (S8).',
-                tone: 'default',
-              })
-            }
-            className="flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-xs sm:text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-          >
-            <CheckSquare className="h-4 w-4" />
-            <span>Chấm điểm</span>
-            <span className="bg-[#93000a] text-[#ffdad6] text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-              12
-            </span>
-          </button>
-
-          {/* Link Tab: Chuẩn đầu ra */}
-          <button
-            type="button"
-            onClick={() =>
-              pushToast({
-                title: 'Chuẩn đầu ra (CLO/PLO)',
-                description: 'Hệ thống quản lý chuẩn đầu ra thuộc phạm vi Slice 9 (S9).',
-                tone: 'default',
-              })
-            }
-            className="flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-xs sm:text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-          >
-            <GraduationCap className="h-4 w-4" />
-            <span>Chuẩn đầu ra</span>
-          </button>
-
-          {/* Link Tab: Thống kê */}
-          <button
-            type="button"
-            onClick={() =>
-              pushToast({
-                title: 'Báo cáo thống kê',
-                description: 'Hệ thống phân tích & xuất báo cáo chi tiết thuộc phạm vi Slice 9 (S9).',
-                tone: 'default',
-              })
-            }
-            className="flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-xs sm:text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-          >
-            <BarChart3 className="h-4 w-4" />
-            <span>Thống kê</span>
-          </button>
-        </div>
-      </div>
+      {/* 2. SUB-NAVIGATION TABS */}
+      <CourseManageSubNav courseId={courseId} activeTab="overview" />
 
       {/* Publishing Status & Review Controls (DEC-27) */}
       <CoursePublishStatusBanner course={course} onUpdated={() => refetch()} />
@@ -890,12 +803,6 @@ export function CourseOverviewPage() {
             <h2 className="text-base sm:text-lg font-bold uppercase tracking-wider text-foreground">
               BÁO CÁO CỦA KHÓA HỌC
             </h2>
-            <Link
-              to={`/courses/${courseId}/manage/reports`}
-              className="text-xs text-primary font-semibold hover:underline ml-2"
-            >
-              Xem trang quản lý báo cáo &rarr;
-            </Link>
           </div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Info className="h-3.5 w-3.5" />
@@ -904,9 +811,9 @@ export function CourseOverviewPage() {
         </div>
 
         {/* Table Container */}
-        <div className="overflow-x-auto rounded-xl border border-border bg-[#1b1b21]">
+        <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-xs">
           <table className="w-full text-left text-xs">
-            <thead className="border-b border-border bg-muted/30 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            <thead className="border-b border-border bg-muted/50 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
               <tr>
                 <th className="py-3 px-4 w-28">ĐỐI TƯỢNG</th>
                 <th className="py-3 px-4 min-w-[280px]">NỘI DUNG TRÍCH ĐOẠN</th>
@@ -917,9 +824,9 @@ export function CourseOverviewPage() {
             </thead>
             <tbody className="divide-y divide-border/60">
               {reports.map((rep) => (
-                <tr key={rep.id} className="hover:bg-muted/10 transition-colors">
+                <tr key={rep.id} className="hover:bg-muted/40 transition-colors">
                   <td className="py-3 px-4">
-                    <span className="rounded bg-muted px-2 py-0.5 font-medium text-primary">
+                    <span className="rounded bg-primary/10 px-2 py-0.5 font-medium text-primary text-[11px]">
                       {rep.targetType}
                     </span>
                   </td>
@@ -930,12 +837,12 @@ export function CourseOverviewPage() {
                   <td className="py-3 px-4 font-mono text-muted-foreground">{rep.reportedDate}</td>
                   <td className="py-3 px-4 text-right">
                     <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
                         rep.status === 'Chờ xử lý'
-                          ? 'bg-amber-500/20 text-amber-400'
+                          ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/20'
                           : rep.status === 'Đã chấp nhận'
-                          ? 'bg-emerald-500/20 text-emerald-400'
-                          : 'bg-muted text-muted-foreground'
+                          ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                          : 'bg-muted text-muted-foreground border-border'
                       }`}
                     >
                       {rep.status}
