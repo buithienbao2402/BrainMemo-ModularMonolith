@@ -1,4 +1,4 @@
-import { ChevronRight, PlayCircle } from 'lucide-react';
+import { PlayCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export interface InProgressCourseItem {
@@ -58,13 +58,6 @@ export function ContinueLearningSection({
             TIẾP TỤC HỌC <span className="sr-only">Đang học dở</span>
           </h2>
         </div>
-        <Link
-          to="/courses"
-          className="flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-brand-orange"
-        >
-          <span>Lần học gần đây</span>
-          <ChevronRight className="h-3.5 w-3.5" />
-        </Link>
       </div>
 
       {/* Horizontal Cards */}

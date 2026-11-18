@@ -5,12 +5,6 @@ import {
   BookOpen,
   ArrowRight,
   Clock,
-  Code2,
-  Binary,
-  Layout,
-  Cpu,
-  Server,
-  Database,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -106,25 +100,6 @@ const FALLBACK_BOOKMARKS: EnrichedBookmark[] = [
   },
 ];
 
-function renderCoverIllustration(tag?: string) {
-  switch (tag) {
-    case 'Lập trình':
-      return <Code2 className="h-10 w-10 text-amber-400/80" />;
-    case 'Khoa học máy tính':
-      return <Binary className="h-10 w-10 text-blue-400/80" />;
-    case 'Web Fullstack':
-      return <Layout className="h-10 w-10 text-cyan-400/80" />;
-    case 'AI & ML':
-      return <Cpu className="h-10 w-10 text-emerald-400/80" />;
-    case 'Kiến trúc':
-      return <Server className="h-10 w-10 text-amber-500/80" />;
-    case 'Dữ liệu':
-      return <Database className="h-10 w-10 text-purple-400/80" />;
-    default:
-      return <BookOpen className="h-10 w-10 text-brand-orange/80" />;
-  }
-}
-
 function formatRelativeTime(dateString: string): string {
   const diffMs = Date.now() - new Date(dateString).getTime();
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
@@ -173,8 +148,8 @@ export function MyBookmarksPage() {
   return (
     <div className="mx-auto max-w-[1280px] space-y-6 px-4 py-8 sm:px-6 text-foreground">
       {/* Top Page Header Box */}
-      <div className="rounded-2xl border border-border/80 bg-[#16161c] px-6 py-5 shadow-sm">
-        <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-white">
+      <div className="rounded-2xl border border-border bg-card px-6 py-5 shadow-xs">
+        <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
           Bookmark của tôi
           <span className="sr-only">Khóa học & Bài học đã lưu (Bookmarks)</span>
         </h1>
@@ -194,7 +169,7 @@ export function MyBookmarksPage() {
           onRetry={() => refetch()}
         />
       ) : bookmarks.length === 0 ? (
-        <div className="rounded-2xl border border-border/70 bg-[#16161c] p-10 sm:p-14 text-center space-y-4">
+        <div className="rounded-2xl border border-border bg-card p-10 sm:p-14 text-center space-y-4 shadow-xs">
           <div className="inline-flex p-4 rounded-full bg-brand-orange/15 text-brand-orange">
             <Bookmark className="h-8 w-8" />
           </div>
@@ -226,20 +201,20 @@ export function MyBookmarksPage() {
             return (
               <article
                 key={`${bm.courseId}-${bm.chapterId}`}
-                className="group flex flex-col md:flex-row md:items-center justify-between gap-5 rounded-2xl border border-border/80 bg-[#16161c] p-4 sm:p-5 shadow-xs transition-all hover:border-brand-orange/40 hover:shadow-md"
+                className="group flex flex-col md:flex-row md:items-center justify-between gap-5 rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-xs transition-all hover:border-brand-orange/40 hover:shadow-md"
               >
-                {/* Left: Cover Thumbnail */}
-                <div className="relative aspect-[16/9] w-full md:w-64 shrink-0 overflow-hidden rounded-xl border border-border/60 bg-gradient-to-br from-[#1c1c24] via-[#232330] to-[#14141c] flex items-center justify-center">
+                {/* Left: Cover Thumbnail (Mặc định) */}
+                <div className="relative aspect-[16/9] w-full md:w-64 shrink-0 overflow-hidden rounded-xl border border-border bg-gradient-to-br from-muted/80 via-secondary/70 to-muted/40 dark:from-[#1c1c24] dark:via-[#232330] dark:to-[#14141c] flex items-center justify-center">
                   <div className="absolute inset-0 bg-[radial-gradient(#ff7a1a_1px,transparent_1px)] [background-size:12px_12px] opacity-15" />
-                  {renderCoverIllustration(tag)}
+                  <BookOpen className="h-10 w-10 text-brand-orange/80 group-hover:scale-105 transition-transform" />
 
                   {/* Top-left tag badge */}
-                  <span className="absolute top-2.5 left-2.5 rounded-md bg-black/60 backdrop-blur-xs px-2 py-0.5 text-[11px] font-bold text-white border border-white/10">
+                  <span className="absolute top-2.5 left-2.5 rounded-md bg-black/60 dark:bg-black/75 backdrop-blur-xs px-2 py-0.5 text-[11px] font-bold text-white border border-white/10">
                     {tag}
                   </span>
 
                   {/* Bottom-right lesson count badge */}
-                  <span className="absolute bottom-2.5 right-2.5 rounded-md bg-black/70 backdrop-blur-xs px-2 py-0.5 text-[10px] font-medium text-white/90">
+                  <span className="absolute bottom-2.5 right-2.5 rounded-md bg-black/60 dark:bg-black/75 backdrop-blur-xs px-2 py-0.5 text-[10px] font-medium text-white/90">
                     {totalLessons} bài
                   </span>
                 </div>
@@ -271,7 +246,7 @@ export function MyBookmarksPage() {
                   <div className="flex items-center gap-3 pt-1 max-w-lg">
                     <span
                       className={`text-xs font-semibold shrink-0 ${
-                        isNearCompleted ? 'text-emerald-400' : 'text-muted-foreground'
+                        isNearCompleted ? 'text-emerald-500 dark:text-emerald-400' : 'text-muted-foreground'
                       }`}
                     >
                       {statusText}
@@ -286,7 +261,7 @@ export function MyBookmarksPage() {
                     </div>
                     <span
                       className={`text-xs font-bold shrink-0 ${
-                        isNearCompleted ? 'text-emerald-400' : 'text-muted-foreground'
+                        isNearCompleted ? 'text-emerald-500 dark:text-emerald-400' : 'text-muted-foreground'
                       }`}
                     >
                       {progressPercent}%
@@ -308,7 +283,7 @@ export function MyBookmarksPage() {
                   <button
                     type="button"
                     onClick={() => handleRemoveBookmark(bm.courseId, bm.courseName)}
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-border/80 text-muted-foreground hover:text-brand-orange hover:border-brand-orange/50 transition-colors"
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-brand-orange hover:border-brand-orange/50 hover:bg-muted/50 transition-colors"
                     title="Bỏ đánh dấu"
                     aria-label={`Bỏ đánh dấu ${bm.courseName}`}
                   >
