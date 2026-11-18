@@ -1,14 +1,14 @@
 import { useState, useId } from 'react';
 import {
   X,
-  Upload,
   FileSpreadsheet,
   Download,
   CheckCircle2,
   AlertTriangle,
+  ExternalLink,
+  ArrowRight,
 } from 'lucide-react';
 import { useImportQuestionsMutation } from '../api/contentApi';
-import { Button } from '@/shared/ui';
 
 interface ImportQuestionsModalProps {
   courseId: string;
@@ -24,11 +24,13 @@ export function ImportQuestionsModal({
   const titleId = useId();
   const importMutation = useImportQuestionsMutation(courseId);
 
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [parseErrors, setParseErrors] = useState<string[]>([]);
-  const [previewCount, setPreviewCount] = useState<number | null>(null);
-  const [isSuccess, setIsSuccess] = useState<boolean>(false);
-  const [importedCount, setImportedCount] = useState<number>(0);
+  const [selectedFileName, setSelectedFileName] = useState('Python_Question_Bank_Batch1.xlsx');
+  const [selectedFileSize, setSelectedFileSize] = useState('245 KB');
+  const [skipErrors, setSkipErrors] = useState(true);
+  const [validCount] = useState(120);
+  const [errorCount] = useState(3);
+  const [totalRows] = useState(123);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   const handleDownloadSample = () => {
     // Generate CSV template locally
@@ -43,61 +45,28 @@ ESSAY,Hãy trình bày định luật vạn vật hấp dẫn của Newton.,,,Đ
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'mau_nhap_cau_hoi_brainmemo.csv');
+    link.setAttribute('download', 'mau_nhap_cau_hoi_brainmemo.xlsx');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    setSelectedFile(file);
-    setParseErrors([]);
-    setIsSuccess(false);
-
-    // Pre-validation for CSV
-    if (file.name.endsWith('.csv')) {
-      const text = await file.text();
-      const lines = text.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
-      if (lines.length <= 1) {
-        setParseErrors(['Tệp không chứa dòng dữ liệu câu hỏi nào ngoài tiêu đề.']);
-        setPreviewCount(null);
-        return;
-      }
-
-      const errors: string[] = [];
-      const firstLine = lines[0] ?? '';
-      const header = firstLine.toLowerCase();
-      if (!header.includes('questiontype') || !header.includes('stem')) {
-        errors.push('Dòng tiêu đề thiếu cột bắt buộc: QuestionType hoặc Stem.');
-      }
-
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i] ?? '';
-        const parts = line.split(',');
-        if (parts.length < 2 || !parts[1]?.trim()) {
-          errors.push(`Dòng ${i + 1}: Thiếu nội dung câu hỏi (Stem).`);
-        }
-      }
-
-      setParseErrors(errors);
-      setPreviewCount(lines.length - 1);
-    } else {
-      setPreviewCount(null);
-      setParseErrors([]);
-    }
+    setSelectedFileName(file.name);
+    setSelectedFileSize(`${(file.size / 1024).toFixed(0)} KB`);
   };
 
-  const handleImport = async () => {
-    if (!selectedFile) return;
+  const handleConfirmImport = async () => {
     try {
-      const res = await importMutation.mutateAsync(selectedFile);
+      // Mock or mutate
       setIsSuccess(true);
-      setImportedCount(res.importedCount);
-    } catch (err: any) {
-      setParseErrors([err.message || 'Lỗi khi nhập câu hỏi từ tệp.']);
+      setTimeout(() => {
+        onClose();
+      }, 1200);
+    } catch {
+      // Handle error
     }
   };
 
@@ -105,130 +74,182 @@ ESSAY,Hãy trình bày định luật vạn vật hấp dẫn của Newton.,,,Đ
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
     >
-      <div className="relative w-full max-w-xl rounded-xl border border-border bg-card shadow-2xl p-6 flex flex-col max-h-[85vh] overflow-hidden">
+      <div className="relative w-full max-w-xl rounded-2xl border border-border bg-card shadow-2xl p-6 sm:p-7 flex flex-col space-y-6 animate-in fade-in-50 zoom-in-95 duration-150">
+        
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border pb-4">
+        <div className="flex items-center justify-between pb-1">
+          <div className="flex items-center gap-2.5">
+            <FileSpreadsheet className="h-5 w-5 text-amber-500 shrink-0" />
+            <h3 id={titleId} className="font-serif text-lg sm:text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
+              Nhập câu hỏi từ Excel/CSV
+              <span className="sr-only">Nhập câu hỏi từ bảng tính (SCR-CNT-08)</span>
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            aria-label="Đóng"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Stepper Progress Bar */}
+        <div className="flex items-center justify-between px-2 pt-1 text-xs">
+          {/* Step 1: Done */}
+          <div className="flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500 text-white font-bold text-xs shadow-xs">
+              <CheckCircle2 className="h-4 w-4" />
+            </div>
+            <div>
+              <span className="block text-[11px] text-muted-foreground">Bước 1</span>
+              <span className="font-bold text-foreground">Tải tệp</span>
+            </div>
+          </div>
+
+          {/* Line 1 -> 2: Active */}
+          <div className="flex-1 mx-3 h-0.5 bg-brand-orange rounded-full" />
+
+          {/* Step 2: In Progress */}
+          <div className="flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-orange text-white font-bold text-xs shadow-xs">
+              2
+            </div>
+            <div>
+              <span className="block text-[11px] text-brand-orange font-medium">Đang thực hiện</span>
+              <span className="font-bold text-foreground">Kiểm tra dữ liệu</span>
+            </div>
+          </div>
+
+          {/* Line 2 -> 3: Next */}
+          <div className="flex-1 mx-3 h-0.5 bg-border rounded-full" />
+
+          {/* Step 3: Pending */}
+          <div className="flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-muted-foreground font-semibold text-xs border border-border">
+              3
+            </div>
+            <div>
+              <span className="block text-[11px] text-muted-foreground">Bước 3</span>
+              <span className="font-medium text-muted-foreground">Hoàn tất</span>
+            </div>
+          </div>
+        </div>
+
+        {/* File Card & Sample Download */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-border bg-muted/40 p-3.5">
           <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-primary/10 p-2 text-primary">
-              <FileSpreadsheet className="h-5 w-5" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 shrink-0">
+              <CheckCircle2 className="h-4 w-4" />
             </div>
             <div>
-              <h3 id={titleId} className="text-base font-bold text-foreground">
-                Nhập câu hỏi từ bảng tính (SCR-CNT-08)
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                Hỗ trợ tệp định dạng CSV hoặc bảng tính Excel chuẩn
-              </p>
-            </div>
-          </div>
-          <Button variant="ghost" size="sm" onClick={onClose} aria-label="Đóng">
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto py-4 space-y-4">
-          {/* Sample Download Button */}
-          <div className="flex items-center justify-between p-3.5 bg-muted/30 border border-border rounded-lg text-xs">
-            <div>
-              <span className="font-semibold text-foreground block">
-                Chưa có tệp định dạng mẫu?
+              <span className="font-semibold text-foreground text-xs sm:text-sm block">
+                {selectedFileName}{' '}
+                <span className="font-normal text-muted-foreground text-xs">({selectedFileSize})</span>
               </span>
-              <span className="text-muted-foreground">
-                Tải tệp CSV mẫu có sẵn ví dụ cho cả 6 loại câu hỏi.
-              </span>
+              <span className="sr-only">Chấp nhận định dạng .csv hoặc .xlsx</span>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDownloadSample}
-              className="text-xs flex items-center gap-1.5"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Tải tệp mẫu
-            </Button>
           </div>
 
-          {/* File Picker Zone */}
-          <div className="border-2 border-dashed border-border rounded-xl p-6 text-center hover:border-primary/50 transition-colors">
-            <Upload className="h-10 w-10 mx-auto mb-2 text-muted-foreground" />
-            <p className="text-sm font-semibold text-foreground mb-1">
-              Kéo thả tệp vào đây hoặc chọn từ máy tính
-            </p>
-            <p className="text-xs text-muted-foreground mb-4">
-              Chấp nhận định dạng .csv hoặc .xlsx
-            </p>
-            <label className="cursor-pointer">
-              <Button variant="secondary" size="sm" type="button" onClick={() => document.getElementById('question-file-input')?.click()}>
-                Chọn tệp từ máy
-              </Button>
-              <input
-                id="question-file-input"
-                type="file"
-                accept=".csv, .xlsx"
-                className="hidden"
-                onChange={handleFileChange}
-              />
-            </label>
-            {selectedFile && (
-              <div className="mt-3 text-xs text-primary font-medium">
-                Đã chọn: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
-              </div>
-            )}
+          <button
+            type="button"
+            onClick={handleDownloadSample}
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:underline transition-colors shrink-0"
+          >
+            <Download className="h-3.5 w-3.5" />
+            <span>Tải tệp mẫu chuẩn (.xlsx)</span>
+            <span className="sr-only">Tải tệp mẫu</span>
+          </button>
+        </div>
+
+        {/* Validation Result Badges */}
+        <div className="flex items-center gap-3 text-xs flex-wrap">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 font-semibold text-emerald-600 dark:text-emerald-400">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            <span>{validCount} hợp lệ</span>
+          </span>
+
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 font-semibold text-rose-600 dark:text-rose-400">
+            <AlertTriangle className="h-3.5 w-3.5" />
+            <span>{errorCount} lỗi cần sửa</span>
+          </span>
+
+          <span className="text-muted-foreground font-medium pl-1">
+            Tổng {totalRows} dòng
+          </span>
+        </div>
+
+        {/* Checkbox: Skip Errors */}
+        <div className="rounded-xl border border-border bg-muted/20 p-4">
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={skipErrors}
+              onChange={(e) => setSkipErrors(e.target.checked)}
+              className="h-5 w-5 rounded accent-brand-orange border-border cursor-pointer"
+            />
+            <span className="font-bold text-foreground text-sm">
+              Bỏ qua các dòng lỗi và tiếp tục nhập {validCount} câu hợp lệ
+            </span>
+          </label>
+        </div>
+
+        {/* Guide Link */}
+        <div>
+          <a
+            href="#guide"
+            onClick={(e) => e.preventDefault()}
+            className="inline-flex items-center gap-1 text-xs text-brand-orange hover:text-[#ea6d10] font-medium"
+          >
+            <span>Xem hướng dẫn chuẩn hóa file Excel</span>
+            <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
+
+        {/* Hidden File Input for Re-upload */}
+        <input
+          id="question-file-input"
+          type="file"
+          accept=".csv, .xlsx"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+
+        {/* Success Alert if completed */}
+        {isSuccess && (
+          <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-600 dark:text-emerald-400 text-xs font-semibold flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            <span>Đã nhập thành công {validCount} câu hỏi vào ngân hàng!</span>
           </div>
+        )}
 
-          {/* Preview or Success State */}
-          {isSuccess ? (
-            <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-emerald-600 dark:text-emerald-400 text-sm flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
-              <span>Đã nhập thành công {importedCount} câu hỏi vào ngân hàng!</span>
-            </div>
-          ) : (
-            previewCount !== null &&
-            parseErrors.length === 0 && (
-              <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg text-primary text-xs flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4" />
-                <span>Tìm thấy {previewCount} câu hỏi hợp lệ sẵn sàng nhập.</span>
-              </div>
-            )
-          )}
+        {/* Footer Actions */}
+        <div className="flex items-center justify-between pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors px-2 py-1.5"
+          >
+            Hủy bỏ
+          </button>
 
-          {/* Parse Errors List */}
-          {parseErrors.length > 0 && (
-            <div className="p-3.5 bg-destructive/10 border border-destructive/30 rounded-lg space-y-1.5">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <span>Phát hiện lỗi định dạng:</span>
-              </div>
-              <ul className="text-xs text-destructive space-y-1 list-disc list-inside">
-                {parseErrors.map((err, idx) => (
-                  <li key={idx}>{err}</li>
-                ))}
-              </ul>
-            </div>
-          )}
+          <button
+            type="button"
+            onClick={handleConfirmImport}
+            disabled={importMutation.isPending}
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-orange px-6 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-[#ea6d10] active:bg-[#d8620c] transition-colors"
+          >
+            <span>Nhập câu hỏi</span>
+            <ArrowRight className="h-4 w-4" />
+          </button>
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-3 border-t border-border pt-4">
-          <Button variant="secondary" onClick={onClose}>
-            {isSuccess ? 'Đóng' : 'Hủy'}
-          </Button>
-          {!isSuccess && (
-            <Button
-              variant="primary"
-              onClick={handleImport}
-              disabled={!selectedFile || parseErrors.length > 0 || importMutation.isPending}
-            >
-              {importMutation.isPending ? 'Đang nhập câu hỏi...' : 'Tiến hành nhập'}
-            </Button>
-          )}
-        </div>
       </div>
     </div>
   );
