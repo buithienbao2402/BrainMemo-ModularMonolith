@@ -93,6 +93,7 @@ export interface AuditLogDto {
 
 export interface ModerationDashboardDto {
   pendingReportsCount: number;
+  pendingAiFlagsCount?: number;
   pendingCourseReviewsCount: number;
   activeSanctionsCount: number;
   lockedUsersCount: number;

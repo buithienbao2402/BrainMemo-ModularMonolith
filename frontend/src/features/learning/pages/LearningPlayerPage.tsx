@@ -24,7 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/shared/ui';
-import { BrandLogo, ThemeToggleButton } from '@/app/layouts';
+import { ThemeToggleButton } from '@/app/layouts';
 import { useCourseQuery } from '@/features/course';
 import { useChaptersQuery } from '@/features/content';
 import { ChatDrawer } from '@/features/messaging';

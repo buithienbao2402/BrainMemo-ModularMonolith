@@ -10,7 +10,6 @@ import {
   Lock,
   RotateCcw,
   AlertTriangle,
-  Sparkles,
 } from 'lucide-react';
 import { AiGenerateModal } from '@/features/ai';
 import {
@@ -587,8 +586,8 @@ export function ChapterEditorPage() {
         type === 'RICH_TEXT'
           ? JSON.stringify(createEmptyRichDocJson())
           : type === 'MARKDOWN'
-          ? ''
-          : null,
+            ? ''
+            : null,
       resourceId: null,
       questionId: null,
       flashcards: type === 'FLASHCARD' ? [{ front: '', back: '' }] : undefined,
@@ -747,8 +746,8 @@ export function ChapterEditorPage() {
             targetType === 'RICH_TEXT'
               ? JSON.stringify(createEmptyRichDocJson())
               : targetType === 'MARKDOWN'
-              ? ''
-              : null,
+                ? ''
+                : null,
           resourceId: null,
           questionId: null,
           flashcards: targetType === 'FLASHCARD' ? [{ front: '', back: '' }] : undefined,
@@ -896,17 +895,16 @@ export function ChapterEditorPage() {
           (old: any) =>
             old
               ? {
-                  ...old,
-                  accessMode: newMode,
-                  passcode: newPasscode,
-                }
+                ...old,
+                accessMode: newMode,
+                passcode: newPasscode,
+              }
               : old
         );
         pushToast({
           title: 'Cập nhật chế độ truy cập thành công',
-          description: `Chương đã chuyển sang chế độ ${
-            newMode === 'PROTECTED' ? 'Protected (Có mật khẩu)' : 'Public (Công khai)'
-          }.`,
+          description: `Chương đã chuyển sang chế độ ${newMode === 'PROTECTED' ? 'Protected (Có mật khẩu)' : 'Public (Công khai)'
+            }.`,
           tone: 'success',
         });
       } catch (err) {
@@ -1031,11 +1029,11 @@ export function ChapterEditorPage() {
         queryClient.setQueryData(queryKeys.content.chapterDraft(courseId, chapterId), (old: any) =>
           old
             ? {
-                ...old,
-                status: 'DRAFT',
-                hasUnpublishedChanges: true,
-                lastVersionNo: updated.lastVersionNo,
-              }
+              ...old,
+              status: 'DRAFT',
+              hasUnpublishedChanges: true,
+              lastVersionNo: updated.lastVersionNo,
+            }
             : old
         );
 
@@ -1063,10 +1061,10 @@ export function ChapterEditorPage() {
           err && typeof err === 'object' && 'detail' in err && (err as { detail?: string }).detail
             ? String((err as { detail?: string }).detail)
             : err && typeof err === 'object' && 'title' in err && (err as { title?: string }).title
-            ? String((err as { title?: string }).title)
-            : err instanceof Error
-            ? err.message
-            : 'Có lỗi xảy ra khi lưu nháp.';
+              ? String((err as { title?: string }).title)
+              : err instanceof Error
+                ? err.message
+                : 'Có lỗi xảy ra khi lưu nháp.';
         pushToast({
           title: 'Lưu bản nháp thất bại',
           description: msg,
@@ -1112,10 +1110,10 @@ export function ChapterEditorPage() {
           err && typeof err === 'object' && 'detail' in err && (err as { detail?: string }).detail
             ? String((err as { detail?: string }).detail)
             : err && typeof err === 'object' && 'title' in err && (err as { title?: string }).title
-            ? String((err as { title?: string }).title)
-            : err instanceof Error
-            ? err.message
-            : 'Không thể đăng tải chương.';
+              ? String((err as { title?: string }).title)
+              : err instanceof Error
+                ? err.message
+                : 'Không thể đăng tải chương.';
         pushToast({
           title: 'Đăng tải thất bại',
           description: msg,

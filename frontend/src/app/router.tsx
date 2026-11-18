@@ -67,6 +67,7 @@ import {
   AdminDashboardPage,
   AdminUsersPage,
   AdminAnnouncementsPage,
+  AdminCoursesPage,
 } from '@/features/admin';
 import { AdminSystemSettingsPage } from '@/features/ai';
 import { RequireAdmin, RequireAuth, RequireVerifiedEmail } from './guards';
@@ -373,14 +374,7 @@ export const appRoutes: RouteObject[] = [
           },
           {
             path: 'courses',
-            element: (
-              <RouteStubPage
-                screenCode="SCR-ADM-05"
-                title="Quản lý khóa học"
-                description="Theo dõi và điều phối khóa học toàn hệ thống."
-                backTo="/admin"
-              />
-            ),
+            element: <AdminCoursesPage />,
           },
           {
             path: 'ai-settings',

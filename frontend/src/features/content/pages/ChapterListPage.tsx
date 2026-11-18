@@ -435,23 +435,30 @@ export function ChapterListPage() {
 
                       {/* Cột 4: NGÀY ĐĂNG / LƯU */}
                       <td className="py-4 px-4 align-middle text-xs">
-                        {ch.status === 'PUBLISHED' ? (
-                          <div>
-                            <p className="font-medium text-foreground">
-                              {formatDate((ch as any).publishedAt || (ch as any).updatedAt)}
-                            </p>
-                            <p className="text-[11px] text-muted-foreground mt-0.5">
-                              Bởi {(ch as any).authorName || course?.owner?.displayName || 'Admin'}
-                            </p>
-                          </div>
-                        ) : (
-                          <div>
-                            <p className="font-medium text-muted-foreground">Chưa đăng tải</p>
-                            <p className="text-[11px] text-muted-foreground mt-0.5">
-                              Lưu nháp: {formatTimeAgo((ch as any).updatedAt)}
-                            </p>
-                          </div>
-                        )}
+                        {(() => {
+                          const extCh = ch as ChapterSummary & {
+                            publishedAt?: string;
+                            updatedAt?: string;
+                            authorName?: string;
+                          };
+                          return ch.status === 'PUBLISHED' ? (
+                            <div>
+                              <p className="font-medium text-foreground">
+                                {formatDate(extCh.publishedAt || extCh.updatedAt)}
+                              </p>
+                              <p className="text-[11px] text-muted-foreground mt-0.5">
+                                Bởi {extCh.authorName || course?.owner?.displayName || 'Admin'}
+                              </p>
+                            </div>
+                          ) : (
+                            <div>
+                              <p className="font-medium text-muted-foreground">Chưa đăng tải</p>
+                              <p className="text-[11px] text-muted-foreground mt-0.5">
+                                Lưu nháp: {formatTimeAgo(extCh.updatedAt)}
+                              </p>
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       {/* Cột 5: THAO TÁC (Bỏ nút di chuyển lên/xuống) */}
@@ -470,7 +477,7 @@ export function ChapterListPage() {
                           ) : (
                             <button
                               type="button"
-                              onClick={() => setPreviewChapterId(ch.id)}
+                              onClick={() => setPreviewChapterId(ch.id ?? null)}
                               title="Xem trước bản nháp"
                               aria-label={`Xem trước bản nháp ${ch.title}`}
                               className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"

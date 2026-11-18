@@ -7,7 +7,6 @@ import {
   MessageSquare,
   Pin,
   PinOff,
-  Search,
   Send,
   Trash2,
   User as UserIcon,
@@ -23,7 +22,6 @@ import {
 import { ReportModal } from '@/features/moderation';
 import {
   useCommentsQuery,
-  useCommentsSummaryQuery,
   useCreateCommentMutation,
   useDeleteCommentMutation,
   useEditCommentMutation,
@@ -67,14 +65,13 @@ export function CommentSection({
   const [newQuestionTitle, setNewQuestionTitle] = useState('');
   const [newCommentText, setNewCommentText] = useState('');
   const [qaFilter, setQaFilter] = useState<'ALL' | 'UNRESOLVED' | 'RESOLVED' | 'MINE'>('ALL');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery] = useState('');
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   const [reportCommentId, setReportCommentId] = useState<string | null>(null);
 
-  const { data: summary } = useCommentsSummaryQuery(courseId);
   const { data, isLoading } = useCommentsQuery(courseId, {
     chapterId: chapterId || undefined,
     isResolved: qaFilter === 'RESOLVED' ? true : qaFilter === 'UNRESOLVED' ? false : undefined,
@@ -235,9 +232,6 @@ export function CommentSection({
                 {comments.length}
               </span>
             </h2>
-            <p className="text-xs text-muted-foreground">
-              Trao đổi thắc mắc bài học trực tiếp với Giảng viên và cộng đồng.
-            </p>
           </div>
         </div>
       </div>
@@ -257,7 +251,7 @@ export function CommentSection({
               size="sm"
               variant={qaFilter === tab.key ? 'primary' : 'outline'}
               className="h-7 text-xs"
-              onClick={() => setQaFilter(tab.key as any)}
+              onClick={() => setQaFilter(tab.key as 'ALL' | 'UNRESOLVED' | 'RESOLVED' | 'MINE')}
             >
               {tab.label}
             </Button>
@@ -615,6 +609,13 @@ export function CommentSection({
           targetType="COMMENT"
           targetId={reportCommentId}
           targetTitle="Bình luận bài học"
+          targetAuthorName={
+            data?.items?.find((c) => c.id === reportCommentId)?.author.displayName ||
+            'Người dùng'
+          }
+          targetContent={
+            data?.items?.find((c) => c.id === reportCommentId)?.content
+          }
         />
       ) : null}
     </section>

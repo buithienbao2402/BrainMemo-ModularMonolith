@@ -24,6 +24,7 @@ import {
   Sparkles,
   Check,
   Send,
+  Lock,
 } from 'lucide-react';
 import { useAuth } from '@/shared/hooks';
 import {
@@ -46,6 +47,7 @@ import {
   useNominateCourseMutation,
   useWithdrawNominationMutation,
 } from '../api/courseApi';
+import { useChaptersQuery } from '@/features/content';
 import { ReportModal } from '@/features/moderation';
 import defaultCourseCover from '@/assets/courses';
 
@@ -240,6 +242,11 @@ export function CourseDetailPage() {
 
   // Comment submission state
   const [commentContent, setCommentContent] = useState<string>('');
+  const [reportCommentTarget, setReportCommentTarget] = useState<{
+    id: string;
+    authorName: string;
+    content: string;
+  } | null>(null);
   const [commentsList, setCommentsList] = useState<Array<{ id: string; authorName: string; avatarText: string; timeText: string; content: string }>>([
     {
       id: 'cmt-1',
@@ -247,6 +254,13 @@ export function CourseDetailPage() {
       avatarText: 'TM',
       timeText: '3 giờ trước',
       content: 'Cho mình hỏi là sau khi hoàn thành khóa này có đủ kiến thức để apply thực tập Backend Python không ạ?',
+    },
+    {
+      id: 'cmt-spam-1',
+      authorName: 'Người dùng ẩn danh',
+      avatarText: 'US',
+      timeText: '42 phút trước',
+      content: '“Dạy thế này mà cũng thu tiền à? Vào nhóm telegram xxx kiếm kèo x100 nhanh hơn học mấy cái lý thuyết rác rưởi này...”',
     },
   ]);
 
@@ -257,6 +271,8 @@ export function CourseDetailPage() {
     error,
     refetch,
   } = useCourseQuery(courseId || '');
+
+  const { data: allChapters = [], isLoading: isChaptersLoading } = useChaptersQuery(courseId || '');
 
   const enrollMutation = useEnrollMutation(courseId || '');
   const leaveMutation = useLeaveCourseMutation(courseId || '');
@@ -285,10 +301,11 @@ export function CourseDetailPage() {
           tone: 'default',
         });
       }
-    } catch (err: any) {
+    } catch (err) {
+      const errorObj = err as { detail?: string; message?: string };
       pushToast({
         title: 'Không thể ghi danh',
-        description: err?.detail || err?.message || 'Có lỗi xảy ra khi ghi danh.',
+        description: errorObj?.detail || errorObj?.message || 'Có lỗi xảy ra khi ghi danh.',
         tone: 'error',
       });
     }
@@ -303,10 +320,11 @@ export function CourseDetailPage() {
         description: 'Bạn đã hủy ghi danh khỏi khóa học này.',
         tone: 'default',
       });
-    } catch (err: any) {
+    } catch (err) {
+      const errorObj = err as { detail?: string; message?: string };
       pushToast({
         title: 'Không thể rời khóa học',
-        description: err?.detail || err?.message || 'Có lỗi xảy ra khi thực hiện.',
+        description: errorObj?.detail || errorObj?.message || 'Có lỗi xảy ra khi thực hiện.',
         tone: 'error',
       });
     }
@@ -321,10 +339,11 @@ export function CourseDetailPage() {
         description: 'Bạn đã chính thức trở thành học viên của khóa học.',
         tone: 'success',
       });
-    } catch (err: any) {
+    } catch (err) {
+      const errorObj = err as { detail?: string; message?: string };
       pushToast({
         title: 'Không thể chấp nhận lời mời',
-        description: err?.detail || err?.message || 'Có lỗi xảy ra.',
+        description: errorObj?.detail || errorObj?.message || 'Có lỗi xảy ra.',
         tone: 'error',
       });
     }
@@ -352,10 +371,11 @@ export function CourseDetailPage() {
           tone: 'success',
         });
       }
-    } catch (err: any) {
+    } catch (err) {
+      const errorObj = err as { detail?: string; message?: string };
       pushToast({
         title: 'Thao tác thất bại',
-        description: err?.detail || err?.message || 'Không thể cập nhật đề cử.',
+        description: errorObj?.detail || errorObj?.message || 'Không thể cập nhật đề cử.',
         tone: 'error',
       });
     }
@@ -377,7 +397,7 @@ export function CourseDetailPage() {
 
     const newRev: ReviewItem = {
       id: `rev-${Date.now()}`,
-      authorName: profile?.displayName || (currentUser as any)?.name || 'Tôi (Bạn)',
+      authorName: profile?.displayName || currentUser.email || 'Tôi (Bạn)',
       avatarText: profile?.displayName?.slice(0, 2).toUpperCase() || 'ME',
       roleText: 'Học viên • Vừa xong',
       rating: reviewRating,
@@ -410,7 +430,7 @@ export function CourseDetailPage() {
     setCommentsList([
       {
         id: `cmt-${Date.now()}`,
-        authorName: profile?.displayName || (currentUser as any)?.name || 'Tôi (Bạn)',
+        authorName: profile?.displayName || currentUser.email || 'Tôi (Bạn)',
         avatarText: profile?.displayName?.slice(0, 2).toUpperCase() || 'ME',
         timeText: 'Vừa xong',
         content: commentContent.trim(),
@@ -451,6 +471,7 @@ export function CourseDetailPage() {
 
   const viewer = course.viewer || {};
   const isOwner = viewer.isOwner || (currentUser && currentUser.id === course.owner?.id);
+  const chapters = allChapters.filter((c) => isOwner || c.status === 'PUBLISHED');
   const enrollmentStatus = viewer.enrollmentStatus;
   const isEnrolledActive = enrollmentStatus === 'ACTIVE';
   const isPendingApproval = enrollmentStatus === 'PENDING_APPROVAL';
@@ -460,7 +481,7 @@ export function CourseDetailPage() {
   const courseTitle = course.name || 'Nhập môn Python - Từ Zero tới Hero';
   const authorName = course.owner?.displayName || 'Thầy Code Dạo';
   const learnerCountText = (course.ratingCount ? course.ratingCount * 445 : 12460).toLocaleString('vi-VN');
-  const chapterCount = 34;
+  const chapterCount = chapters.length;
   const ratingAvgText = (course.ratingAvg || 4.8).toFixed(1).replace('.', ',');
   const reviewCount = 320;
   const nominationCount = viewer.hasNominated ? 561 : 560;
@@ -779,7 +800,7 @@ export function CourseDetailPage() {
             <Layers className="h-4 w-4" />
             <span>Danh sách chương</span>
             <span className="text-xs px-2 py-0.5 rounded-full bg-secondary/80 text-muted-foreground font-mono">
-              34
+              {chapters.length}
             </span>
             <span className="sr-only">Mục lục chương bài học</span>
           </button>
@@ -939,71 +960,54 @@ export function CourseDetailPage() {
                 onClick={() => setActiveTab('chapters')}
                 className="text-xs font-semibold text-[#f97316] hover:underline flex items-center gap-1"
               >
-                <span>Xem tất cả 34 chương</span>
+                <span>Xem tất cả {chapters.length} chương</span>
                 <ChevronRight className="h-3.5 w-3.5" />
               </button>
             </div>
 
             <div className="space-y-3">
-              {/* Chapter 34 */}
-              <div className="flex items-center justify-between p-4 rounded-xl border border-border/60 bg-card hover:bg-secondary/40 transition-colors shadow-sm dark:bg-[#151622]">
-                <div className="flex items-center gap-4">
-                  <span className="px-2.5 py-1 rounded-lg bg-secondary text-xs font-bold text-muted-foreground font-mono shrink-0">
-                    Chương 34
-                  </span>
-                  <div>
-                    <h3 className="text-sm font-semibold text-foreground">
-                      Đề kháng cao & Kỹ thuật tối ưu hiệu năng: Vòng lặp vs List Comprehension
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      4 bài học • 18 bài tập • 1 bài kiểm tra • Đăng ngày 12/05/2026
-                    </p>
-                  </div>
+              {chapters.length === 0 ? (
+                <div className="p-4 text-xs text-muted-foreground italic rounded-xl border border-dashed text-center">
+                  Khóa học hiện chưa có chương bài học nào được đăng tải.
                 </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-              </div>
-
-              {/* Chapter 33 */}
-              <div className="flex items-center justify-between p-4 rounded-xl border border-border/60 bg-card hover:bg-secondary/40 transition-colors shadow-sm dark:bg-[#151622]">
-                <div className="flex items-center gap-4">
-                  <span className="px-2.5 py-1 rounded-lg bg-secondary text-xs font-bold text-muted-foreground font-mono shrink-0">
-                    Chương 33
-                  </span>
-                  <div>
-                    <h3 className="text-sm font-semibold text-foreground">
-                      Kiến trúc Microservices với FastAPI & gRPC: Xây dựng Event-Driven System
-                    </h3>
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                      <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 font-medium text-[10px]">
-                        Có video
-                      </span>
-                      <span>• 10 bài học • 0/12 bài tập • Cập nhật 08/05/2026</span>
-                    </div>
-                  </div>
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-              </div>
-
-              {/* Chapter 32 */}
-              <div className="flex items-center justify-between p-4 rounded-xl border border-border/60 bg-card hover:bg-secondary/40 transition-colors shadow-sm dark:bg-[#151622]">
-                <div className="flex items-center gap-4">
-                  <span className="px-2.5 py-1 rounded-lg bg-secondary text-xs font-bold text-muted-foreground font-mono shrink-0">
-                    Chương 32
-                  </span>
-                  <div>
-                    <h3 className="text-sm font-semibold text-foreground">
-                      Xử lý dữ liệu lớn với Pandas, Polars & Tối ưu hóa Cache Memory
-                    </h3>
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                      <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 font-medium text-[10px]">
-                        Có video
-                      </span>
-                      <span>• 14 bài học • Chưa bắt đầu • Đăng ngày 02/05/2026</span>
-                    </div>
-                  </div>
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-              </div>
+              ) : (
+                chapters.slice(-3).reverse().map((c, idx) => {
+                  const num = c.position || idx + 1;
+                  const formattedNum = num < 10 ? `0${num}` : num;
+                  return (
+                    <Link
+                      key={c.id}
+                      to={`/courses/${courseId}/learn/${c.id}`}
+                      className="flex items-center justify-between p-4 rounded-xl border border-border/60 bg-card hover:bg-secondary/40 hover:border-primary/40 transition-all shadow-xs dark:bg-[#151622] group"
+                    >
+                      <div className="flex items-center gap-4">
+                        <span className="px-2.5 py-1 rounded-lg bg-secondary text-xs font-bold text-muted-foreground font-mono shrink-0 group-hover:text-primary transition-colors">
+                          Chương {formattedNum}
+                        </span>
+                        <div>
+                          <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                            {c.title}
+                          </h3>
+                          {c.description && (
+                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                              {c.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {c.accessMode === 'PROTECTED' && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md">
+                            <Lock className="h-3 w-3" />
+                            Passcode
+                          </span>
+                        )}
+                        <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                      </div>
+                    </Link>
+                  );
+                })
+              )}
             </div>
           </section>
 
@@ -1385,7 +1389,7 @@ export function CourseDetailPage() {
         </div>
       )}
 
-      {/* 4. Tab 2 Content: Danh sách chương (Syllabus - NO "Học thử miễn phí" or "Thành viên" badges) */}
+      {/* 4. Tab 2 Content: Danh sách chương (Syllabus) */}
       {activeTab === 'chapters' && (
         <section aria-labelledby="syllabus-heading" className="space-y-6">
           <div className="flex items-center justify-between border-b border-border/50 pb-4">
@@ -1394,73 +1398,63 @@ export function CourseDetailPage() {
                 Mục lục chương bài học
               </h2>
               <p className="text-xs text-muted-foreground mt-1">
-                Tổng cộng 34 chương • 142 bài giảng • 68 bài tập thực hành • 12 đề kiểm tra
+                {chapters.length > 0
+                  ? `Tổng cộng ${chapters.length} chương bài học`
+                  : 'Chưa có chương bài học nào'}
               </p>
             </div>
-            {viewer.canReadContent && (
-              <Button asChild size="pill" className="bg-[#f97316] hover:bg-[#ea580c] text-white font-semibold">
-                <Link to={`/courses/${courseId}/learn`}>
-                  <BookOpen className="h-4 w-4 mr-2" />
-                  Mở trình phát học tập
-                </Link>
-              </Button>
-            )}
           </div>
 
-          <div className="space-y-3">
-            {[
-              {
-                num: 1,
-                title: 'Khởi động & Cài đặt môi trường Python 3.12 chuẩn Production',
-                lessons: 4,
-                duration: '45 phút',
-              },
-              {
-                num: 2,
-                title: 'Cơ chế biến số, Quản lý vùng nhớ Heap/Stack & Reference Counting',
-                lessons: 6,
-                duration: '1 giờ 15 phút',
-              },
-              {
-                num: 3,
-                title: 'Cấu trúc dữ liệu nguyên bản: List, Tuple, Dict, Set & Hiệu năng O(1)',
-                lessons: 8,
-                duration: '2 giờ',
-              },
-              {
-                num: 4,
-                title: 'Tư duy Hướng đối tượng (OOP): Dunder Methods, Metaclass & Inheritance',
-                lessons: 7,
-                duration: '1 giờ 50 phút',
-              },
-              {
-                num: 5,
-                title: 'Lập trình bất đồng bộ (Asynchronous Programming) với Asyncio & Event Loop',
-                lessons: 9,
-                duration: '2 giờ 30 phút',
-              },
-            ].map((c) => (
-              <div
-                key={c.num}
-                className="flex items-center justify-between p-4 rounded-xl border border-border/60 bg-card hover:bg-secondary/40 transition-colors shadow-sm dark:bg-[#151622]"
-              >
-                <div className="flex items-center gap-4">
-                  <span className="px-2.5 py-1 rounded-lg bg-secondary text-xs font-bold text-muted-foreground font-mono shrink-0">
-                    Chương {c.num < 10 ? `0${c.num}` : c.num}
-                  </span>
-                  <div>
-                    <h3 className="text-sm font-semibold text-foreground">{c.title}</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {c.lessons} bài học • Thời lượng: {c.duration}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </div>
-            ))}
-          </div>
+          {isChaptersLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-16 w-full rounded-xl" />
+              <Skeleton className="h-16 w-full rounded-xl" />
+              <Skeleton className="h-16 w-full rounded-xl" />
+            </div>
+          ) : chapters.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground border border-dashed rounded-xl">
+              Khóa học hiện chưa có chương bài học nào được đăng tải.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {chapters.map((c, idx) => {
+                const num = c.position || idx + 1;
+                const formattedNum = num < 10 ? `0${num}` : num;
+                return (
+                  <Link
+                    key={c.id}
+                    to={`/courses/${courseId}/learn/${c.id}`}
+                    className="flex items-center justify-between p-4 rounded-xl border border-border/60 bg-card hover:bg-secondary/40 hover:border-primary/40 transition-all shadow-xs dark:bg-[#151622] group"
+                  >
+                    <div className="flex items-center gap-4">
+                      <span className="px-2.5 py-1 rounded-lg bg-secondary text-xs font-bold text-muted-foreground font-mono shrink-0 group-hover:text-primary transition-colors">
+                        Chương {formattedNum}
+                      </span>
+                      <div>
+                        <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                          {c.title}
+                        </h3>
+                        {c.description && (
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                            {c.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {c.accessMode === 'PROTECTED' && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md">
+                          <Lock className="h-3 w-3" />
+                          Passcode
+                        </span>
+                      )}
+                      <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </section>
       )}
 
@@ -1499,12 +1493,31 @@ export function CourseDetailPage() {
                 key={cmt.id}
                 className="rounded-xl border border-border/50 bg-card p-4 space-y-2 dark:bg-[#151622]"
               >
-                <div className="flex items-center gap-2.5">
-                  <div className="h-7 w-7 rounded-full bg-primary/20 text-primary font-bold text-[10px] flex items-center justify-center">
-                    {cmt.avatarText}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-7 w-7 rounded-full bg-primary/20 text-primary font-bold text-[10px] flex items-center justify-center">
+                      {cmt.avatarText}
+                    </div>
+                    <span className="text-xs font-semibold text-foreground">{cmt.authorName}</span>
+                    <span className="text-[10px] text-muted-foreground">• {cmt.timeText}</span>
                   </div>
-                  <span className="text-xs font-semibold text-foreground">{cmt.authorName}</span>
-                  <span className="text-[10px] text-muted-foreground">• {cmt.timeText}</span>
+
+                  {/* Nút lá cờ báo cáo người dùng / bình luận */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setReportCommentTarget({
+                        id: cmt.id,
+                        authorName: cmt.authorName,
+                        content: cmt.content,
+                      })
+                    }
+                    title="Báo cáo bình luận vi phạm"
+                    aria-label={`Báo cáo bình luận của ${cmt.authorName}`}
+                    className="p-1.5 text-muted-foreground hover:text-red-500 rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <Flag className="h-3.5 w-3.5" />
+                  </button>
                 </div>
                 <p className="text-xs sm:text-sm text-foreground/90 pl-9 leading-relaxed">
                   {cmt.content}
@@ -1622,7 +1635,7 @@ export function CourseDetailPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Report Modal */}
+      {/* Course Report Modal */}
       {courseId ? (
         <ReportModal
           isOpen={isReportModalOpen}
@@ -1630,6 +1643,19 @@ export function CourseDetailPage() {
           targetType="COURSE"
           targetId={courseId}
           targetTitle={courseTitle}
+          targetThumbnailUrl={course?.coverUrl || undefined}
+        />
+      ) : null}
+
+      {/* Comment / User Report Modal */}
+      {reportCommentTarget ? (
+        <ReportModal
+          isOpen={Boolean(reportCommentTarget)}
+          onClose={() => setReportCommentTarget(null)}
+          targetType="COMMENT"
+          targetId={reportCommentTarget.id}
+          targetAuthorName={reportCommentTarget.authorName}
+          targetContent={reportCommentTarget.content}
         />
       ) : null}
     </div>
