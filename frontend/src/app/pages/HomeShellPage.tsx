@@ -9,6 +9,7 @@ import {
   LatestReviewsSection,
   NominatedCoursesSection,
 } from '@/features/home/components';
+import { Link } from 'react-router-dom';
 
 const MOCK_PERSONAS = [
   { id: 'guest', label: 'Khách (Guest)' },
@@ -34,6 +35,10 @@ export function HomeShellPage() {
 
   return (
     <div className="mx-auto max-w-[1280px] space-y-12 px-4 py-8 sm:px-6">
+      {/* Accessible h1 and jump links for screen readers and SEO */}
+      <h1 className="sr-only">Nền tảng Học tập & Lưu trữ Trí nhớ Não bộ BrainMemo</h1>
+      <Link to="/courses" className="sr-only">Khám phá khóa học</Link>
+
       {/* 1. KHU VỰC TIẾP TỤC HỌC (CHỈ HIỂN THỊ KHI ĐÃ ĐĂNG NHẬP THEO FIGMA FRAME 15:2490) */}
       {isAuthenticated && (
         <ContinueLearningSection />

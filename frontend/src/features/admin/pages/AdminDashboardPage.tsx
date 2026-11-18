@@ -134,6 +134,7 @@ export function AdminDashboardPage() {
         <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
           <Shield className="h-6 w-6 text-brand-orange" />
           Tổng quan trung tâm quản trị BrainMemo
+          <span className="sr-only">SCR-ADM-01</span>
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           Hệ thống điều phối kiểm duyệt, chế tài kỷ luật, quản lý tài khoản và giám sát kiểm toán an toàn.

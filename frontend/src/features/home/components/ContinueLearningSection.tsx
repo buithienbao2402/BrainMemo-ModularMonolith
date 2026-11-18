@@ -1,6 +1,5 @@
-import { Clock, PlayCircle } from 'lucide-react';
+import { ChevronRight, PlayCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { Button } from '@/shared/ui';
 
 export interface InProgressCourseItem {
   id: string;
@@ -13,39 +12,32 @@ export interface InProgressCourseItem {
 
 const DEFAULT_IN_PROGRESS_COURSES: InProgressCourseItem[] = [
   {
-    id: 'crs-py-01',
+    id: 'crs-01',
     title: 'Python Nâng Cao & Tối Ưu Thuật Toán',
-    progressPercent: 68,
+    progressPercent: 75,
     currentLessonTitle: 'Chương 4: Tối ưu bộ nhớ với Generator',
     totalChapters: 12,
   },
   {
-    id: 'crs-ai-02',
-    title: 'Trí Tuệ Nhân Tạo & Prompt Engineering',
-    progressPercent: 42,
+    id: 'crs-02',
+    title: 'Trí Tuệ Nhân Tạo & Kỹ Thuật Prompting Thực Chiến',
+    progressPercent: 25,
     currentLessonTitle: 'Chương 2: Xây dựng Chain với LangChain',
-    totalChapters: 8,
+    totalChapters: 12,
   },
   {
-    id: 'crs-ds-03',
-    title: 'Cấu Trúc Dữ Liệu & Giải Thuật',
-    progressPercent: 85,
+    id: 'crs-03',
+    title: 'Cấu Trúc Dữ Liệu & Giải Thuật Thực Chiến',
+    progressPercent: 60,
     currentLessonTitle: 'Chương 7: Đồ thị và thuật toán Dijkstra',
     totalChapters: 15,
   },
   {
-    id: 'crs-web-04',
-    title: 'Lập trình Giao diện Web với Next.js',
-    progressPercent: 30,
-    currentLessonTitle: 'Chương 3: Server Components & Actions',
+    id: 'crs-04',
+    title: 'Lập Trình Vi Điều Khiển & IoT với ESP32',
+    progressPercent: 15,
+    currentLessonTitle: 'Chương 1: Giới thiệu kiến trúc ESP32',
     totalChapters: 10,
-  },
-  {
-    id: 'crs-math-05',
-    title: 'Toán Rời Rạc & Lý Thuyết Đồ Thị',
-    progressPercent: 55,
-    currentLessonTitle: 'Chương 5: Chu trình Hamilton & Euler',
-    totalChapters: 9,
   },
 ];
 
@@ -59,57 +51,70 @@ export function ContinueLearningSection({
   return (
     <section className="space-y-4">
       {/* Heading with orange indicator */}
-      <div className="flex items-center gap-3">
-        <span className="h-6 w-1 rounded-full bg-brand-orange" aria-hidden="true" />
-        <h2 className="font-serif text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-          TIẾP TỤC HỌC
-        </h2>
+      <div className="flex items-center justify-between border-b border-border/60 pb-3">
+        <div className="flex items-center gap-2.5">
+          <span className="h-5 w-1 rounded-full bg-brand-orange" aria-hidden="true" />
+          <h2 className="font-serif text-lg sm:text-xl font-bold tracking-tight text-foreground">
+            TIẾP TỤC HỌC <span className="sr-only">Đang học dở</span>
+          </h2>
+        </div>
+        <Link
+          to="/courses"
+          className="flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-brand-orange"
+        >
+          <span>Lần học gần đây</span>
+          <ChevronRight className="h-3.5 w-3.5" />
+        </Link>
       </div>
 
-      {/* 5 in-progress courses horizontal cards list */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        {courses.slice(0, 5).map((course) => (
+      {/* Horizontal Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {courses.slice(0, 4).map((course) => (
           <div
             key={course.id}
-            className="group flex flex-col justify-between rounded-2xl border border-border bg-card p-4 shadow-sm transition-all hover:border-brand-orange/40 hover:shadow-md"
+            className="group flex flex-col justify-between rounded-2xl border border-border bg-card p-3.5 shadow-xs transition-all hover:border-brand-orange/40 hover:shadow-md"
           >
-            <div className="space-y-2.5">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span className="font-medium text-brand-orange">
-                  {course.progressPercent}% hoàn thành
-                </span>
-                <span className="flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  <span>Đang học</span>
-                </span>
+            <div>
+              {/* Thumbnail Header */}
+              <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-gradient-to-br from-[#1c1c24] via-[#232330] to-[#16161e] border border-border/50 mb-3 flex items-center justify-center">
+                {course.coverUrl ? (
+                  <img
+                    src={course.coverUrl}
+                    alt={course.title}
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                ) : (
+                  <div className="relative flex flex-col items-center justify-center p-3 text-center">
+                    <div className="absolute inset-0 bg-[radial-gradient(#ff7a1a_1px,transparent_1px)] [background-size:12px_12px] opacity-20" />
+                    <PlayCircle className="h-10 w-10 text-brand-orange/80 group-hover:scale-110 group-hover:text-brand-orange transition-all" />
+                  </div>
+                )}
               </div>
 
-              {/* Progress bar */}
-              <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                <div
-                  className="h-full rounded-full bg-brand-orange transition-all duration-500"
-                  style={{ width: `${course.progressPercent}%` }}
-                />
-              </div>
-
-              <h3 className="line-clamp-2 font-serif text-sm font-bold text-foreground group-hover:text-brand-orange transition-colors">
+              {/* Course Title */}
+              <h3 className="line-clamp-2 font-serif text-sm font-bold text-foreground group-hover:text-brand-orange transition-colors leading-snug">
                 <Link to={`/courses/${course.id}`}>{course.title}</Link>
               </h3>
 
+              {/* Lesson subtitle */}
               {course.currentLessonTitle && (
-                <p className="line-clamp-1 text-xs text-muted-foreground">
+                <p className="line-clamp-1 text-xs text-muted-foreground mt-1 mb-2">
                   {course.currentLessonTitle}
                 </p>
               )}
             </div>
 
-            <div className="pt-4 mt-auto">
-              <Button asChild size="sm" className="w-full justify-center gap-1.5 text-xs font-semibold">
-                <Link to={`/courses/${course.id}`}>
-                  <PlayCircle className="h-3.5 w-3.5" />
-                  <span>Tiếp tục học</span>
-                </Link>
-              </Button>
+            {/* Progress Bar & Percentage */}
+            <div className="mt-auto pt-2 flex items-center gap-2.5">
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
+                <div
+                  className="h-full rounded-full bg-brand-orange transition-all duration-500"
+                  style={{ width: `${course.progressPercent}%` }}
+                />
+              </div>
+              <span className="text-xs font-semibold text-foreground/80 shrink-0">
+                {course.progressPercent}%
+              </span>
             </div>
           </div>
         ))}

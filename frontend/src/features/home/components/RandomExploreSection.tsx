@@ -1,42 +1,188 @@
 import { useState } from 'react';
-import { RefreshCw, Star, Users } from 'lucide-react';
+import { RefreshCw, Users, BookOpen, Globe, Lock, BarChart3, Languages, GitFork, Code2, Boxes, Waves, Scan, Server, TrendingUp, BookmarkCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { Button } from '@/shared/ui';
-import defaultCourseCover from '@/assets/courses';
 
-interface VerticalCardItem {
+interface RandomCourseCardItem {
   id: string;
   title: string;
   authorName: string;
-  coverUrl?: string;
   tag: string;
-  rating: number;
-  learnerCount: number;
+  tagColor: 'amber' | 'emerald' | 'orange' | 'blue' | 'purple' | 'teal' | 'pink';
+  accessMode: 'PUBLIC' | 'PRIVATE';
+  learnerCountText: string;
+  lessonCountText: string;
+  iconType: 'barchart' | 'languages' | 'gitfork' | 'code' | 'boxes' | 'waves' | 'scan' | 'server' | 'trend' | 'bookmark';
 }
 
-const POOL_OF_COURSES: VerticalCardItem[] = [
-  { id: 'exp-1', title: 'Toán Rời Rạc & Logic Mệnh Đề', authorName: 'PGS. Lê Huy', tag: 'Toán', rating: 4.8, learnerCount: 840 },
-  { id: 'exp-2', title: 'An Ninh Mạng & Ethical Hacking', authorName: 'ThS. Đặng Tuấn', tag: 'Bảo mật', rating: 4.9, learnerCount: 1520 },
-  { id: 'exp-3', title: 'Lập Trình Go (Golang) Microservices', authorName: 'Kỹ sư Vũ Đạt', tag: 'Backend', rating: 4.7, learnerCount: 690 },
-  { id: 'exp-4', title: 'Kỹ Thuật Xử Lý Ngôn Ngữ Tự Nhiên NLP', authorName: 'TS. Đỗ Hoàng Nam', tag: 'AI', rating: 4.9, learnerCount: 1100 },
-  { id: 'exp-5', title: 'Lập Trình Di Động Flutter Đa Nền Tảng', authorName: 'ThS. Nguyễn Lan Anh', tag: 'Mobile', rating: 4.8, learnerCount: 1340 },
-  { id: 'exp-6', title: 'Hệ Thống Phân Tán với Kafka & RabbitMQ', authorName: 'TS. Trần Khoa', tag: 'Hệ thống', rating: 4.8, learnerCount: 780 },
-  { id: 'exp-7', title: 'DevOps với Docker, CI/CD Jenkins', authorName: 'Kỹ sư Vũ Đạt', tag: 'DevOps', rating: 4.9, learnerCount: 2200 },
-  { id: 'exp-8', title: 'Thiết Kế Cơ Sở Dữ Liệu NoSQL MongoDB', authorName: 'PGS. Lê Huy', tag: 'Database', rating: 4.6, learnerCount: 910 },
-  { id: 'exp-9', title: 'Kiểm Thử Phần Mềm & Test Automation', authorName: 'ThS. Đặng Tuấn', tag: 'QA', rating: 4.7, learnerCount: 650 },
-  { id: 'exp-10', title: 'Trực Quan Hóa Dữ Liệu với PowerBI & Tableau', authorName: 'TS. Hoàng Hà', tag: 'Data', rating: 4.8, learnerCount: 1450 },
-  { id: 'exp-11', title: 'C++ Hiện Đại & Game Engine Architecture', authorName: 'TS. Trần Khoa', tag: 'C++', rating: 4.9, learnerCount: 880 },
-  { id: 'exp-12', title: 'Deep Learning & Thị Giác Máy Tính (CV)', authorName: 'TS. Đỗ Hoàng Nam', tag: 'AI', rating: 4.9, learnerCount: 1980 },
+const POOL_OF_COURSES: RandomCourseCardItem[] = [
+  {
+    id: 'exp-01',
+    title: 'Python Cho Nhà Phân Tích Dữ Liệu',
+    authorName: 'TS. Đỗ Hoàng Nam',
+    tag: 'Khoa học dữ liệu',
+    tagColor: 'amber',
+    accessMode: 'PUBLIC',
+    learnerCountText: '2.1k',
+    lessonCountText: '15 bài',
+    iconType: 'barchart',
+  },
+  {
+    id: 'exp-02',
+    title: 'Xử Lý Ngôn Ngữ Tự Nhiên Với Transformers',
+    authorName: 'Lê Quang Minh',
+    tag: 'Toán học',
+    tagColor: 'emerald',
+    accessMode: 'PUBLIC',
+    learnerCountText: '3.5k',
+    lessonCountText: '22 bài',
+    iconType: 'languages',
+  },
+  {
+    id: 'exp-03',
+    title: 'Giải Thuật Nâng Cao & Quy Hoạch Động',
+    authorName: 'ThS. Nguyễn Lan Anh',
+    tag: 'Đang cập nhật',
+    tagColor: 'orange',
+    accessMode: 'PRIVATE',
+    learnerCountText: '1.8k',
+    lessonCountText: '18 bài',
+    iconType: 'gitfork',
+  },
+  {
+    id: 'exp-04',
+    title: 'TypeScript & Clean Code Tiêu Chuẩn Doanh Nghiệp',
+    authorName: 'Trần Đức Toàn',
+    tag: 'Frontend',
+    tagColor: 'blue',
+    accessMode: 'PUBLIC',
+    learnerCountText: '910',
+    lessonCountText: '14 bài',
+    iconType: 'code',
+  },
+  {
+    id: 'exp-05',
+    title: 'Hệ Thống Phân Tán Microservices',
+    authorName: 'Vũ Quốc Cường',
+    tag: 'Bảo mật',
+    tagColor: 'purple',
+    accessMode: 'PUBLIC',
+    learnerCountText: '1.4k',
+    lessonCountText: '12 bài',
+    iconType: 'boxes',
+  },
+  {
+    id: 'exp-06',
+    title: 'Vật Lý Sóng & Quang Học Hiện Đại',
+    authorName: 'PGS. TS. Trần Văn Hùng',
+    tag: 'Khoa học',
+    tagColor: 'teal',
+    accessMode: 'PUBLIC',
+    learnerCountText: '1.6k',
+    lessonCountText: '16 bài',
+    iconType: 'waves',
+  },
+  {
+    id: 'exp-07',
+    title: 'Thị Giác Máy Tính (Computer Vision) với PyTorch',
+    authorName: 'Nguyễn Thu Trâm',
+    tag: 'Chuyên sâu',
+    tagColor: 'orange',
+    accessMode: 'PUBLIC',
+    learnerCountText: '2.7k',
+    lessonCountText: '14 bài',
+    iconType: 'scan',
+  },
+  {
+    id: 'exp-08',
+    title: 'Quản Trị Hệ Thống Linux Chuyên Sâu',
+    authorName: 'Phạm Thức Huy',
+    tag: 'Hệ thống',
+    tagColor: 'amber',
+    accessMode: 'PRIVATE',
+    learnerCountText: '1.2k',
+    lessonCountText: '20 bài',
+    iconType: 'server',
+  },
+  {
+    id: 'exp-09',
+    title: 'Xác Suất Thống Kê Dành Cho Data Science',
+    authorName: 'TS. Phạm Đình Trí',
+    tag: 'Toán ứng dụng',
+    tagColor: 'emerald',
+    accessMode: 'PUBLIC',
+    learnerCountText: '2.2k',
+    lessonCountText: '16 bài',
+    iconType: 'trend',
+  },
+  {
+    id: 'exp-10',
+    title: 'Ghi Chép Thông Minh Cornell & Spaced Repetition',
+    authorName: 'Hoàng Yến',
+    tag: 'Kỹ năng mềm',
+    tagColor: 'amber',
+    accessMode: 'PUBLIC',
+    learnerCountText: '4.5k',
+    lessonCountText: '8 bài',
+    iconType: 'bookmark',
+  },
 ];
 
+function renderCardIcon(type: RandomCourseCardItem['iconType']) {
+  switch (type) {
+    case 'barchart':
+      return <BarChart3 className="h-7 w-7 text-amber-400" />;
+    case 'languages':
+      return <Languages className="h-7 w-7 text-emerald-400" />;
+    case 'gitfork':
+      return <GitFork className="h-7 w-7 text-sky-400" />;
+    case 'code':
+      return <Code2 className="h-7 w-7 text-cyan-400" />;
+    case 'boxes':
+      return <Boxes className="h-7 w-7 text-purple-400" />;
+    case 'waves':
+      return <Waves className="h-7 w-7 text-teal-400" />;
+    case 'scan':
+      return <Scan className="h-7 w-7 text-cyan-400" />;
+    case 'server':
+      return <Server className="h-7 w-7 text-blue-400" />;
+    case 'trend':
+      return <TrendingUp className="h-7 w-7 text-pink-400" />;
+    case 'bookmark':
+      return <BookmarkCheck className="h-7 w-7 text-amber-400" />;
+    default:
+      return <Code2 className="h-7 w-7 text-brand-orange" />;
+  }
+}
+
+function getTagClass(color: RandomCourseCardItem['tagColor']) {
+  switch (color) {
+    case 'amber':
+      return 'bg-amber-500/15 text-amber-500 border border-amber-500/30';
+    case 'emerald':
+      return 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30';
+    case 'orange':
+      return 'bg-brand-orange/15 text-brand-orange border border-brand-orange/30';
+    case 'blue':
+      return 'bg-blue-500/15 text-blue-400 border border-blue-500/30';
+    case 'purple':
+      return 'bg-purple-500/15 text-purple-400 border border-purple-500/30';
+    case 'teal':
+      return 'bg-teal-500/15 text-teal-400 border border-teal-500/30';
+    case 'pink':
+      return 'bg-pink-500/15 text-pink-400 border border-pink-500/30';
+    default:
+      return 'bg-secondary text-muted-foreground';
+  }
+}
+
 export function RandomExploreSection() {
-  const [courses, setCourses] = useState(POOL_OF_COURSES.slice(0, 10));
+  const [courses, setCourses] = useState(POOL_OF_COURSES);
   const [isRotating, setIsRotating] = useState(false);
 
   const handleShuffle = () => {
     setIsRotating(true);
     const shuffled = [...POOL_OF_COURSES].sort(() => 0.5 - Math.random());
-    setCourses(shuffled.slice(0, 10));
+    setCourses(shuffled);
     setTimeout(() => setIsRotating(false), 400);
   };
 
@@ -44,23 +190,21 @@ export function RandomExploreSection() {
     <section className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border/60 pb-3">
-        <div className="flex items-center gap-3">
-          <span className="h-6 w-1 rounded-full bg-brand-orange" aria-hidden="true" />
-          <h2 className="font-serif text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-            KHÁM PHÁ NGẪU NHIÊN
+        <div className="flex items-center gap-2.5">
+          <span className="h-5 w-1 rounded-full bg-brand-orange" aria-hidden="true" />
+          <h2 className="font-serif text-lg sm:text-xl font-bold tracking-tight text-foreground">
+            KHÁM PHÁ NGẪU NHIÊN <span className="sr-only">Đề xuất cho bạn</span>
           </h2>
         </div>
 
-        <Button
+        <button
           type="button"
-          variant="outline"
-          size="sm"
           onClick={handleShuffle}
-          className="gap-2 text-xs font-semibold"
+          className="flex items-center gap-1.5 rounded-full border border-border bg-secondary/80 hover:bg-secondary px-3 py-1 text-xs font-semibold text-foreground transition-colors"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${isRotating ? 'animate-spin text-brand-orange' : ''}`} />
-          <span>Đổi đề xuất</span>
-        </Button>
+          <span>Làm mới danh sách</span>
+        </button>
       </div>
 
       {/* Grid 2 rows x 5 columns = 10 vertical cards */}
@@ -68,39 +212,55 @@ export function RandomExploreSection() {
         {courses.map((item) => (
           <div
             key={item.id}
-            className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-xs transition-all hover:border-brand-orange/40 hover:shadow-md"
+            className="group flex flex-col justify-between rounded-2xl border border-border bg-card p-4 shadow-xs transition-all hover:border-brand-orange/40 hover:shadow-md"
           >
-            <div className="relative aspect-video w-full overflow-hidden bg-muted">
-              <img
-                src={item.coverUrl || defaultCourseCover}
-                alt={item.title}
-                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                loading="lazy"
-              />
-              <span className="absolute top-2 left-2 rounded-md bg-black/60 backdrop-blur-xs px-2 py-0.5 text-[10px] font-bold text-white">
-                {item.tag}
-              </span>
-            </div>
+            <div>
+              {/* Top Row: Tag badge + Access badge */}
+              <div className="flex items-center justify-between gap-1 text-[10px]">
+                <span className={`rounded-md px-1.5 py-0.5 font-semibold ${getTagClass(item.tagColor)}`}>
+                  {item.tag}
+                </span>
 
-            <div className="flex flex-1 flex-col p-3.5 space-y-2">
-              <h3 className="line-clamp-2 font-serif text-xs sm:text-sm font-bold text-foreground group-hover:text-brand-orange transition-colors">
+                <span className="inline-flex items-center gap-1 rounded-md bg-secondary/60 px-1 py-0.5 text-muted-foreground">
+                  {item.accessMode === 'PUBLIC' ? (
+                    <>
+                      <Globe className="h-2.5 w-2.5" />
+                      <span>Public</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="h-2.5 w-2.5" />
+                      <span>Riêng tư</span>
+                    </>
+                  )}
+                </span>
+              </div>
+
+              {/* Center colorful icon illustration */}
+              <div className="my-3 flex h-14 items-center justify-center">
+                {renderCardIcon(item.iconType)}
+              </div>
+
+              {/* Title & Author */}
+              <h3 className="line-clamp-2 font-serif text-xs sm:text-sm font-bold text-foreground group-hover:text-brand-orange transition-colors min-h-[2.5rem] leading-snug">
                 <Link to={`/courses/${item.id}`}>{item.title}</Link>
               </h3>
 
-              <p className="text-[11px] text-muted-foreground truncate">
+              <p className="mt-1 text-[11px] text-muted-foreground truncate">
                 {item.authorName}
               </p>
+            </div>
 
-              <div className="mt-auto pt-2 flex items-center justify-between text-[11px] border-t border-border/60">
-                <span className="flex items-center gap-1 font-semibold text-amber-500">
-                  <Star className="h-3 w-3 fill-current" />
-                  <span>{item.rating.toFixed(1)}</span>
-                </span>
-                <span className="flex items-center gap-1 text-muted-foreground">
-                  <Users className="h-3 w-3" />
-                  <span>{item.learnerCount}</span>
-                </span>
-              </div>
+            {/* Bottom Row: Learners & Lessons */}
+            <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-2 text-[11px] text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Users className="h-3 w-3" />
+                <span>{item.learnerCountText}</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <BookOpen className="h-3 w-3" />
+                <span>{item.lessonCountText}</span>
+              </span>
             </div>
           </div>
         ))}
