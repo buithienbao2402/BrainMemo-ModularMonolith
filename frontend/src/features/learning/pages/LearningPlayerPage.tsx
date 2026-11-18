@@ -5,7 +5,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Lock,
-  MessageCircle,
 } from 'lucide-react';
 import { Button, Skeleton, ErrorState } from '@/shared/ui';
 import { useCourseQuery } from '@/features/course';
@@ -136,17 +135,6 @@ export function LearningPlayerPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          {user && !course?.viewer?.isOwner && course?.owner?.id !== user.id && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setIsChatOpen(true)}
-              className="hidden sm:inline-flex items-center gap-1.5 h-8 text-xs"
-            >
-              <MessageCircle className="h-3.5 w-3.5" />
-              <span>Nhắn tin giảng viên</span>
-            </Button>
-          )}
           {activeChapterId && (
             <BookmarkButton
               courseId={courseId}

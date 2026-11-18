@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Calendar,
   BookOpen,
@@ -7,6 +7,7 @@ import {
   Lock,
   GraduationCap,
   CheckCircle2,
+  MessageSquare,
 } from 'lucide-react';
 import { useAuth } from '@/shared/hooks';
 import {
@@ -22,10 +23,12 @@ import {
   type ProfileCourseRelation,
 } from '../api/profileApi';
 import defaultCourseCover from '@/assets/courses';
+import { getOrCreateUserConversation } from '@/features/messaging';
 
 export function PublicProfilePage() {
   const { userId } = useParams<{ userId: string }>();
   const { user: currentUser } = useAuth();
+  const navigate = useNavigate();
 
   const [relation, setRelation] = useState<ProfileCourseRelation>('ENROLLED');
   const [page, setPage] = useState(1);
@@ -170,12 +173,32 @@ export function PublicProfilePage() {
             </div>
           </div>
 
-          {isOwnProfile && (
+          {isOwnProfile ? (
             <Button asChild variant="outline" size="sm" className="shrink-0">
               <Link to="/settings/profile">
                 <Edit className="h-4 w-4 mr-1.5" />
                 Chỉnh sửa hồ sơ
               </Link>
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              className="shrink-0 bg-brand-orange hover:bg-brand-orange/90 text-white font-medium"
+              onClick={() => {
+                const convId = getOrCreateUserConversation({
+                  userId: profile.userId || userId || 'unknown-user',
+                  displayName: profile.displayName || 'Người dùng BrainMemo',
+                  avatarUrl: profile.avatarUrl || undefined,
+                  roleBadge: 'Thành viên',
+                  courseName: profile.bio ? profile.bio.slice(0, 40) : 'Trao đổi cá nhân',
+                });
+                navigate(`/me/messages?c=${convId}`);
+              }}
+            >
+              <MessageSquare className="h-4 w-4 mr-1.5" />
+              Nhắn tin
             </Button>
           )}
         </div>

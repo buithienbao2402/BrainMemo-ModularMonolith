@@ -48,7 +48,7 @@ describe('App Shell (SCR-COM-01, SCR-COM-02, SCR-COM-03, Guards, Theme)', () => 
     expect(screen.getByRole('link', { name: 'Khám phá' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Quản trị' })).not.toBeInTheDocument();
     expect(
-      screen.getByText('© 2026 BrainMemo LMS. Tất cả các quyền được bảo lưu.')
+      screen.getByText('© 2026 | Toàn bộ bản quyền thuộc BrainMemo')
     ).toBeInTheDocument();
 
     // Toggle theme light <-> dark without storing auth secrets

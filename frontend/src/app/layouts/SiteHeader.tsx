@@ -23,6 +23,7 @@ import {
 } from '@/shared/ui';
 import { BrandLogo } from './BrandLogo';
 import { NotificationBellLink } from './NotificationBellLink';
+import { MessagesDropdown } from '@/features/messaging';
 import { ThemeToggleButton } from './ThemeToggleButton';
 
 function getInitials(label: string): string {
@@ -115,6 +116,8 @@ export function SiteHeader() {
               <ThemeToggleButton />
 
               <NotificationBellLink unreadCount={unreadCount} />
+
+              <MessagesDropdown />
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

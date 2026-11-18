@@ -29,6 +29,7 @@ import {
   QuizPlayerPage,
   QuizResultPage,
   AssignmentPlayerPage,
+  LearningDashboardPage,
 } from '@/features/learning';
 import {
   AssessmentRulesPage,
@@ -173,13 +174,15 @@ export const appRoutes: RouteObject[] = [
         children: [
           {
             path: '/learning-dashboard',
-            element: (
-              <RouteStubPage
-                screenCode="SCR-LRN-01"
-                title="Dashboard học tập"
-                description="Theo dõi tiến độ học tập, biểu đồ hoạt động và kế hoạch học tập của bạn."
-              />
-            ),
+            element: <LearningDashboardPage />,
+          },
+          {
+            path: '/learning-dashboard/gradebook',
+            element: <LearnerGradebookPage />,
+          },
+          {
+            path: '/learning-dashboard/gradebook/:courseId',
+            element: <LearnerGradebookPage />,
           },
           {
             path: '/me/courses',

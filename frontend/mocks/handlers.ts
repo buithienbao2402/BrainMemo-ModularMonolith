@@ -1,10 +1,20 @@
 import { http, HttpResponse } from 'msw';
 import type { AuthTokens, CurrentUser, ProblemDetails, ProfileDto } from '@/shared/api';
 import type { SessionDto } from '@/features/identity/api';
+import {
+  getStoredConversations,
+  getStoredMessages,
+  appendStoredMessage,
+  markStoredConversationAsRead,
+  type StoredMessage,
+} from '@/features/messaging';
 
 export type MockPersona = 'guest' | 'user' | 'unverified' | 'admin' | 'locked';
 
+export let currentMockPersona: MockPersona = 'guest';
+
 export function setMockPersonaCookie(persona: MockPersona): void {
+  currentMockPersona = persona;
   if (typeof document !== 'undefined') {
     document.cookie = `bm_mock_persona=${persona}; path=/`;
   }
@@ -1104,8 +1114,23 @@ function readPersonaFromCookie(request: Request): MockPersona {
   if (authHeader.includes('mock-access-token-unverified')) return 'unverified';
   if (authHeader.includes('mock-access-token-user') || authHeader.includes('mock-access-token-google')) return 'user';
 
-  const cookieHeader =
-    request.headers.get('cookie') ?? (typeof document !== 'undefined' ? document.cookie : '');
+  if (typeof document !== 'undefined') {
+    const match = document.cookie.match(/(?:^|;\s*)bm_mock_persona=([^;]+)/);
+    const value = match?.[1]?.trim();
+    if (
+      value === 'user' ||
+      value === 'unverified' ||
+      value === 'admin' ||
+      value === 'locked' ||
+      value === 'guest'
+    ) {
+      currentMockPersona = value;
+      return value;
+    }
+    return 'guest';
+  }
+
+  const cookieHeader = request.headers.get('cookie') ?? '';
   const match = cookieHeader.match(/(?:^|;\s*)bm_mock_persona=([^;]+)/);
   const value = match?.[1]?.trim();
   if (
@@ -1117,7 +1142,7 @@ function readPersonaFromCookie(request: Request): MockPersona {
   ) {
     return value;
   }
-  return 'guest';
+  return currentMockPersona;
 }
 
 function problemResponse(status: number, body: ProblemDetails) {
@@ -1413,6 +1438,8 @@ export const handlers = [
   }),
 
   http.post('*/api/v1/auth/logout', () => {
+    currentMockPersona = 'guest';
+    setMockPersonaCookie('guest');
     return new HttpResponse(null, { status: 204 });
   }),
 
@@ -1487,6 +1514,100 @@ export const handlers = [
     const notifications = getStoredNotifications();
     const count = notifications.filter((n) => !n.readAt).length;
     return HttpResponse.json({ count }, { status: 200 });
+  }),
+
+  // Messaging Mock Handlers
+  http.get('*/api/v1/messages/conversations', ({ request }) => {
+    const url = new URL(request.url);
+    const courseId = url.searchParams.get('courseId');
+    const page = parseInt(url.searchParams.get('page') || '1', 10);
+    const pageSize = parseInt(url.searchParams.get('pageSize') || '20', 10);
+
+    const convs = getStoredConversations();
+    const filtered = courseId ? convs.filter((c) => c.courseId === courseId) : convs;
+    const items = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+    return HttpResponse.json(
+      {
+        items,
+        meta: {
+          page,
+          pageSize,
+          totalItems: filtered.length,
+          totalPages: Math.max(1, Math.ceil(filtered.length / pageSize)),
+        },
+      },
+      { status: 200 }
+    );
+  }),
+
+  http.get('*/api/v1/messages/unread-count', () => {
+    const convs = getStoredConversations();
+    const unreadCount = convs.reduce((acc, c) => acc + (c.unreadCount ?? 0), 0);
+    return HttpResponse.json({ unreadCount }, { status: 200 });
+  }),
+
+  http.get('*/api/v1/messages/conversations/:id/messages', ({ params }) => {
+    const { id } = params;
+    const msgs = getStoredMessages(String(id));
+    return HttpResponse.json(
+      {
+        items: msgs,
+        meta: {
+          page: 1,
+          pageSize: 50,
+          totalItems: msgs.length,
+          totalPages: 1,
+        },
+      },
+      { status: 200 }
+    );
+  }),
+
+  http.post('*/api/v1/messages/conversations/:id/messages', async ({ params, request }) => {
+    const { id } = params;
+    const body = (await request.json().catch(() => ({}))) as { content?: string };
+    const content = body.content?.trim() || '';
+
+    const newMsg: StoredMessage = {
+      id: `msg-${Date.now()}`,
+      conversationId: String(id),
+      senderUserId: 'current-user',
+      content,
+      createdAt: new Date().toISOString(),
+    };
+    appendStoredMessage(String(id), newMsg);
+
+    return HttpResponse.json(newMsg, { status: 201 });
+  }),
+
+  http.put('*/api/v1/messages/conversations/:id/read', ({ params }) => {
+    markStoredConversationAsRead(String(params.id));
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.post('*/api/v1/courses/:courseId/messages/conversations', ({ params }) => {
+    const { courseId } = params;
+    const convs = getStoredConversations();
+    let target = convs.find((c) => c.courseId === courseId);
+    if (!target && convs.length > 0) {
+      target = convs[0];
+    }
+    return HttpResponse.json(target ?? null, { status: 200 });
+  }),
+
+  http.get('*/api/v1/messages/conversations/:id', ({ params }) => {
+    const { id } = params;
+    const convs = getStoredConversations();
+    const target = convs.find((c) => c.id === id);
+    if (!target) {
+      return problemResponse(404, {
+        title: 'Không tìm thấy cuộc trò chuyện',
+        status: 404,
+        code: 'CONVERSATION_NOT_FOUND',
+      });
+    }
+    return HttpResponse.json(target, { status: 200 });
   }),
 
   // Presigned S3/R2 File Upload Mock Handlers (DEC-05)
