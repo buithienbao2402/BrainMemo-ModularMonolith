@@ -21,6 +21,7 @@ import {
   useProfileCoursesQuery,
   type ProfileCourseRelation,
 } from '../api/profileApi';
+import defaultCourseCover from '@/assets/courses';
 
 export function PublicProfilePage() {
   const { userId } = useParams<{ userId: string }>();
@@ -299,17 +300,14 @@ export function PublicProfilePage() {
                     to={`/courses/${course.id}`}
                     className="relative aspect-video w-full overflow-hidden bg-muted"
                   >
-                    {course.coverUrl ? (
-                      <img
-                        src={course.coverUrl}
-                        alt={course.name || 'Cover'}
-                        className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-brand-orange/20 to-primary/20 text-brand-orange font-bold text-lg">
-                        BrainMemo
-                      </div>
-                    )}
+                    <img
+                      src={course.coverUrl || defaultCourseCover}
+                      alt={course.name || 'Cover'}
+                      onError={(e) => {
+                        e.currentTarget.src = defaultCourseCover;
+                      }}
+                      className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
                     {course.accessMode && (
                       <span className="absolute top-2 left-2 px-2 py-0.5 text-[10px] font-semibold uppercase rounded-md bg-black/60 text-white backdrop-blur-sm">
                         {course.accessMode}

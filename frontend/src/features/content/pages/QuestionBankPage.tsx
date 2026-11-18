@@ -28,7 +28,7 @@ import {
   type QuestionStatus,
   useQuestionsQuery,
 } from '../api/contentApi';
-import { QuestionEditorModal } from '../components/QuestionEditorModal';
+import { QuestionEditorDrawer } from '../components/QuestionEditorDrawer';
 import { QuestionUsageDrawer } from '../components/QuestionUsageDrawer';
 import { ImportQuestionsModal } from '../components/ImportQuestionsModal';
 import { AiGenerateModal } from '@/features/ai';
@@ -1030,12 +1030,13 @@ export function QuestionBankPage() {
         </div>
       )}
 
-      {/* Editor Modal */}
-      <QuestionEditorModal
+      {/* Editor Drawer (Bảng trượt Sửa / Thêm câu hỏi) */}
+      <QuestionEditorDrawer
         courseId={courseId}
         question={selectedQuestion}
         isOpen={isEditorOpen}
         onClose={() => setIsEditorOpen(false)}
+        onSaved={() => refetch()}
         onViewUsage={(qId) => {
           setIsEditorOpen(false);
           const found = questionsList.find((q) => q.id === qId) || questionsList[0]!;

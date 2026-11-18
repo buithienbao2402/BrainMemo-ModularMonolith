@@ -23,5 +23,6 @@ export * from './pages/CourseResourceDetailPage';
 export * from './pages/ResourceManagementPage';
 export * from './pages/QuestionBankPage';
 export * from './components/QuestionEditorModal';
+export * from './components/QuestionEditorDrawer';
 export * from './components/QuestionUsageDrawer';
 export * from './components/ImportQuestionsModal';

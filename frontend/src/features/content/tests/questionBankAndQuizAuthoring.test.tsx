@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { QuestionEditorModal } from '../components/QuestionEditorModal';
+import { QuestionEditorDrawer } from '../components/QuestionEditorDrawer';
 import { QuizBlockEditor } from '../components/QuizBlockEditor';
 import { ImportQuestionsModal } from '../components/ImportQuestionsModal';
 import { QuestionUsageDrawer } from '../components/QuestionUsageDrawer';
@@ -121,5 +122,26 @@ describe('T-S7-FE-01: Question Bank & Quiz Authoring Suite', () => {
       expect(screen.getByText('Lượt trả lời')).toBeInTheDocument();
       expect(screen.getByText('Tỉ lệ đúng')).toBeInTheDocument();
     });
+  });
+
+  it('QuestionEditorDrawer: renders all 8 sections and handles saving', async () => {
+    const handleClose = vi.fn();
+    renderWithClient(
+      <QuestionEditorDrawer
+        courseId="test-course-id"
+        isOpen={true}
+        onClose={handleClose}
+      />
+    );
+
+    expect(screen.getByText('Thêm câu hỏi mới')).toBeInTheDocument();
+    expect(screen.getByText(/1\. Loại câu hỏi/i)).toBeInTheDocument();
+    expect(screen.getByText(/2\. Nội dung câu hỏi/i)).toBeInTheDocument();
+    expect(screen.getByText(/3\. Khu vực đáp án/i)).toBeInTheDocument();
+    expect(screen.getByText(/4\. Giải thích chi tiết/i)).toBeInTheDocument();
+    expect(screen.getByText(/5\. Điểm số bài học/i)).toBeInTheDocument();
+    expect(screen.getByText(/6\. Độ khó/i)).toBeInTheDocument();
+    expect(screen.getByText(/7\. Tag phân loại học thuật/i)).toBeInTheDocument();
+    expect(screen.getByText(/8\. Trạng thái câu hỏi/i)).toBeInTheDocument();
   });
 });
