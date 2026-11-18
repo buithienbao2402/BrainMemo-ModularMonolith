@@ -29,7 +29,11 @@ export const ToastContext = React.createContext<ToastContextValue | null>(null);
 export function useToast(): ToastContextValue {
   const ctx = React.useContext(ToastContext);
   if (!ctx) {
-    throw new Error('useToast must be used within ToastProvider');
+    return {
+      toasts: [],
+      pushToast: () => '',
+      dismissToast: () => {},
+    };
   }
   return ctx;
 }

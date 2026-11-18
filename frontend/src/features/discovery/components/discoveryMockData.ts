@@ -1,0 +1,268 @@
+export interface DiscoveryCourseItem {
+  id: string;
+  name: string;
+  slug: string;
+  accessMode: 'PUBLIC' | 'PRIVATE';
+  status: 'UPDATING' | 'COMPLETED' | 'PAUSED';
+  instructor: string;
+  learnerCount: number;
+  ratingAvg: number;
+  tags: string[];
+  category: string;
+  coverUrl: string;
+}
+
+export const SCREENSHOT_COURSES: DiscoveryCourseItem[] = [
+  {
+    id: 'course-1',
+    name: 'Cấu Trúc Dữ Liệu & Giải Thuật Nâng Cao',
+    slug: 'cau-truc-du-lieu-va-giai-thuat-nang-cao',
+    accessMode: 'PRIVATE',
+    status: 'UPDATING',
+    instructor: 'TS. Lê Hoàng Long',
+    learnerCount: 3420,
+    ratingAvg: 4.9,
+    tags: ['C++', 'SRS 200 thẻ'],
+    category: 'Cấu trúc dữ liệu',
+    coverUrl:
+      'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=500&auto=format&fit=crop&q=60',
+  },
+  {
+    id: 'course-2',
+    name: 'Toán Rời Rạc & Lý Thuyết Đồ Thị Ứng Dụng',
+    slug: 'toan-roi-rac-ly-thuyet-do-thi',
+    accessMode: 'PUBLIC',
+    status: 'COMPLETED',
+    instructor: 'PGS. Đỗ Tuấn Minh',
+    learnerCount: 4150,
+    ratingAvg: 4.8,
+    tags: ['Toán học', 'Lý thuyết ĐT'],
+    category: 'Toán học',
+    coverUrl:
+      'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=500&auto=format&fit=crop&q=60',
+  },
+  {
+    id: 'course-3',
+    name: 'Kỹ Thuật Prompting & AI Thực Chiến',
+    slug: 'ky-thuat-prompting-ai-thuc-chien',
+    accessMode: 'PUBLIC',
+    status: 'UPDATING',
+    instructor: 'ThS. Quang Trần',
+    learnerCount: 8200,
+    ratingAvg: 5.0,
+    tags: ['OpenAI', 'Prompt Eng'],
+    category: 'AI & Machine Learning',
+    coverUrl:
+      'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=500&auto=format&fit=crop&q=60',
+  },
+  {
+    id: 'course-4',
+    name: 'Giải Tích Chuyên Sâu 1 & Chuỗi Fourier',
+    slug: 'giai-tich-chuyen-sau-chuoi-fourier',
+    accessMode: 'PRIVATE',
+    status: 'UPDATING',
+    instructor: 'Cô Giáo Thảo',
+    learnerCount: 1890,
+    ratingAvg: 4.8,
+    tags: ['Calculus', 'Fourier'],
+    category: 'Toán học',
+    coverUrl:
+      'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=500&auto=format&fit=crop&q=60',
+  },
+  {
+    id: 'course-5',
+    name: 'Đại Số Tuyến Tính & Không Gian Véc-tơ',
+    slug: 'dai-so-tuyen-tinh-khong-gian-vec-to',
+    accessMode: 'PUBLIC',
+    status: 'COMPLETED',
+    instructor: 'TS. Hoàng Mai',
+    learnerCount: 2760,
+    ratingAvg: 4.8,
+    tags: ['Toán học', 'Véc-tơ'],
+    category: 'Toán học',
+    coverUrl:
+      'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=500&auto=format&fit=crop&q=60',
+  },
+  {
+    id: 'course-6',
+    name: 'Thiết Kế Hệ Thống Phân Tán Quy Mô Lớn',
+    slug: 'thiet-ke-he-thong-phan-tan',
+    accessMode: 'PUBLIC',
+    status: 'UPDATING',
+    instructor: 'Kỹ sư Vũ Nam',
+    learnerCount: 3100,
+    ratingAvg: 4.9,
+    tags: ['DevOps', 'Backend'],
+    category: 'Lập trình',
+    coverUrl:
+      'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=500&auto=format&fit=crop&q=60',
+  },
+  {
+    id: 'course-7',
+    name: 'Lập Trình Python Chuyên Sâu & Tối Ưu',
+    slug: 'lap-trinh-python-chuyen-sau',
+    accessMode: 'PUBLIC',
+    status: 'COMPLETED',
+    instructor: 'Nguyễn Minh Đức',
+    learnerCount: 5600,
+    ratingAvg: 4.9,
+    tags: ['Python', 'Tối ưu'],
+    category: 'Python',
+    coverUrl:
+      'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=500&auto=format&fit=crop&q=60',
+  },
+  {
+    id: 'course-8',
+    name: 'Deep Learning & Mạng Nơ-ron Tích Chập',
+    slug: 'deep-learning-mang-no-ron-tich-chap',
+    accessMode: 'PRIVATE',
+    status: 'UPDATING',
+    instructor: 'TS. Nguyễn Hải',
+    learnerCount: 1750,
+    ratingAvg: 4.7,
+    tags: ['PyTorch', 'Vision'],
+    category: 'AI & Machine Learning',
+    coverUrl:
+      'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=500&auto=format&fit=crop&q=60',
+  },
+  {
+    id: 'course-9',
+    name: 'Ghi Nhớ Từ Vựng IELTS 8.0 với Phương Pháp SRS',
+    slug: 'ghi-nho-tu-vung-ielts-srs',
+    accessMode: 'PUBLIC',
+    status: 'COMPLETED',
+    instructor: 'Đặng Thùy Dương',
+    learnerCount: 8800,
+    ratingAvg: 5.0,
+    tags: ['IELTS', 'SRS 1200 từ'],
+    category: 'Ngoại ngữ',
+    coverUrl:
+      'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=500&auto=format&fit=crop&q=60',
+  },
+  {
+    id: 'course-10',
+    name: 'Kiến Trúc Máy Tính & Hợp Ngữ x86-64',
+    slug: 'kien-truc-may-tinh-hop-ngu-x86-64',
+    accessMode: 'PRIVATE',
+    status: 'PAUSED',
+    instructor: 'ThS. Trần Bình',
+    learnerCount: 890,
+    ratingAvg: 4.6,
+    tags: ['Assembly', 'Phần cứng'],
+    category: 'Lập trình',
+    coverUrl:
+      'https://images.unsplash.com/photo-1518770660439-4636190af475?w=500&auto=format&fit=crop&q=60',
+  },
+  {
+    id: 'course-11',
+    name: 'Cơ Sở Dữ Liệu Quan Hệ & Tối Ưu SQL',
+    slug: 'co-so-du-lieu-quan-he-sql',
+    accessMode: 'PUBLIC',
+    status: 'COMPLETED',
+    instructor: 'Lê Kim Oanh',
+    learnerCount: 4300,
+    ratingAvg: 4.9,
+    tags: ['PostgreSQL', 'Indexing'],
+    category: 'Lập trình',
+    coverUrl:
+      'https://images.unsplash.com/photo-1544383835-bda2bc66a55d?w=500&auto=format&fit=crop&q=60',
+  },
+  {
+    id: 'course-12',
+    name: 'Xác Suất Thống Kê Dành Cho Data Science',
+    slug: 'xac-suat-thong-ke-data-science',
+    accessMode: 'PUBLIC',
+    status: 'UPDATING',
+    instructor: 'TS. Phạm Gia Hưng',
+    learnerCount: 3750,
+    ratingAvg: 4.8,
+    tags: ['Data Science', 'Bayes'],
+    category: 'Toán học',
+    coverUrl:
+      'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=500&auto=format&fit=crop&q=60',
+  },
+  {
+    id: 'course-13',
+    name: 'Nhập Môn Lập Trình Rust Hiện Đại',
+    slug: 'nhap-mon-lap-trinh-rust-hien-dai',
+    accessMode: 'PUBLIC',
+    status: 'UPDATING',
+    instructor: 'Hoàng Quốc Bảo',
+    learnerCount: 1920,
+    ratingAvg: 4.9,
+    tags: ['Rust', 'Memory Safety'],
+    category: 'Lập trình',
+    coverUrl:
+      'https://images.unsplash.com/photo-1563986768609-322da13575f3?w=500&auto=format&fit=crop&q=60',
+  },
+  {
+    id: 'course-14',
+    name: 'Thuật Toán Tối Ưu & Quy Hoạch Tuyến Tính',
+    slug: 'thuat-toan-toi-uu-quy-hoach-tuyen-tinh',
+    accessMode: 'PRIVATE',
+    status: 'COMPLETED',
+    instructor: 'PGS. Nguyễn Văn An',
+    learnerCount: 1100,
+    ratingAvg: 4.7,
+    tags: ['Simplex', 'Vận trù học'],
+    category: 'Toán học',
+    coverUrl:
+      'https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?w=500&auto=format&fit=crop&q=60',
+  },
+  {
+    id: 'course-15',
+    name: 'Ngữ Pháp & Kanji Tiếng Nhật N2 Cấp Tốc',
+    slug: 'ngu-phap-kanji-tieng-nhat-n2',
+    accessMode: 'PUBLIC',
+    status: 'COMPLETED',
+    instructor: 'Sensei Kenji Mori',
+    learnerCount: 3840,
+    ratingAvg: 4.9,
+    tags: ['JLPT N2', 'SRS 1500 từ'],
+    category: 'Ngoại ngữ',
+    coverUrl:
+      'https://images.unsplash.com/photo-1528164344705-475426879c0d?w=500&auto=format&fit=crop&q=60',
+  },
+  {
+    id: 'course-16',
+    name: 'Phát Triển Web Fullstack với Next.js & TypeScript',
+    slug: 'phat-trien-web-fullstack-nextjs',
+    accessMode: 'PUBLIC',
+    status: 'UPDATING',
+    instructor: 'Trần Đình Khang',
+    learnerCount: 4550,
+    ratingAvg: 4.8,
+    tags: ['React', 'Fullstack'],
+    category: 'Lập trình',
+    coverUrl:
+      'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=500&auto=format&fit=crop&q=60',
+  },
+  {
+    id: 'course-17',
+    name: 'An Toàn Thông Tin & Mật Mã Học Ứng Dụng',
+    slug: 'an-toan-thong-tin-mat-ma-hoc',
+    accessMode: 'PRIVATE',
+    status: 'UPDATING',
+    instructor: 'TS. Bùi Trọng Đạt',
+    learnerCount: 1430,
+    ratingAvg: 4.8,
+    tags: ['Crypto', 'Security'],
+    category: 'Lập trình',
+    coverUrl:
+      'https://images.unsplash.com/photo-1510511459019-5dda7724fd87?w=500&auto=format&fit=crop&q=60',
+  },
+  {
+    id: 'course-18',
+    name: 'Kỹ Năng Tự Học Siêu Tốc & Ghi Nhớ Đỉnh Cao',
+    slug: 'ky-nang-tu-hoc-sieu-toc-ghi-nho',
+    accessMode: 'PUBLIC',
+    status: 'COMPLETED',
+    instructor: 'ThS. Quang Trần',
+    learnerCount: 7210,
+    ratingAvg: 5.0,
+    tags: ['Self-Dev', 'Tối ưu'],
+    category: 'SRS Memory',
+    coverUrl:
+      'https://images.unsplash.com/photo-1507413245164-6160d8298b31?w=500&auto=format&fit=crop&q=60',
+  },
+];

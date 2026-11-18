@@ -30,8 +30,13 @@ export function useOpenConversationMutation(courseId: string) {
   });
 }
 
-export function useConversationsQuery(params?: { courseId?: string; page?: number; pageSize?: number }) {
-  const { courseId, page = 1, pageSize = 20 } = params ?? {};
+export function useConversationsQuery(params?: {
+  courseId?: string;
+  page?: number;
+  pageSize?: number;
+  enabled?: boolean;
+}) {
+  const { courseId, page = 1, pageSize = 20, enabled = true } = params ?? {};
   return useQuery({
     queryKey: messagingQueryKeys.conversations({ courseId, page }),
     queryFn: async (): Promise<{ items: ConversationDto[]; meta: PageMeta }> => {
@@ -42,6 +47,7 @@ export function useConversationsQuery(params?: { courseId?: string; page?: numbe
       );
       return (res as any) ?? { items: [], meta: { page, pageSize, totalItems: 0, totalPages: 1 } };
     },
+    enabled,
     refetchInterval: 10_000,
   });
 }

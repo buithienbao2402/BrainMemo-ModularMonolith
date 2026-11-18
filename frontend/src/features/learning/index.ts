@@ -21,3 +21,4 @@ export * from './pages/QuizPlayerPage';
 export * from './pages/QuizResultPage';
 export * from './pages/MyBookmarksPage';
 export * from './pages/AssignmentPlayerPage';
+export * from './pages/LearningDashboardPage';

@@ -6,7 +6,6 @@ import {
   ArrowLeft,
   CheckCircle,
   AlertTriangle,
-  Info,
   Layers,
 } from 'lucide-react';
 import { Button } from '@/shared/ui';
@@ -143,15 +142,12 @@ export function AssessmentConfigPage() {
 
           <div className="flex items-center gap-2">
             <Link to={`/courses/${courseId}/manage/gradebook`}>
-              <Button variant="outline" size="sm">
-                Xem sổ điểm
-              </Button>
+              <Button variant="outline">Xem sổ điểm</Button>
             </Link>
             <Button
               onClick={handleSaveAll}
               disabled={isUpdatingConfig}
-              size="sm"
-              className="gap-1.5"
+              className="gap-2"
             >
               <Save className="w-4 h-4" />
               {isUpdatingConfig ? 'Đang lưu...' : 'Lưu cấu hình'}
@@ -159,167 +155,133 @@ export function AssessmentConfigPage() {
           </div>
         </div>
 
+        {/* Notice alert */}
         {notice && (
           <div
-            className={`p-4 rounded-lg text-sm border flex items-center gap-2 ${
+            className={`p-4 rounded-xl flex items-center gap-3 border ${
               notice.type === 'success'
-                ? 'bg-green-500/10 text-green-700 dark:text-green-300 border-green-500/20'
-                : 'bg-destructive/10 text-destructive border-destructive/20'
+                ? 'bg-green-500/10 border-green-500/20 text-green-700 dark:text-green-300'
+                : 'bg-destructive/10 border-destructive/20 text-destructive'
             }`}
           >
             {notice.type === 'success' ? (
-              <CheckCircle className="w-4 h-4 shrink-0" />
+              <CheckCircle className="w-5 h-5 shrink-0" />
             ) : (
-              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <AlertTriangle className="w-5 h-5 shrink-0" />
             )}
-            {notice.message}
+            <p className="text-sm font-medium">{notice.message}</p>
           </div>
         )}
 
-        {/* Evaluation Rules Section */}
-        <div className="bg-card rounded-lg border border-border p-6 space-y-6 shadow-sm">
-          <h2 className="text-base font-semibold text-foreground flex items-center gap-2 border-b border-border pb-3">
-            <Info className="w-5 h-5 text-primary" />
-            Quy tắc đánh giá chung (DEC-11, DEC-13)
-          </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1">
-                Ngưỡng đạt khóa học (Thang điểm 10)
-              </label>
-              <p className="text-xs text-muted-foreground mb-2">
-                Học viên đạt điểm tổng kết lớn hơn hoặc bằng ngưỡng này sẽ được coi là ĐẠT.
-              </p>
-              <input
-                type="number"
-                min={0}
-                max={10}
-                step={0.5}
-                value={passThreshold}
-                onChange={(e) => setPassThreshold(parseFloat(e.target.value) || 0)}
-                className="w-full sm:w-48 px-3 py-2 border border-border rounded bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1">
-                Chuẩn đầu ra PLO (Chương trình đào tạo)
-              </label>
-              <p className="text-xs text-muted-foreground mb-2">
-                Bật theo dõi liên kết chuẩn đầu ra cấp chương trình đào tạo.
-              </p>
-              <div className="flex items-center gap-2 mt-2">
-                <input
-                  type="checkbox"
-                  id="ploCheckbox"
-                  checked={ploEnabled}
-                  onChange={(e) => setPloEnabled(e.target.checked)}
-                  className="rounded border-border text-primary focus:ring-primary h-4 w-4"
-                />
-                <label htmlFor="ploCheckbox" className="text-sm text-foreground">
-                  Kích hoạt tính toán PLO
-                </label>
-              </div>
-            </div>
+        {/* Section 1: General rules */}
+        <div className="bg-card rounded-xl border border-border p-6 shadow-sm space-y-6">
+          <div className="flex items-center gap-2 border-b border-border pb-4">
+            <Layers className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-semibold text-foreground">
+              Quy tắc điểm & Ngưỡng đạt
+            </h2>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1">
-              Quy tắc chọn điểm khi học viên làm bài nhiều lần
-            </label>
-            <p className="text-xs text-muted-foreground mb-3">
-              Quy tắc này quyết định điểm thành phần nào được lấy làm điểm chính thức vào sổ điểm.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <label
-                className={`p-4 rounded-lg border cursor-pointer transition-colors flex flex-col justify-between ${
-                  scoreSelectionRule === 'HIGHEST'
-                    ? 'border-primary bg-primary/5'
-                    : 'border-border hover:bg-muted/40'
-                }`}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <input
-                    type="radio"
-                    name="scoreSelectionRule"
-                    value="HIGHEST"
-                    checked={scoreSelectionRule === 'HIGHEST'}
-                    onChange={() => setScoreSelectionRule('HIGHEST')}
-                    className="text-primary focus:ring-primary"
-                  />
-                  <span className="font-semibold text-sm text-foreground">Điểm cao nhất</span>
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  (HIGHEST) Khuyến khích học viên làm bài nhiều lần để đạt kết quả tốt nhất.
-                </span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Score selection rule */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground block">
+                Quy tắc chọn điểm khi làm bài nhiều lần
               </label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Áp dụng cho các bài kiểm tra trắc nghiệm cho phép học viên thử lại.
+              </p>
+              <div className="space-y-2">
+                {[
+                  { value: 'HIGHEST', label: 'Điểm cao nhất', desc: 'Lấy điểm số cao nhất trong các lần nộp hợp lệ' },
+                  { value: 'LATEST', label: 'Lần nộp gần nhất', desc: 'Lấy điểm số của lần nộp sau cùng' },
+                  { value: 'AVERAGE', label: 'Trung bình các lần', desc: 'Tính trung bình cộng tất cả các lần nộp' },
+                ].map((option) => (
+                  <label
+                    key={option.value}
+                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      scoreSelectionRule === option.value
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:bg-muted/50'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="scoreSelectionRule"
+                      value={option.value}
+                      checked={scoreSelectionRule === option.value}
+                      onChange={() => setScoreSelectionRule(option.value as any)}
+                      className="mt-1 text-primary focus:ring-primary"
+                    />
+                    <div>
+                      <div className="text-sm font-medium text-foreground">{option.label}</div>
+                      <div className="text-xs text-muted-foreground">{option.desc}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
 
-              <label
-                className={`p-4 rounded-lg border cursor-pointer transition-colors flex flex-col justify-between ${
-                  scoreSelectionRule === 'LATEST'
-                    ? 'border-primary bg-primary/5'
-                    : 'border-border hover:bg-muted/40'
-                }`}
-              >
-                <div className="flex items-center gap-2 mb-2">
+            {/* Pass threshold & PLO toggle */}
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground block">
+                  Điểm đạt tối thiểu (Thang 10)
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  Học viên cần đạt điểm số này để được công nhận hoàn thành khóa học.
+                </p>
+                <div className="flex items-center gap-3">
                   <input
-                    type="radio"
-                    name="scoreSelectionRule"
-                    value="LATEST"
-                    checked={scoreSelectionRule === 'LATEST'}
-                    onChange={() => setScoreSelectionRule('LATEST')}
-                    className="text-primary focus:ring-primary"
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    max="10"
+                    value={passThreshold}
+                    onChange={(e) => setPassThreshold(parseFloat(e.target.value) || 0)}
+                    className="w-28 px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary"
                   />
-                  <span className="font-semibold text-sm text-foreground">Lần nộp gần nhất</span>
+                  <span className="text-sm text-muted-foreground">/ 10.0 điểm</span>
                 </div>
-                <span className="text-xs text-muted-foreground">
-                  (LATEST) Phù hợp với bài đánh giá kiểm tra tiến độ học hiện tại.
-                </span>
-              </label>
+              </div>
 
-              <label
-                className={`p-4 rounded-lg border cursor-pointer transition-colors flex flex-col justify-between ${
-                  scoreSelectionRule === 'AVERAGE'
-                    ? 'border-primary bg-primary/5'
-                    : 'border-border hover:bg-muted/40'
-                }`}
-              >
-                <div className="flex items-center gap-2 mb-2">
+              <div className="pt-4 border-t border-border">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-foreground block">
+                      Đánh giá theo Chuẩn đầu ra (PLO)
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      Bật tính năng theo dõi tiến độ chuẩn đầu ra cấp chương trình đào tạo.
+                    </p>
+                  </div>
                   <input
-                    type="radio"
-                    name="scoreSelectionRule"
-                    value="AVERAGE"
-                    checked={scoreSelectionRule === 'AVERAGE'}
-                    onChange={() => setScoreSelectionRule('AVERAGE')}
-                    className="text-primary focus:ring-primary"
+                    type="checkbox"
+                    checked={ploEnabled}
+                    onChange={(e) => setPloEnabled(e.target.checked)}
+                    className="mt-1 rounded border-border text-primary focus:ring-primary h-5 w-5"
                   />
-                  <span className="font-semibold text-sm text-foreground">Trung bình các lần</span>
                 </div>
-                <span className="text-xs text-muted-foreground">
-                  (AVERAGE) Đánh giá sự ổn định và nỗ lực qua tất cả các lần thực hiện.
-                </span>
-              </label>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Component Weight Allocation */}
-        <div className="bg-card rounded-lg border border-border p-6 space-y-4 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border pb-3">
+        {/* Section 2: Component weights */}
+        <div className="bg-card rounded-xl border border-border p-6 shadow-sm space-y-6">
+          <div className="flex items-center justify-between border-b border-border pb-4">
             <div>
-              <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
-                <Layers className="w-5 h-5 text-primary" />
+              <h2 className="text-lg font-semibold text-foreground">
                 Phân bổ trọng số điểm thành phần
               </h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Chọn các bài kiểm tra hoặc bài tập nộp sẽ được tính vào sổ điểm tổng kết.
+              <p className="text-xs text-muted-foreground mt-1">
+                Cấu hình tỷ lệ phần trăm đóng góp của từng bài kiểm tra, bài tập vào điểm tổng kết cuối kỳ.
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Tổng trọng số:</span>
+              <span className="text-xs font-medium text-muted-foreground">Tổng trọng số:</span>
               <span
-                className={`text-sm font-bold font-mono px-2 py-0.5 rounded ${
+                className={`text-sm font-bold px-2.5 py-0.5 rounded-full ${
                   totalWeight === 100
                     ? 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300'
                     : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'

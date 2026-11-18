@@ -6,6 +6,7 @@ import { ToastProvider } from '@/shared/ui/Toast';
 import {
   OutcomesManagementPage,
   OutcomeMappingMatrixPage,
+  AssessmentRulesPage,
   AssessmentStatsPage,
   CourseReviewsManagePage,
   LearnerGradebookPage,
@@ -31,8 +32,8 @@ function renderWithClient(ui: React.ReactElement, initialRoute: string = '/') {
   );
 }
 
-describe('T-S9-FE-01: CLO/PLO, Analytics & Reviews Suite Tests', () => {
-  it('OutcomesManagementPage: renders CLO and PLO lists with create buttons', async () => {
+describe('T-S9-FE-01: CLO, Matrix, Rules, Analytics & Reviews Suite Tests', () => {
+  it('OutcomesManagementPage: renders Bloom levels and CLO list with create button (no PLO)', async () => {
     renderWithClient(
       <Routes>
         <Route path="/courses/:courseId/manage/outcomes" element={<OutcomesManagementPage />} />
@@ -40,20 +41,20 @@ describe('T-S9-FE-01: CLO/PLO, Analytics & Reviews Suite Tests', () => {
       '/courses/course-1/manage/outcomes'
     );
 
-    expect(screen.getByText('Chuẩn đầu ra học phần (CLO & PLO)')).toBeInTheDocument();
-
     await waitFor(() => {
+      expect(screen.getByText('Thang mức Bloom áp dụng')).toBeInTheDocument();
+      expect(screen.getByText('Danh sách CLO của khóa học')).toBeInTheDocument();
       expect(screen.getByText('CLO1')).toBeInTheDocument();
       expect(screen.getByText('CLO2')).toBeInTheDocument();
-      expect(screen.getAllByText('PLO1').length).toBeGreaterThan(0);
-      expect(screen.getAllByText('PLO2').length).toBeGreaterThan(0);
     });
 
-    expect(screen.getByRole('button', { name: /Thêm CLO mới/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Thêm PLO/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Thêm CLO/i })).toBeInTheDocument();
+    // Confirms PLO is not in the headings or tabs
+    expect(screen.queryByText('Chuẩn đầu ra học phần (CLO & PLO)')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Thêm PLO/i)).not.toBeInTheDocument();
   });
 
-  it('OutcomeMappingMatrixPage: renders 2D matrix between blocks and CLOs', async () => {
+  it('OutcomeMappingMatrixPage: renders 2D matrix, summary cards, and save button', async () => {
     renderWithClient(
       <Routes>
         <Route
@@ -64,14 +65,38 @@ describe('T-S9-FE-01: CLO/PLO, Analytics & Reviews Suite Tests', () => {
       '/courses/course-1/manage/outcomes/mapping'
     );
 
-    expect(screen.getByText(/Ma trận bài đánh giá và Chuẩn đầu ra/i)).toBeInTheDocument();
-
     await waitFor(() => {
-      expect(screen.getByText('Kiểm tra trắc nghiệm & tự luận Chương 1')).toBeInTheDocument();
-      expect(screen.getByText('Bài tập lớn: Thiết kế CSDL')).toBeInTheDocument();
+      expect(screen.getByText('Tổng số bài đánh giá')).toBeInTheDocument();
+      expect(screen.getByText('Chuẩn đầu ra đã phủ')).toBeInTheDocument();
+      expect(screen.getByText('Trạng thái cân bằng')).toBeInTheDocument();
+      expect(screen.getByText('1. Kiểm tra trắc nghiệm & tự luận Chương 1')).toBeInTheDocument();
+      expect(screen.getByText('2. Bài tập lớn: Thiết kế CSDL')).toBeInTheDocument();
+      expect(screen.getByText('Tổng trọng số tích lũy CLO')).toBeInTheDocument();
     });
 
     expect(screen.getByRole('button', { name: /Lưu ma trận/i })).toBeInTheDocument();
+  });
+
+  it('AssessmentRulesPage: renders grading rules, grade scale, and achievement levels', async () => {
+    renderWithClient(
+      <Routes>
+        <Route
+          path="/courses/:courseId/manage/outcomes/rules"
+          element={<AssessmentRulesPage />}
+        />
+      </Routes>,
+      '/courses/course-1/manage/outcomes/rules'
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Quy tắc điểm tổng kết')).toBeInTheDocument();
+      expect(screen.getByText('Xếp loại học lực')).toBeInTheDocument();
+      expect(screen.getByText('Mức đạt CLO')).toBeInTheDocument();
+      expect(screen.getByText('Hệ 5 mức MOET')).toBeInTheDocument();
+      expect(screen.getByText('Xuất sắc (Advanced Mastery)')).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('button', { name: /Lưu cấu hình quy tắc/i })).toBeInTheDocument();
   });
 
   it('AssessmentStatsPage: renders histogram distribution and CLO pass rates', async () => {
